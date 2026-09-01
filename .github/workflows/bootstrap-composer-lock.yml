@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - feature/issue-12-application-foundation
-    paths:
-      - composer.json
-      - .github/workflows/bootstrap-composer-lock.yml
 
 permissions:
   contents: write
