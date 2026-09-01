@@ -1,0 +1,133 @@
+name: Bootstrap Docker validation
+
+on:
+  push:
+    branches:
+      - feature/issue-12-application-foundation
+
+permissions:
+  contents: read
+
+jobs:
+  compose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Prepare local environment
+        shell: bash
+        run: |
+          cp .env.example .env
+          printf '\nHOST_UID=%s\nHOST_GID=%s\n' "$(id -u)" "$(id -g)" >> .env
+
+      - name: Validate Compose model
+        run: docker compose config >/dev/null
+
+      - name: Build application image
+        run: docker compose build
+
+      - name: Install locked PHP dependencies
+        run: docker compose run --rm app composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Generate application key
+        run: docker compose run --rm app php artisan key:generate --ansi
+
+      - name: Start infrastructure and migrate
+        shell: bash
+        run: |
+          docker compose up -d postgres redis
+          docker compose run --rm app php artisan migrate --force
+
+      - name: Start application stack
+        run: docker compose up -d
+
+      - name: Verify live services and HTTP
+        shell: bash
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error http://127.0.0.1:8080/up >/dev/null \
+              && curl --fail --silent --show-error http://127.0.0.1:8080/admin >/dev/null; then
+              break
+            fi
+
+            if [ "$attempt" -eq 60 ]; then
+              docker compose ps
+              docker compose logs --tail=200 app nginx worker scheduler postgres redis
+              exit 1
+            fi
+
+            sleep 2
+          done
+
+          for service in app nginx postgres redis; do
+            container_id="$(docker compose ps -q "$service")"
+            health="$(docker inspect --format '{{.State.Health.Status}}' "$container_id")"
+            test "$health" = healthy
+          done
+
+          for service in worker scheduler; do
+            container_id="$(docker compose ps -q "$service")"
+            state="$(docker inspect --format '{{.State.Status}}' "$container_id")"
+            test "$state" = running
+          done
+
+          docker compose ps
+
+      - name: Verify bind-mount ownership
+        shell: bash
+        run: |
+          host_uid="$(id -u)"
+          test "$(stat -c '%u' vendor)" = "$host_uid"
+
+          root_owned="$(find vendor storage bootstrap/cache -xdev -uid 0 -print -quit)"
+          if [ -n "$root_owned" ]; then
+            echo "Unexpected root-owned bind-mounted path: $root_owned"
+            exit 1
+          fi
+
+      - name: Verify Nginx survives application container IP change
+        shell: bash
+        run: |
+          app_id="$(docker compose ps -q app)"
+          old_ip="$(docker inspect --format '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$app_id")"
+
+          docker compose stop app
+          docker compose rm -f app
+
+          filler_id="$(docker run -d --network mytree_default alpine:3.22 sleep 120)"
+          trap 'docker rm -f "$filler_id" >/dev/null 2>&1 || true' EXIT
+
+          docker compose up -d app
+
+          for attempt in $(seq 1 60); do
+            app_id="$(docker compose ps -q app)"
+            health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$app_id")"
+            if [ "$health" = healthy ]; then
+              break
+            fi
+
+            if [ "$attempt" -eq 60 ]; then
+              docker compose logs --tail=200 app nginx
+              exit 1
+            fi
+
+            sleep 2
+          done
+
+          new_ip="$(docker inspect --format '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$app_id")"
+          echo "app IP before recreation: $old_ip"
+          echo "app IP after recreation:  $new_ip"
+          test "$new_ip" != "$old_ip"
+
+          sleep 11
+          curl --fail --silent --show-error http://127.0.0.1:8080/admin >/dev/null
+
+          docker rm -f "$filler_id" >/dev/null
+          trap - EXIT
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v --remove-orphans
