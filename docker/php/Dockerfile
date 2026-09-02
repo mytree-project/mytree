@@ -36,6 +36,4 @@ COPY docker/php/zz-mytree.conf /usr/local/etc/php-fpm.d/zz-mytree.conf
 
 WORKDIR /var/www/html
 
-USER www-data
-
 CMD ["php-fpm", "-F"]
