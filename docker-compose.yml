@@ -79,6 +79,7 @@ services:
 
   worker:
     build: *app-build
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     working_dir: /var/www/html
     command: ["php", "artisan", "queue:work", "--sleep=1", "--tries=3", "--timeout=90"]
     volumes: *app-volumes
@@ -93,6 +94,7 @@ services:
 
   scheduler:
     build: *app-build
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     working_dir: /var/www/html
     command: ["php", "artisan", "schedule:work"]
     volumes: *app-volumes
