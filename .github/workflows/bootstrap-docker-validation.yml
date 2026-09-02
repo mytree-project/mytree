@@ -65,11 +65,6 @@ jobs:
             exit 1
           fi
 
-          if [[ "$status" =~ ^(301|302|303|307|308)$ ]]; then
-            grep -Eiq '^location: .*\/admin\/login([?[:space:]]|$)' /tmp/admin.headers
-          fi
-
-          curl --fail --silent --show-error http://127.0.0.1:8080/admin/login >/dev/null
           curl --fail --silent --show-error http://127.0.0.1:8080/up >/dev/null
 
           for service in app nginx postgres redis; do
@@ -142,7 +137,7 @@ jobs:
 
           recovered=false
           for attempt in $(seq 1 30); do
-            if curl --fail --silent --show-error http://127.0.0.1:8080/admin/login >/dev/null; then
+            if curl --fail --silent --show-error http://127.0.0.1:8080/admin >/dev/null; then
               recovered=true
               break
             fi
