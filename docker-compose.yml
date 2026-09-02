@@ -27,7 +27,12 @@ services:
       test:
         - CMD-SHELL
         - >-
-          php -r '$$s=@fsockopen("127.0.0.1",9000,$$errno,$$errstr,1); if (!$$s) { exit(1); } fclose($$s);'
+          SCRIPT_NAME=/up
+          SCRIPT_FILENAME=/var/www/html/public/index.php
+          REQUEST_METHOD=GET
+          REQUEST_URI=/up
+          HTTP_HOST=localhost
+          cgi-fcgi -bind -connect 127.0.0.1:9000 >/dev/null 2>&1
       interval: 15s
       timeout: 5s
       retries: 10
