@@ -68,9 +68,24 @@ jobs:
           curl --fail --silent --show-error http://127.0.0.1:8080/up >/dev/null
 
           for service in app nginx postgres redis; do
-            container_id="$(docker compose ps -q "$service")"
-            health="$(docker inspect --format '{{.State.Health.Status}}' "$container_id")"
-            test "$health" = healthy
+            health=""
+
+            for attempt in $(seq 1 60); do
+              container_id="$(docker compose ps -q "$service")"
+              health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_id")"
+              echo "Attempt ${attempt}: ${service} health => ${health}"
+
+              if [ "$health" = healthy ]; then
+                break
+              fi
+
+              sleep 2
+            done
+
+            if [ "$health" != healthy ]; then
+              echo "Service ${service} did not become healthy."
+              exit 1
+            fi
           done
 
           for service in worker scheduler; do
