@@ -169,7 +169,7 @@ jobs:
           docker compose exec -T nginx sh -lc "nginx -T 2>&1 | grep -E 'resolver|fastcgi_pass|php_fpm_upstream|root '" || true
 
           echo '=== PHP-FPM configuration ==='
-          docker compose exec -T app sh -lc "php-fpm -tt 2>&1 | grep -E 'listen =|user =|group ='" || true
+          docker compose exec -T app sh -lc "php-fpm -tt 2>&1 | grep -E 'listen =|user =|group =|security.limit_extensions ='" || true
 
           echo '=== PHP-FPM local port 9000 ==='
           docker compose exec -T app php -r '$s=@fsockopen("127.0.0.1",9000,$errno,$errstr,1); echo $s ? "CONNECTED\n" : "FAILED: $errno $errstr\n"; if ($s) fclose($s);' || true

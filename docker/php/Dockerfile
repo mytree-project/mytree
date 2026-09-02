@@ -32,6 +32,7 @@ RUN apt-get update \
 
 COPY --from=composer /usr/bin/composer /usr/bin/composer
 COPY docker/php/php.ini /usr/local/etc/php/conf.d/99-mytree.ini
+COPY docker/php/zz-mytree.conf /usr/local/etc/php-fpm.d/zz-mytree.conf
 
 WORKDIR /var/www/html
 
