@@ -66,11 +66,7 @@ jobs:
           fi
 
           if [[ "$status" =~ ^(301|302|303|307|308)$ ]]; then
-            if ! grep -Eiq '^location: .*\/admin\/login([?[:space:]]|$)' /tmp/admin.headers; then
-              echo "Unexpected redirect from /admin:"
-              cat /tmp/admin.headers
-              exit 1
-            fi
+            grep -Eiq '^location: .*\/admin\/login([?[:space:]]|$)' /tmp/admin.headers
           fi
 
           curl --fail --silent --show-error http://127.0.0.1:8080/admin/login >/dev/null
@@ -87,8 +83,6 @@ jobs:
             state="$(docker inspect --format '{{.State.Status}}' "$container_id")"
             test "$state" = running
           done
-
-          docker compose ps
 
       - name: Verify bind-mount ownership
         shell: bash
@@ -113,6 +107,7 @@ jobs:
       - name: Verify Nginx survives application container IP change
         shell: bash
         run: |
+          nginx_id="$(docker compose ps -q nginx)"
           app_id="$(docker compose ps -q app)"
           old_ip="$(docker inspect --format '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$app_id")"
 
@@ -132,6 +127,7 @@ jobs:
             fi
 
             if [ "$attempt" -eq 60 ]; then
+              echo "Recreated application container did not become healthy."
               exit 1
             fi
 
@@ -142,70 +138,32 @@ jobs:
           echo "app IP before recreation: $old_ip"
           echo "app IP after recreation:  $new_ip"
           test "$new_ip" != "$old_ip"
+          test "$(docker compose ps -q nginx)" = "$nginx_id"
 
-          sleep 11
-          curl --fail --silent --show-error http://127.0.0.1:8080/admin/login >/dev/null
+          recovered=false
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error http://127.0.0.1:8080/admin/login >/dev/null; then
+              recovered=true
+              break
+            fi
+            sleep 1
+          done
+
+          if [ "$recovered" != true ]; then
+            echo "Nginx did not recover after the application container IP changed."
+            exit 1
+          fi
+
           curl --fail --silent --show-error http://127.0.0.1:8080/up >/dev/null
 
           docker rm -f "$filler_id" >/dev/null
           trap - EXIT
 
-      - name: Diagnostics
+      - name: Failure logs
         if: failure()
-        shell: bash
         run: |
-          echo '=== Host identity and source permissions ==='
-          id || true
-          stat -c '%u:%g %a %n' . public public/index.php 2>/dev/null || true
-          namei -l public/index.php 2>/dev/null || true
-
-          echo '=== App identity and bind-mount permissions ==='
-          docker compose exec -T app id || true
-          docker compose exec -T app sh -lc 'stat -c "%u:%g %a %n" /var/www/html /var/www/html/public /var/www/html/public/index.php 2>/dev/null || true' || true
-          docker compose exec -T app sh -lc 'namei -l /var/www/html/public/index.php 2>/dev/null || true' || true
-          docker compose exec -T app sh -lc 'test -r /var/www/html/public/index.php && echo "shell: index.php is readable" || echo "shell: index.php is NOT readable"' || true
-          docker compose exec -T app php -r 'var_dump(getmyuid(), getmygid(), is_readable("/var/www/html/public/index.php"));' || true
-          docker compose exec -T app sh -lc 'ps -eo user:16,uid,gid,pid,ppid,args | grep "[p]hp-fpm"' || true
-          app_id="$(docker compose ps -q app)"
-          docker inspect --format 'Configured user={{.Config.User}}' "$app_id" 2>/dev/null || true
-
-          echo '=== docker compose ps ==='
           docker compose ps || true
-
-          echo '=== HTTP /admin ==='
-          curl -sS -o /tmp/diag-admin.body -D /tmp/diag-admin.headers -w 'HTTP %{http_code}\n' http://127.0.0.1:8080/admin || true
-          sed -n '1,20p' /tmp/diag-admin.headers 2>/dev/null || true
-          sed -n '1,40p' /tmp/diag-admin.body 2>/dev/null || true
-
-          echo '=== Nginx Docker DNS for app ==='
-          docker compose exec -T nginx getent hosts app || true
-
-          echo '=== Nginx active FastCGI configuration ==='
-          docker compose exec -T nginx sh -lc "nginx -T 2>&1 | grep -E 'resolver|fastcgi_pass|php_fpm_upstream|root '" || true
-
-          echo '=== PHP-FPM configuration ==='
-          docker compose exec -T app sh -lc "php-fpm -tt 2>&1 | grep -E 'listen =|user =|group =|security.limit_extensions ='" || true
-
-          echo '=== PHP-FPM local port 9000 ==='
-          docker compose exec -T app php -r '$s=@fsockopen("127.0.0.1",9000,$errno,$errstr,1); echo $s ? "CONNECTED\n" : "FAILED: $errno $errstr\n"; if ($s) fclose($s);' || true
-
-          echo '=== Laravel about ==='
-          docker compose exec -T app php artisan about || true
-
-          echo '=== Laravel log ==='
-          docker compose exec -T app sh -lc 'tail -n 80 storage/logs/laravel.log 2>/dev/null || true' || true
-
-          echo '=== Nginx logs ==='
-          docker compose logs --tail=80 nginx || true
-
-          echo '=== App logs ==='
-          docker compose logs --tail=80 app || true
-
-          echo '=== Worker logs ==='
-          docker compose logs --tail=40 worker || true
-
-          echo '=== Scheduler logs ==='
-          docker compose logs --tail=40 scheduler || true
+          docker compose logs --tail=100 app nginx worker scheduler || true
 
       - name: Cleanup
         if: always()
