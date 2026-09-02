@@ -30,16 +30,16 @@ jobs:
         run: docker compose build
 
       - name: Install locked PHP dependencies
-        run: docker compose run --rm app composer install --no-interaction --no-progress --prefer-dist
+        run: docker compose run --rm --user "$(id -u):$(id -g)" app composer install --no-interaction --no-progress --prefer-dist
 
       - name: Generate application key
-        run: docker compose run --rm app php artisan key:generate --ansi
+        run: docker compose run --rm --user "$(id -u):$(id -g)" app php artisan key:generate --ansi
 
       - name: Start infrastructure and migrate
         shell: bash
         run: |
           docker compose up -d postgres redis
-          docker compose run --rm app php artisan migrate --force
+          docker compose run --rm --user "$(id -u):$(id -g)" app php artisan migrate --force
 
       - name: Start application stack
         run: docker compose up -d
@@ -165,6 +165,7 @@ jobs:
           docker compose exec -T app sh -lc 'namei -l /var/www/html/public/index.php 2>/dev/null || true' || true
           docker compose exec -T app sh -lc 'test -r /var/www/html/public/index.php && echo "shell: index.php is readable" || echo "shell: index.php is NOT readable"' || true
           docker compose exec -T app php -r 'var_dump(getmyuid(), getmygid(), is_readable("/var/www/html/public/index.php"));' || true
+          docker compose exec -T app sh -lc 'ps -eo user:16,uid,gid,pid,ppid,args | grep "[p]hp-fpm"' || true
           app_id="$(docker compose ps -q app)"
           docker inspect --format 'Configured user={{.Config.User}}' "$app_id" 2>/dev/null || true
 
