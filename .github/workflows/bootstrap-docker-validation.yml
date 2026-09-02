@@ -154,6 +154,20 @@ jobs:
         if: failure()
         shell: bash
         run: |
+          echo '=== Host identity and source permissions ==='
+          id || true
+          stat -c '%u:%g %a %n' . public public/index.php 2>/dev/null || true
+          namei -l public/index.php 2>/dev/null || true
+
+          echo '=== App identity and bind-mount permissions ==='
+          docker compose exec -T app id || true
+          docker compose exec -T app sh -lc 'stat -c "%u:%g %a %n" /var/www/html /var/www/html/public /var/www/html/public/index.php 2>/dev/null || true' || true
+          docker compose exec -T app sh -lc 'namei -l /var/www/html/public/index.php 2>/dev/null || true' || true
+          docker compose exec -T app sh -lc 'test -r /var/www/html/public/index.php && echo "shell: index.php is readable" || echo "shell: index.php is NOT readable"' || true
+          docker compose exec -T app php -r 'var_dump(getmyuid(), getmygid(), is_readable("/var/www/html/public/index.php"));' || true
+          app_id="$(docker compose ps -q app)"
+          docker inspect --format 'Configured user={{.Config.User}}' "$app_id" 2>/dev/null || true
+
           echo '=== docker compose ps ==='
           docker compose ps || true
 
