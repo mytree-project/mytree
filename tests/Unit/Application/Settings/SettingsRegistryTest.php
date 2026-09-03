@@ -6,6 +6,7 @@ namespace Tests\Unit\Application\Settings;
 
 use App\Application\Settings\Application\ApplicationSettingsSection;
 use App\Application\Settings\SettingsRegistry;
+use App\Application\Settings\SettingsSection;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 
@@ -20,7 +21,7 @@ final class SettingsRegistryTest extends TestCase
         self::assertSame(
             [ApplicationSettingsSection::KEY],
             array_map(
-                static fn ($section): string => $section->key(),
+                static fn (SettingsSection $section): string => $section->key(),
                 $registry->sections(),
             ),
         );
