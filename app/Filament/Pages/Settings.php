@@ -17,7 +17,7 @@ use Filament\Schemas\Schema;
  */
 final class Settings extends Page
 {
-    protected static string $view = 'filament.pages.settings';
+    protected string $view = 'filament.pages.settings';
 
     /** @var array<string, mixed>|null */
     public ?array $data = [];

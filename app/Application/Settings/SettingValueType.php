@@ -32,9 +32,8 @@ enum SettingValueType: string
         }
 
         return match ($this) {
-            self::String => $value,
-            self::Integer => (string) $value,
-            self::Boolean => $value ? 'true' : 'false',
+            self::String, self::Integer => (string) $value,
+            self::Boolean => $value === true ? 'true' : 'false',
         };
     }
 
@@ -42,16 +41,27 @@ enum SettingValueType: string
     {
         return match ($this) {
             self::String => $value,
-            self::Integer => filter_var(
-                $value,
-                FILTER_VALIDATE_INT,
-                FILTER_NULL_ON_FAILURE,
-            ) ?? throw new UnexpectedValueException('Stored setting is not a valid integer.'),
+            self::Integer => $this->deserializeInteger($value),
             self::Boolean => match ($value) {
                 'true' => true,
                 'false' => false,
                 default => throw new UnexpectedValueException('Stored setting is not a valid boolean.'),
             },
         };
+    }
+
+    private function deserializeInteger(string $value): int
+    {
+        $parsed = filter_var(
+            $value,
+            FILTER_VALIDATE_INT,
+            FILTER_NULL_ON_FAILURE,
+        );
+
+        if (! is_int($parsed)) {
+            throw new UnexpectedValueException('Stored setting is not a valid integer.');
+        }
+
+        return $parsed;
     }
 }
