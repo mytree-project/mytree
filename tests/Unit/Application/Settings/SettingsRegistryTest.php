@@ -15,7 +15,7 @@ final class SettingsRegistryTest extends TestCase
     public function test_registered_sections_are_exposed_deterministically(): void
     {
         $registry = new SettingsRegistry([
-            new ApplicationSettingsSection(),
+            new ApplicationSettingsSection,
         ]);
 
         self::assertSame(
@@ -39,14 +39,14 @@ final class SettingsRegistryTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         new SettingsRegistry([
-            new ApplicationSettingsSection(),
-            new ApplicationSettingsSection(),
+            new ApplicationSettingsSection,
+            new ApplicationSettingsSection,
         ]);
     }
 
     public function test_setting_fingerprint_is_stable_for_the_same_semantic_value(): void
     {
-        $definition = (new ApplicationSettingsSection())->defaultLocale();
+        $definition = (new ApplicationSettingsSection)->defaultLocale();
 
         self::assertSame(
             $definition->fingerprint('pl-PL'),
