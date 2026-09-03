@@ -16,7 +16,8 @@ This first application-foundation milestone contains:
 - Redis,
 - a Laravel queue worker,
 - a Laravel scheduler,
-- Docker Compose development/runtime infrastructure.
+- Docker Compose development/runtime infrastructure,
+- Docker-first developer operations scripts under `ops/`.
 
 It does **not** yet implement Source Acquisition, provider integration, application Settings, Engine integration or the final authentication workflow.
 
@@ -26,31 +27,43 @@ Normal local development requires only:
 
 - Git,
 - Docker Engine,
-- Docker Compose v2.
+- Docker Compose v2,
+- Bash.
 
 Host PHP, Composer and Node.js are not required.
 
 The current user must be able to access the Docker daemon. The repository does not invoke `sudo`.
 
-## First local bootstrap
-
-The dedicated `ops/setup.sh`, `ops/start.sh` and related developer scripts are tracked separately and will be added in the next infrastructure issue. Until then, bootstrap the foundation with containerized commands:
+You can verify Docker access with:
 
 ```bash
-cp .env.example .env
-
-# Use your host identity for bind-mounted runtime files.
-export HOST_UID="$(id -u)"
-export HOST_GID="$(id -g)"
-
-docker compose build
-
-docker compose run --rm app composer install --no-interaction --prefer-dist
-docker compose run --rm app php artisan key:generate
-docker compose up -d postgres redis
-docker compose run --rm app php artisan migrate --force
-docker compose up -d
+docker info
+docker compose version
 ```
+
+If `docker info` works only with `sudo`, configure Docker access for your normal user before running the MyTree operations scripts.
+
+## First local bootstrap
+
+From a fresh clone, run:
+
+```bash
+./ops/setup.sh
+```
+
+The setup script:
+
+1. validates Docker and Docker Compose v2,
+2. verifies that the current user can access Docker without `sudo`,
+3. creates `.env` from `.env.example` only when `.env` is missing,
+4. builds the application image using the current host UID/GID,
+5. installs Composer dependencies inside a container,
+6. generates `APP_KEY` only when it is not already configured,
+7. starts PostgreSQL and Redis,
+8. runs Laravel migrations,
+9. starts the complete application stack.
+
+Re-running `./ops/setup.sh` keeps an existing `.env`, application key and persistent Docker volumes intact.
 
 Open:
 
@@ -62,19 +75,57 @@ The HTTP port can be changed with `HTTP_PORT` in `.env`.
 
 The complete administrator authentication workflow is intentionally deferred to the dedicated authentication milestone.
 
-## Useful commands
+## Developer operations
+
+Start the stack:
+
+```bash
+./ops/start.sh
+```
+
+Stop the stack while preserving PostgreSQL/Redis data:
+
+```bash
+./ops/stop.sh
+```
+
+Show Compose state, container health, Laravel HTTP reachability and basic Laravel/Filament information:
+
+```bash
+./ops/status.sh
+```
+
+Show application, Nginx, worker and scheduler logs:
+
+```bash
+./ops/logs.sh
+```
+
+Follow all application logs:
+
+```bash
+./ops/logs.sh --follow
+```
+
+Inspect selected logical targets without knowing their Compose service names:
+
+```bash
+./ops/logs.sh app web
+./ops/logs.sh --tail 250 worker scheduler
+```
+
+Run `./ops/logs.sh --help` for the complete logging command syntax.
+
+The full automated quality-suite entry point is intentionally owned by the follow-up quality-gates work rather than duplicated here.
+
+## Direct Compose commands
+
+The `ops/` scripts are the normal developer entry points. Direct Compose commands remain useful for debugging:
 
 ```bash
 docker compose ps
-docker compose logs -f app nginx worker scheduler
 docker compose exec app php artisan about
 docker compose exec app php artisan migrate:status
-```
-
-Stop containers while preserving PostgreSQL/Redis volumes:
-
-```bash
-docker compose stop
 ```
 
 Remove containers and the Compose network while preserving named volumes:
@@ -103,6 +154,8 @@ Health checks intentionally verify live services:
 - Redis uses `redis-cli ping`.
 - PHP-FPM is checked through a real FastCGI request to Laravel's `/up` endpoint.
 - Nginx exposes an internal `/nginx-health` probe.
+
+`./ops/status.sh` reports those real container health states and separately probes Laravel's `/up` endpoint through Nginx. A syntax-only configuration check is not treated as application health.
 
 The Nginx FastCGI configuration uses Docker's embedded DNS resolver so recreation of the PHP application container does not leave Nginx pinned to a stale container IP.
 
