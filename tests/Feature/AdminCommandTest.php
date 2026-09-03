@@ -24,7 +24,8 @@ final class AdminCommandTest extends TestCase
         $command
             ->expectsQuestion('Password (minimum 12 characters)', $password)
             ->expectsQuestion('Confirm password', $password)
-            ->assertSuccessful();
+            ->assertSuccessful()
+            ->execute();
 
         $administrator = User::query()->where('email', 'admin@example.test')->firstOrFail();
 
@@ -45,7 +46,8 @@ final class AdminCommandTest extends TestCase
         $command
             ->expectsQuestion('Password (minimum 12 characters)', $password)
             ->expectsQuestion('Confirm password', $password)
-            ->assertSuccessful();
+            ->assertSuccessful()
+            ->execute();
 
         $administrator->refresh();
 
