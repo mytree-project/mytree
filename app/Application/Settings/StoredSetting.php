@@ -12,6 +12,5 @@ final readonly class StoredSetting
         public int $revision,
         public string $valueHash,
         public ?string $changedBy,
-    ) {
-    }
+    ) {}
 }
