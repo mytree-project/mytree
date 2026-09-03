@@ -11,8 +11,7 @@ final readonly class UpdateApplicationSettings
     public function __construct(
         private SettingsStore $store,
         private ApplicationSettingsSection $section,
-    ) {
-    }
+    ) {}
 
     public function handle(ApplicationSettings $settings, ?string $changedBy): ApplicationSettings
     {
