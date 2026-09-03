@@ -20,9 +20,28 @@ This first application-foundation milestone contains:
 - Docker-first developer operations scripts under `ops/`,
 - Filament administrator authentication and a baseline system dashboard,
 - containerized PHPUnit, Laravel Pint and Larastan/PHPStan quality gates,
-- GitHub Actions CI for pull requests and pushes to `main`.
+- GitHub Actions CI for pull requests and pushes to `main`,
+- explicit repository-local application dependency and persistence boundaries.
 
 It does **not** yet implement Source Acquisition, provider integration, application Settings or Engine integration.
+
+## Application architecture
+
+The application follows a pragmatic modular-monolith dependency direction:
+
+```text
+Filament / Console / Laravel composition roots
+                  ↓
+        Infrastructure / Adapters
+                  ↓
+        Application / Contracts
+                  ↓
+                 Domain
+```
+
+Only layers and capability directories required by real code should exist. Framework-independent Domain/Application code must not depend on Laravel, Filament or Eloquent; Eloquent persistence lives explicitly under `app/Infrastructure/Persistence/Eloquent`.
+
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the repository-local namespace, dependency, adapter and future capability conventions. Canonical project-wide architecture remains in `mytree-project/mytree-project`.
 
 ## Host requirements
 

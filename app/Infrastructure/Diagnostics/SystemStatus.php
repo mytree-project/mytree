@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Support;
+namespace App\Infrastructure\Diagnostics;
 
 use Composer\InstalledVersions;
 use Illuminate\Support\Facades\DB;
