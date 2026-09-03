@@ -1,0 +1,47 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature;
+
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
+use Tests\TestCase;
+
+final class AdminCommandTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_administrator_can_be_created_interactively(): void
+    {
+        $password = 'a-secure-admin-password';
+
+        $this->artisan('mytree:admin create admin@example.test --name="MyTree Administrator"')
+            ->expectsQuestion('Password (minimum 12 characters)', $password)
+            ->expectsQuestion('Confirm password', $password)
+            ->assertSuccessful();
+
+        $administrator = User::query()->where('email', 'admin@example.test')->firstOrFail();
+
+        self::assertTrue($administrator->is_admin);
+        self::assertTrue(Hash::check($password, $administrator->password));
+    }
+
+    public function test_existing_administrator_password_can_be_reset(): void
+    {
+        $administrator = User::factory()->admin()->create([
+            'email' => 'admin@example.test',
+        ]);
+        $password = 'a-different-secure-password';
+
+        $this->artisan('mytree:admin reset admin@example.test')
+            ->expectsQuestion('Password (minimum 12 characters)', $password)
+            ->expectsQuestion('Confirm password', $password)
+            ->assertSuccessful();
+
+        $administrator->refresh();
+
+        self::assertTrue(Hash::check($password, $administrator->password));
+    }
+}
