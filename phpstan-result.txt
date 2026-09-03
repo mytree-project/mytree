@@ -1,0 +1,2 @@
+Note: Using configuration file /home/runner/work/mytree/mytree/phpstan.neon.dist.
+/home/runner/work/mytree/mytree/tests/Unit/ExampleTest.php:13:Call to static method PHPUnit\Framework\Assert::assertTrue() with true will always evaluate to true.
