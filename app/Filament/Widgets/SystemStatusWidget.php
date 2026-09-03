@@ -10,12 +10,12 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 
 final class SystemStatusWidget extends StatsOverviewWidget
 {
-    protected function getHeading(): ?string
+    protected function getHeading(): string
     {
         return 'System status';
     }
 
-    protected function getDescription(): ?string
+    protected function getDescription(): string
     {
         return 'Non-sensitive runtime diagnostics for the MyTree application.';
     }
