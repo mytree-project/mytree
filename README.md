@@ -17,7 +17,9 @@ This first application-foundation milestone contains:
 - a Laravel queue worker,
 - a Laravel scheduler,
 - Docker Compose development/runtime infrastructure,
-- Docker-first developer operations scripts under `ops/`.
+- Docker-first developer operations scripts under `ops/`,
+- containerized PHPUnit, Laravel Pint and Larastan/PHPStan quality gates,
+- GitHub Actions CI for pull requests and pushes to `main`.
 
 It does **not** yet implement Source Acquisition, provider integration, application Settings, Engine integration or the final authentication workflow.
 
@@ -116,7 +118,36 @@ Inspect selected logical targets without knowing their Compose service names:
 
 Run `./ops/logs.sh --help` for the complete logging command syntax.
 
-The full automated quality-suite entry point is intentionally owned by the follow-up quality-gates work rather than duplicated here.
+## Quality gates
+
+Run the complete local quality suite with one Docker-first command:
+
+```bash
+./ops/test.sh
+```
+
+The command:
+
+1. builds the application image,
+2. installs exactly the Composer dependencies recorded in `composer.lock`,
+3. verifies formatting with Laravel Pint in non-mutating `--test` mode,
+4. runs Larastan/PHPStan at level 8 without a generated baseline or blanket ignores,
+5. runs the PHPUnit suite.
+
+No host PHP or Composer installation is required.
+
+The test process overrides application infrastructure with an isolated deterministic test environment: SQLite `:memory:`, array-backed cache/session/mail, synchronous queues and a fixed non-production application key. Normal automated tests must not depend on live genealogy portals or other third-party services.
+
+For debugging an individual stage, use:
+
+```bash
+./ops/test.sh install
+./ops/test.sh style
+./ops/test.sh static
+./ops/test.sh tests
+```
+
+The stage-specific commands are also used by GitHub Actions so local and CI gates have the same implementation. CI runs for pull requests and pushes to `main`, installs locked dependencies and requires no repository secrets for the normal quality suite.
 
 ## Direct Compose commands
 
