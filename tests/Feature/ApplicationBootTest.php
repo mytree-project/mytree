@@ -13,8 +13,13 @@ final class ApplicationBootTest extends TestCase
         $this->get('/')->assertRedirect('/admin');
     }
 
-    public function test_filament_admin_panel_is_registered(): void
+    public function test_guest_is_redirected_to_filament_login(): void
     {
-        $this->get('/admin')->assertOk();
+        $this->get('/admin')->assertRedirect('/admin/login');
+    }
+
+    public function test_filament_login_page_renders(): void
+    {
+        $this->get('/admin/login')->assertOk();
     }
 }
