@@ -21,7 +21,7 @@ final class SystemStatus
         $url = (string) config('app.url', '');
         $parts = parse_url($url);
 
-        if (! is_array($parts) || ! isset($parts['host'])) {
+        if ($parts === false || ! isset($parts['host'])) {
             return 'Configured';
         }
 
@@ -65,9 +65,9 @@ final class SystemStatus
     public function redisStatus(): string
     {
         try {
-            $response = Redis::connection()->command('ping');
+            Redis::connection()->command('ping');
 
-            return $response === false ? 'Unavailable' : 'Connected';
+            return 'Connected';
         } catch (Throwable) {
             return 'Unavailable';
         }
