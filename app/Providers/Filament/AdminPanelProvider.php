@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\Settings;
 use App\Filament\Widgets\SystemStatusWidget;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -31,6 +32,7 @@ final class AdminPanelProvider extends PanelProvider
             ->login()
             ->pages([
                 Dashboard::class,
+                Settings::class,
             ])
             ->widgets([
                 SystemStatusWidget::class,
