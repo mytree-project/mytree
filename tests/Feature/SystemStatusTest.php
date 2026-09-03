@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Support\SystemStatus;
+use App\Infrastructure\Diagnostics\SystemStatus;
 use Tests\TestCase;
 
 final class SystemStatusTest extends TestCase
