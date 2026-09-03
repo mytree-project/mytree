@@ -18,10 +18,11 @@ This first application-foundation milestone contains:
 - a Laravel scheduler,
 - Docker Compose development/runtime infrastructure,
 - Docker-first developer operations scripts under `ops/`,
+- Filament administrator authentication and a baseline system dashboard,
 - containerized PHPUnit, Laravel Pint and Larastan/PHPStan quality gates,
 - GitHub Actions CI for pull requests and pushes to `main`.
 
-It does **not** yet implement Source Acquisition, provider integration, application Settings, Engine integration or the final authentication workflow.
+It does **not** yet implement Source Acquisition, provider integration, application Settings or Engine integration.
 
 ## Host requirements
 
@@ -67,15 +68,31 @@ The setup script:
 
 Re-running `./ops/setup.sh` keeps an existing `.env`, application key and persistent Docker volumes intact.
 
+Create the first administrator after setup:
+
+```bash
+docker compose exec app php artisan mytree:admin create
+```
+
+The command interactively asks for the administrator email, display name and password. Password entry is hidden, requires confirmation and must contain at least 12 characters. There is no default administrator password in the repository.
+
+To reset the password of an existing administrator:
+
+```bash
+docker compose exec app php artisan mytree:admin reset admin@example.test
+```
+
+The reset command also prompts for the new password without echoing it. It refuses to reset a regular non-administrator account.
+
 Open:
 
 ```text
 http://localhost:8080/admin
 ```
 
-The HTTP port can be changed with `HTTP_PORT` in `.env`.
+Unauthenticated requests are redirected to `/admin/login`. The HTTP port can be changed with `HTTP_PORT` in `.env`; keep `APP_URL` aligned with the URL used to reach MyTree.
 
-The complete administrator authentication workflow is intentionally deferred to the dedicated authentication milestone.
+After login, the baseline dashboard reports non-sensitive operational information only: application environment and URL, PHP/Laravel/Filament versions, database and Redis connectivity, and configured session/queue backends. It does not display environment dumps, credentials, tokens or connection passwords.
 
 ## Developer operations
 
@@ -175,7 +192,7 @@ docker compose down -v
 
 PostgreSQL uses the named `postgres-data` volume.
 
-Redis uses the named `redis-data` volume, but Redis is infrastructure for cache, queue and ephemeral coordination. It must never become the only copy of authoritative MyTree data.
+Redis uses the named `redis-data` volume, but Redis is infrastructure for cache, queue, sessions and ephemeral coordination. It must never become the only copy of authoritative MyTree data.
 
 ## Docker health checks
 
