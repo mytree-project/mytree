@@ -11,8 +11,7 @@ final readonly class ReadApplicationSettings implements ApplicationSettingsProvi
     public function __construct(
         private SettingsStore $store,
         private ApplicationSettingsSection $section,
-    ) {
-    }
+    ) {}
 
     public function current(): ApplicationSettings
     {
