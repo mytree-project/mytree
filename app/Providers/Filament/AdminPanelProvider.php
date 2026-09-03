@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers\Filament;
 
+use App\Filament\Widgets\SystemStatusWidget;
+use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
@@ -26,8 +28,12 @@ final class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->brandName('MyTree')
+            ->login()
             ->pages([
                 Dashboard::class,
+            ])
+            ->widgets([
+                SystemStatusWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,
@@ -39,6 +45,9 @@ final class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+            ])
+            ->authMiddleware([
+                Authenticate::class,
             ]);
     }
 }
