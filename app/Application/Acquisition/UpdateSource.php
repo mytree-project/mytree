@@ -12,11 +12,17 @@ use App\Domain\Acquisition\SourceType;
 
 final readonly class UpdateSource
 {
+    private SourceRepository $repository;
+
+    private SourceIdentifierGenerator $identifiers;
+
     public function __construct(
-        private SourceRepository $repository,
-        private SourceIdentifierGenerator $identifiers,
+        SourceRepository $repository,
+        SourceIdentifierGenerator $identifiers,
     )
     {
+        $this->repository = $repository;
+        $this->identifiers = $identifiers;
     }
 
     /** @param list<SourceTextInput> $texts */
