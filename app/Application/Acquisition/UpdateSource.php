@@ -17,15 +17,14 @@ final readonly class UpdateSource
         private SourceIdentifierGenerator $identifiers,
     ) {}
 
-    /**
-     * @param list<SourceTextInput> $texts
-     */
+    /** @param list<SourceTextInput> $texts */
     public function handle(
         SourceId $id,
         SourceType $type,
         SourceMetadata $metadata,
         array $texts = [],
-    ): Source {
+    ): Source
+    {
         if ($this->repository->find($id) === null) {
             throw SourceNotFound::forId($id);
         }
@@ -43,7 +42,7 @@ final readonly class UpdateSource
     }
 
     /**
-     * @param list<SourceTextInput> $inputs
+     * @param  list<SourceTextInput>  $inputs
      * @return list<SourceText>
      */
     private function makeTexts(array $inputs): array
