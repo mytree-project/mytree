@@ -14,7 +14,9 @@ final readonly class CreateSource
     public function __construct(
         private SourceRepository $repository,
         private SourceIdentifierGenerator $identifiers,
-    ) {}
+    )
+    {
+    }
 
     /** @param list<SourceTextInput> $texts */
     public function handle(
