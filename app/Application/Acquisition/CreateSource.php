@@ -16,14 +16,13 @@ final readonly class CreateSource
         private SourceIdentifierGenerator $identifiers,
     ) {}
 
-    /**
-     * @param list<SourceTextInput> $texts
-     */
+    /** @param list<SourceTextInput> $texts */
     public function handle(
         SourceType $type,
         ?SourceMetadata $metadata = null,
         array $texts = [],
-    ): Source {
+    ): Source
+    {
         $source = new Source(
             id: $this->identifiers->sourceId(),
             type: $type,
@@ -37,7 +36,7 @@ final readonly class CreateSource
     }
 
     /**
-     * @param list<SourceTextInput> $inputs
+     * @param  list<SourceTextInput>  $inputs
      * @return list<SourceText>
      */
     private function makeTexts(array $inputs): array
