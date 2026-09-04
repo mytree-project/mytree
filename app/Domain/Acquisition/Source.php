@@ -35,6 +35,6 @@ final readonly class Source
             $seenTextIds[$text->id->value] = true;
         }
 
-        $this->texts = array_values($texts);
+        $this->texts = $texts;
     }
 }

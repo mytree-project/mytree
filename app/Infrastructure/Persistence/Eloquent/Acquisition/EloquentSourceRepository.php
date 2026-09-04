@@ -58,7 +58,7 @@ final class EloquentSourceRepository implements SourceRepository
             return null;
         }
 
-        $metadata = $record->metadata;
+        $metadata = $record->getAttribute('metadata');
 
         if (! is_array($metadata)) {
             throw new UnexpectedValueException('Stored Source metadata must be an array.');
