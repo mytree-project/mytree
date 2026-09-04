@@ -58,7 +58,6 @@ final class EloquentSourceRepository implements SourceRepository
             return null;
         }
 
-        /** @var array<string, mixed> $metadata */
         $metadata = $record->getAttribute('metadata');
 
         if (! is_array($metadata)) {
