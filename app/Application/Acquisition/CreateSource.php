@@ -18,8 +18,7 @@ final readonly class CreateSource
     public function __construct(
         SourceRepository $repository,
         SourceIdentifierGenerator $identifiers,
-    )
-    {
+    ) {
         $this->repository = $repository;
         $this->identifiers = $identifiers;
     }
@@ -29,8 +28,7 @@ final readonly class CreateSource
         SourceType $type,
         ?SourceMetadata $metadata = null,
         array $texts = [],
-    ): Source
-    {
+    ): Source {
         $source = new Source(
             id: $this->identifiers->sourceId(),
             type: $type,

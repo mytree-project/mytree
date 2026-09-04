@@ -19,8 +19,7 @@ final readonly class UpdateSource
     public function __construct(
         SourceRepository $repository,
         SourceIdentifierGenerator $identifiers,
-    )
-    {
+    ) {
         $this->repository = $repository;
         $this->identifiers = $identifiers;
     }
@@ -31,8 +30,7 @@ final readonly class UpdateSource
         SourceType $type,
         SourceMetadata $metadata,
         array $texts = [],
-    ): Source
-    {
+    ): Source {
         if ($this->repository->find($id) === null) {
             throw SourceNotFound::forId($id);
         }
