@@ -12,17 +12,11 @@ use App\Domain\Acquisition\SourceType;
 
 final readonly class UpdateSource
 {
-    private SourceRepository $repository;
-
-    private SourceIdentifierGenerator $identifiers;
-
     public function __construct(
-        SourceRepository $repository,
-        SourceIdentifierGenerator $identifiers,
-    ) {
-        $this->repository = $repository;
-        $this->identifiers = $identifiers;
-    }
+        private SourceRepository $repository,
+        private SourceIdentifierGenerator $identifiers,
+        private RecordSourceRevision $revisions,
+    ) {}
 
     /** @param list<SourceTextInput> $texts */
     public function handle(
@@ -30,6 +24,8 @@ final readonly class UpdateSource
         SourceType $type,
         SourceMetadata $metadata,
         array $texts = [],
+        ?string $changeNote = null,
+        ?string $changedBy = null,
     ): Source {
         if ($this->repository->find($id) === null) {
             throw SourceNotFound::forId($id);
@@ -43,6 +39,7 @@ final readonly class UpdateSource
         );
 
         $this->repository->save($source);
+        $this->revisions->handle($source->id, $changeNote, $changedBy);
 
         return $source;
     }
