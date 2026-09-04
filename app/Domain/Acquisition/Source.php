@@ -13,9 +13,7 @@ final readonly class Source
     /** @var list<SourceText> */
     public array $texts;
 
-    /**
-     * @param list<SourceText> $texts
-     */
+    /** @param list<SourceText> $texts */
     public function __construct(
         public SourceId $id,
         public SourceType $type,
