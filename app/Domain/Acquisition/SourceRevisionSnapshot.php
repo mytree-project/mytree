@@ -101,8 +101,7 @@ final readonly class SourceRevisionSnapshot
         int $schemaVersion,
         string $canonicalPayload,
         string $payloadHash,
-    ): self
-    {
+    ): self {
         if ($schemaVersion !== self::SCHEMA_VERSION) {
             throw new InvalidArgumentException(sprintf(
                 'Unsupported SourceRevision snapshot schema version %d.',
@@ -268,7 +267,7 @@ final readonly class SourceRevisionSnapshot
     }
 
     /**
-     * @param array<string, mixed> $object
+     * @param  array<string, mixed>  $object
      * @return array<string, mixed>
      */
     private static function objectAt(array $object, string $key): array
@@ -301,7 +300,7 @@ final readonly class SourceRevisionSnapshot
     }
 
     /**
-     * @param array<string, mixed> $object
+     * @param  array<string, mixed>  $object
      * @return list<mixed>
      */
     private static function listAt(array $object, string $key): array
@@ -350,7 +349,7 @@ final readonly class SourceRevisionSnapshot
     }
 
     /**
-     * @param array<string, mixed> $object
+     * @param  array<string, mixed>  $object
      * @return array<string, mixed>
      */
     private static function stringKeyedObjectAt(array $object, string $key): array
