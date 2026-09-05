@@ -8,11 +8,11 @@ use InvalidArgumentException;
 
 final class PredicateVocabulary
 {
-    public const CURRENT_SCHEMA_VERSION = 1;
+    public const INITIAL_SCHEMA_VERSION = 1;
 
     public static function get(
         PredicateKey|string $key,
-        int $schemaVersion = self::CURRENT_SCHEMA_VERSION,
+        int $schemaVersion = self::INITIAL_SCHEMA_VERSION,
     ): Predicate {
         $predicateKey = is_string($key) ? PredicateKey::tryFrom($key) : $key;
 
@@ -22,28 +22,29 @@ final class PredicateVocabulary
             throw new InvalidArgumentException(sprintf('Unknown Predicate key "%s".', $unknownKey));
         }
 
-        if ($schemaVersion !== self::CURRENT_SCHEMA_VERSION) {
-            throw new InvalidArgumentException(sprintf(
+        return match ($schemaVersion) {
+            self::INITIAL_SCHEMA_VERSION => self::definitionV1($predicateKey),
+            default => throw new InvalidArgumentException(sprintf(
                 'Unsupported Predicate schema version %d for "%s".',
                 $schemaVersion,
                 $predicateKey->value,
-            ));
-        }
-
-        return self::definition($predicateKey, $schemaVersion);
+            )),
+        };
     }
 
     /** @return list<Predicate> */
     public static function all(): array
     {
         return array_map(
-            static fn (PredicateKey $key): Predicate => self::definition($key, self::CURRENT_SCHEMA_VERSION),
+            static fn (PredicateKey $key): Predicate => self::definitionV1($key),
             PredicateKey::cases(),
         );
     }
 
-    private static function definition(PredicateKey $key, int $schemaVersion): Predicate
+    private static function definitionV1(PredicateKey $key): Predicate
     {
+        $schemaVersion = self::INITIAL_SCHEMA_VERSION;
+
         return match ($key) {
             PredicateKey::PersonGivenName,
             PredicateKey::PersonSurname,
