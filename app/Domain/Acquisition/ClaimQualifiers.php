@@ -90,6 +90,13 @@ final readonly class ClaimQualifiers
             throw new InvalidArgumentException('Claim qualifiers effective_time must be an object.');
         }
 
+        foreach (array_keys($value) as $key) {
+            if (! is_string($key)) {
+                throw new InvalidArgumentException('Claim qualifiers effective_time object keys must be strings.');
+            }
+        }
+
+        /** @var array<string, mixed> $value */
         $claimValue = ClaimValueSerializer::fromArray($value);
 
         if (! $claimValue instanceof DateClaimValue) {
