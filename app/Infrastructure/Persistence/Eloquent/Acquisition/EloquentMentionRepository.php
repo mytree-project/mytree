@@ -75,7 +75,6 @@ final class EloquentMentionRepository implements MentionRepository
             throw new UnexpectedValueException('Stored Mention raw data must be an array.');
         }
 
-        /** @var array<string, mixed> $rawData */
         return new Mention(
             id: new MentionId((string) $record->id),
             sourceId: new SourceId((string) $record->source_id),
