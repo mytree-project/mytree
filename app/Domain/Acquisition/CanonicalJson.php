@@ -38,14 +38,17 @@ final class CanonicalJson
             throw new InvalidArgumentException('Payload must be a JSON object.');
         }
 
-        foreach (array_keys($decoded) as $key) {
+        $object = [];
+
+        foreach ($decoded as $key => $value) {
             if (! is_string($key)) {
                 throw new InvalidArgumentException('Payload object keys must be strings.');
             }
+
+            $object[$key] = $value;
         }
 
-        /** @var array<string, mixed> $decoded */
-        return $decoded;
+        return $object;
     }
 
     private static function canonicalize(mixed $value): mixed
@@ -55,10 +58,13 @@ final class CanonicalJson
         }
 
         if (array_is_list($value)) {
-            return array_map(
-                static fn (mixed $nestedValue): mixed => self::canonicalize($nestedValue),
-                $value,
-            );
+            $canonical = [];
+
+            foreach ($value as $nestedValue) {
+                $canonical[] = self::canonicalize($nestedValue);
+            }
+
+            return $canonical;
         }
 
         ksort($value, SORT_STRING);
