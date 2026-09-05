@@ -220,13 +220,7 @@ final readonly class SourceRevisionSnapshot
     private static function encodeCanonical(array $value): string
     {
         try {
-            $encoded = json_encode(self::canonicalize($value), self::JSON_FLAGS);
-
-            if (! is_string($encoded)) {
-                throw new InvalidArgumentException('SourceRevision canonical JSON encoding failed.');
-            }
-
-            return $encoded;
+            return json_encode(self::canonicalize($value), self::JSON_FLAGS);
         } catch (JsonException $exception) {
             throw new InvalidArgumentException('SourceRevision state cannot be serialized as canonical JSON.', 0, $exception);
         }
