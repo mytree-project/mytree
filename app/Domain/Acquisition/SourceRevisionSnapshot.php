@@ -24,7 +24,8 @@ final readonly class SourceRevisionSnapshot
         public int $schemaVersion,
         public string $canonicalPayload,
         public string $payloadHash,
-    ) {}
+    ) {
+    }
 
     /** @param list<SourceAsset> $assets */
     public static function capture(Source $source, array $assets): self
@@ -101,7 +102,8 @@ final readonly class SourceRevisionSnapshot
         int $schemaVersion,
         string $canonicalPayload,
         string $payloadHash,
-    ): self {
+    ): self
+    {
         if ($schemaVersion !== self::SCHEMA_VERSION) {
             throw new InvalidArgumentException(sprintf(
                 'Unsupported SourceRevision snapshot schema version %d.',
@@ -115,7 +117,7 @@ final readonly class SourceRevisionSnapshot
             throw new InvalidArgumentException('SourceRevision payload hash must be a SHA-256 hexadecimal value.');
         }
 
-        if (!hash_equals($normalizedHash, hash('sha256', $canonicalPayload))) {
+        if (! hash_equals($normalizedHash, hash('sha256', $canonicalPayload))) {
             throw new InvalidArgumentException('SourceRevision payload hash does not match the stored payload.');
         }
 
@@ -222,7 +224,7 @@ final readonly class SourceRevisionSnapshot
         try {
             $encoded = json_encode(self::canonicalize($value), self::JSON_FLAGS);
 
-            if (!is_string($encoded)) {
+            if (! is_string($encoded)) {
                 throw new InvalidArgumentException('SourceRevision canonical JSON encoding failed.');
             }
 
@@ -234,7 +236,7 @@ final readonly class SourceRevisionSnapshot
 
     private static function canonicalize(mixed $value): mixed
     {
-        if (!is_array($value)) {
+        if (! is_array($value)) {
             return $value;
         }
 
@@ -272,7 +274,7 @@ final readonly class SourceRevisionSnapshot
      */
     private static function objectAt(array $object, string $key): array
     {
-        if (!array_key_exists($key, $object)) {
+        if (! array_key_exists($key, $object)) {
             throw new InvalidArgumentException(sprintf('Stored SourceRevision payload is missing "%s".', $key));
         }
 
@@ -282,14 +284,14 @@ final readonly class SourceRevisionSnapshot
     /** @return array<string, mixed> */
     private static function objectValue(mixed $value, string $field): array
     {
-        if (!is_array($value) || ($value !== [] && array_is_list($value))) {
+        if (! is_array($value) || ($value !== [] && array_is_list($value))) {
             throw new InvalidArgumentException(sprintf('%s must be a JSON object.', $field));
         }
 
         $result = [];
 
         foreach ($value as $key => $nestedValue) {
-            if (!is_string($key)) {
+            if (! is_string($key)) {
                 throw new InvalidArgumentException(sprintf('%s must use string keys.', $field));
             }
 
@@ -307,7 +309,7 @@ final readonly class SourceRevisionSnapshot
     {
         $value = $object[$key] ?? null;
 
-        if (!is_array($value) || !array_is_list($value)) {
+        if (! is_array($value) || ! array_is_list($value)) {
             throw new InvalidArgumentException(sprintf('Stored SourceRevision "%s" must be a JSON list.', $key));
         }
 
@@ -319,7 +321,7 @@ final readonly class SourceRevisionSnapshot
     {
         $value = $object[$key] ?? null;
 
-        if (!is_string($value)) {
+        if (! is_string($value)) {
             throw new InvalidArgumentException(sprintf('Stored SourceRevision "%s" must be a string.', $key));
         }
 
@@ -329,7 +331,7 @@ final readonly class SourceRevisionSnapshot
     /** @param array<string, mixed> $object */
     private static function nullableStringAt(array $object, string $key): ?string
     {
-        if (!array_key_exists($key, $object) || $object[$key] === null) {
+        if (! array_key_exists($key, $object) || $object[$key] === null) {
             return null;
         }
 
@@ -341,7 +343,7 @@ final readonly class SourceRevisionSnapshot
     {
         $value = $object[$key] ?? null;
 
-        if (!is_int($value)) {
+        if (! is_int($value)) {
             throw new InvalidArgumentException(sprintf('Stored SourceRevision "%s" must be an integer.', $key));
         }
 
