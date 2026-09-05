@@ -142,14 +142,17 @@ final class ClaimValueSerializer
             throw new InvalidArgumentException(sprintf('Claim value %s must be an object.', $path));
         }
 
-        foreach (array_keys($value) as $key) {
+        $object = [];
+
+        foreach ($value as $key => $nestedValue) {
             if (! is_string($key)) {
                 throw new InvalidArgumentException(sprintf('Claim value %s object keys must be strings.', $path));
             }
+
+            $object[$key] = $nestedValue;
         }
 
-        /** @var array<string, mixed> $value */
-        return $value;
+        return $object;
     }
 
     private static function string(mixed $value, string $path): string
