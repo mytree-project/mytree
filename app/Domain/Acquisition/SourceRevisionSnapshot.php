@@ -24,8 +24,7 @@ final readonly class SourceRevisionSnapshot
         public int $schemaVersion,
         public string $canonicalPayload,
         public string $payloadHash,
-    ) {
-    }
+    ) {}
 
     /** @param list<SourceAsset> $assets */
     public static function capture(Source $source, array $assets): self
