@@ -11,23 +11,19 @@ use App\Domain\Acquisition\SourceType;
 
 final readonly class CreateSource
 {
-    private SourceRepository $repository;
-
-    private SourceIdentifierGenerator $identifiers;
-
     public function __construct(
-        SourceRepository $repository,
-        SourceIdentifierGenerator $identifiers,
-    ) {
-        $this->repository = $repository;
-        $this->identifiers = $identifiers;
-    }
+        private SourceRepository $repository,
+        private SourceIdentifierGenerator $identifiers,
+        private RecordSourceRevision $revisions,
+    ) {}
 
     /** @param list<SourceTextInput> $texts */
     public function handle(
         SourceType $type,
         ?SourceMetadata $metadata = null,
         array $texts = [],
+        ?string $changeNote = null,
+        ?string $changedBy = null,
     ): Source {
         $source = new Source(
             id: $this->identifiers->sourceId(),
@@ -37,6 +33,7 @@ final readonly class CreateSource
         );
 
         $this->repository->save($source);
+        $this->revisions->handle($source->id, $changeNote, $changedBy);
 
         return $source;
     }

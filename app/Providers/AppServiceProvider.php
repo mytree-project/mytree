@@ -8,6 +8,8 @@ use App\Application\Acquisition\SourceAssetRepository;
 use App\Application\Acquisition\SourceAssetStorage;
 use App\Application\Acquisition\SourceIdentifierGenerator;
 use App\Application\Acquisition\SourceRepository;
+use App\Application\Acquisition\SourceRevisionClock;
+use App\Application\Acquisition\SourceRevisionRepository;
 use App\Application\Settings\Application\ApplicationSettingsProvider;
 use App\Application\Settings\Application\ApplicationSettingsSection;
 use App\Application\Settings\Application\ReadApplicationSettings;
@@ -16,8 +18,10 @@ use App\Application\Settings\SettingsSection;
 use App\Application\Settings\SettingsStore;
 use App\Infrastructure\Acquisition\LaravelSourceAssetStorage;
 use App\Infrastructure\Acquisition\NativeSourceIdentifierGenerator;
+use App\Infrastructure\Acquisition\SystemSourceRevisionClock;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentSourceAssetRepository;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentSourceRepository;
+use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentSourceRevisionRepository;
 use App\Infrastructure\Persistence\Eloquent\Settings\EloquentSettingsStore;
 use Illuminate\Support\ServiceProvider;
 
@@ -43,6 +47,8 @@ final class AppServiceProvider extends ServiceProvider
         $this->app->bind(SourceRepository::class, EloquentSourceRepository::class);
         $this->app->bind(SourceAssetRepository::class, EloquentSourceAssetRepository::class);
         $this->app->bind(SourceAssetStorage::class, LaravelSourceAssetStorage::class);
+        $this->app->bind(SourceRevisionRepository::class, EloquentSourceRevisionRepository::class);
+        $this->app->singleton(SourceRevisionClock::class, SystemSourceRevisionClock::class);
         $this->app->singleton(SourceIdentifierGenerator::class, NativeSourceIdentifierGenerator::class);
     }
 
