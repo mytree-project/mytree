@@ -79,6 +79,6 @@ final class MentionDomainTest extends TestCase
     {
         $this->expectException(InvalidArgumentException::class);
 
-        new MentionRawData(['bad' => new stdClass()]);
+        new MentionRawData(['bad' => new stdClass]);
     }
 }
