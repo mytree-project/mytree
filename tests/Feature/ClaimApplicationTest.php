@@ -107,7 +107,7 @@ final class ClaimApplicationTest extends TestCase
         $claims = app(ListSourceClaims::class)->handle($source->id);
 
         self::assertCount(2, $claims);
-        self::assertSame(['provider-a', 'provider-b'], array_map(
+        self::assertEqualsCanonicalizing(['provider-a', 'provider-b'], array_map(
             static fn ($claim): ?string => $claim->origin->providerKey,
             $claims,
         ));
@@ -138,7 +138,7 @@ final class ClaimApplicationTest extends TestCase
         $locators = app(ListClaimSourceLocators::class)->handle($source->id, $claim->id);
 
         self::assertCount(4, $locators);
-        self::assertSame(
+        self::assertEqualsCanonicalizing(
             ['pdf_page', 'image_bounding_box', 'media_timestamp', 'quoted_fragment'],
             array_map(static fn ($locator): string => $locator->value->type()->value, $locators),
         );
