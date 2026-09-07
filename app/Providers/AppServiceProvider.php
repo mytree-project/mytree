@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Application\Acquisition\ClaimRepository;
 use App\Application\Acquisition\MentionRepository;
 use App\Application\Acquisition\SourceAssetRepository;
 use App\Application\Acquisition\SourceAssetStorage;
 use App\Application\Acquisition\SourceIdentifierGenerator;
+use App\Application\Acquisition\SourceLocatorRepository;
 use App\Application\Acquisition\SourceRepository;
 use App\Application\Acquisition\SourceRevisionClock;
 use App\Application\Acquisition\SourceRevisionRepository;
@@ -20,8 +22,10 @@ use App\Application\Settings\SettingsStore;
 use App\Infrastructure\Acquisition\LaravelSourceAssetStorage;
 use App\Infrastructure\Acquisition\NativeSourceIdentifierGenerator;
 use App\Infrastructure\Acquisition\SystemSourceRevisionClock;
+use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentClaimRepository;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentMentionRepository;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentSourceAssetRepository;
+use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentSourceLocatorRepository;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentSourceRepository;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentSourceRevisionRepository;
 use App\Infrastructure\Persistence\Eloquent\Settings\EloquentSettingsStore;
@@ -51,6 +55,8 @@ final class AppServiceProvider extends ServiceProvider
         $this->app->bind(SourceAssetStorage::class, LaravelSourceAssetStorage::class);
         $this->app->bind(SourceRevisionRepository::class, EloquentSourceRevisionRepository::class);
         $this->app->bind(MentionRepository::class, EloquentMentionRepository::class);
+        $this->app->bind(ClaimRepository::class, EloquentClaimRepository::class);
+        $this->app->bind(SourceLocatorRepository::class, EloquentSourceLocatorRepository::class);
         $this->app->singleton(SourceRevisionClock::class, SystemSourceRevisionClock::class);
         $this->app->singleton(SourceIdentifierGenerator::class, NativeSourceIdentifierGenerator::class);
     }
