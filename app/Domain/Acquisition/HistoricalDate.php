@@ -53,8 +53,8 @@ final readonly class HistoricalDate
             throw new InvalidArgumentException('Historical date must use YYYY, YYYY-MM or YYYY-MM-DD.');
         }
 
-        $month = isset($matches['month']) && $matches['month'] !== '' ? (int) $matches['month'] : null;
-        $day = isset($matches['day']) && $matches['day'] !== '' ? (int) $matches['day'] : null;
+        $month = isset($matches['month']) ? (int) $matches['month'] : null;
+        $day = isset($matches['day']) ? (int) $matches['day'] : null;
 
         return new self(
             year: (int) $matches['year'],
