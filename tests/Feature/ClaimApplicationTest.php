@@ -75,8 +75,8 @@ final class ClaimApplicationTest extends TestCase
         self::assertSame('person.occupation', $loaded->predicate->key->value);
         self::assertInstanceOf(TextClaimValue::class, $loadedValue);
         self::assertSame('włościan', $loadedValue->rawValue);
-        self::assertSame('range', $loaded->qualifiers->effectiveTime?->kind->value);
-        self::assertSame('1890-1895', $loaded->qualifiers->effectiveTime?->rawValue);
+        self::assertSame('range', $loaded->qualifiers->effectiveTime->kind->value);
+        self::assertSame('1890-1895', $loaded->qualifiers->effectiveTime->rawValue);
         self::assertSame('manual_direct_source', $loaded->origin->kind->value);
         self::assertSame('certain', $loaded->transcriptionCertainty->code);
         self::assertSame('probable', $loaded->interpretationCertainty->code);
