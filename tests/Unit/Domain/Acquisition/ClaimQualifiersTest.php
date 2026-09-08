@@ -38,8 +38,8 @@ final class ClaimQualifiersTest extends TestCase
             $restored = ClaimQualifiers::deserialize($serialized);
 
             self::assertSame($serialized, $restored->serialize());
-            self::assertSame($effectiveTime->kind->value, $restored->effectiveTime?->kind->value);
-            self::assertSame($effectiveTime->rawValue, $restored->effectiveTime?->rawValue);
+            self::assertSame($effectiveTime->kind->value, $restored->effectiveTime->kind->value);
+            self::assertSame($effectiveTime->rawValue, $restored->effectiveTime->rawValue);
             self::assertFalse($restored->isEmpty());
         }
     }
