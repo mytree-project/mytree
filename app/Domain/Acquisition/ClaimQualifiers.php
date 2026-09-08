@@ -14,8 +14,6 @@ final readonly class ClaimQualifiers
 
     public function __construct(
         public ?DateClaimValue $effectiveTime = null,
-        public ?MentionId $placeMentionId = null,
-        public ?MentionId $workplaceMentionId = null,
         public int $schemaVersion = self::SCHEMA_VERSION,
     ) {
         if ($schemaVersion !== self::SCHEMA_VERSION) {
@@ -30,9 +28,7 @@ final readonly class ClaimQualifiers
 
     public function isEmpty(): bool
     {
-        return $this->effectiveTime === null
-            && $this->placeMentionId === null
-            && $this->workplaceMentionId === null;
+        return $this->effectiveTime === null;
     }
 
     public function serialize(): string
@@ -47,10 +43,8 @@ final readonly class ClaimQualifiers
             'effective_time' => $this->effectiveTime === null
                 ? null
                 : ClaimValueSerializer::toArray($this->effectiveTime),
-            'place_mention_id' => $this->placeMentionId?->value,
             'schema' => self::SCHEMA_ID,
             'schema_version' => $this->schemaVersion,
-            'workplace_mention_id' => $this->workplaceMentionId?->value,
         ];
     }
 
@@ -70,12 +64,8 @@ final readonly class ClaimQualifiers
             throw new InvalidArgumentException('Unsupported Claim qualifiers schema version.');
         }
 
-        $effectiveTime = self::effectiveTime($decoded['effective_time'] ?? null);
-
         return new self(
-            effectiveTime: $effectiveTime,
-            placeMentionId: self::mentionId($decoded['place_mention_id'] ?? null, 'place_mention_id'),
-            workplaceMentionId: self::mentionId($decoded['workplace_mention_id'] ?? null, 'workplace_mention_id'),
+            effectiveTime: self::effectiveTime($decoded['effective_time'] ?? null),
             schemaVersion: self::SCHEMA_VERSION,
         );
     }
@@ -107,21 +97,5 @@ final readonly class ClaimQualifiers
         }
 
         return $claimValue;
-    }
-
-    private static function mentionId(mixed $value, string $field): ?MentionId
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        if (! is_string($value)) {
-            throw new InvalidArgumentException(sprintf(
-                'Claim qualifiers %s must be a Mention UUID string.',
-                $field,
-            ));
-        }
-
-        return new MentionId($value);
     }
 }
