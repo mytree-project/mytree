@@ -16,7 +16,6 @@ use App\Domain\Acquisition\MentionId;
 use App\Domain\Acquisition\PredicateVocabulary;
 use App\Domain\Acquisition\SourceId;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\Models\ClaimRecord;
-use UnexpectedValueException;
 
 final class EloquentClaimRepository implements ClaimRepository
 {
@@ -74,12 +73,6 @@ final class EloquentClaimRepository implements ClaimRepository
     private function map(ClaimRecord $record): Claim
     {
         $valuePayload = $record->value_payload === null ? null : (string) $record->value_payload;
-        $qualifiers = ClaimQualifiers::deserialize((string) $record->qualifiers_payload);
-
-        if ($qualifiers->placeMentionId?->value !== ($record->qualifier_place_mention_id === null ? null : (string) $record->qualifier_place_mention_id)
-            || $qualifiers->workplaceMentionId?->value !== ($record->qualifier_workplace_mention_id === null ? null : (string) $record->qualifier_workplace_mention_id)) {
-            throw new UnexpectedValueException('Stored Claim qualifier references do not match the versioned qualifier payload.');
-        }
 
         return new Claim(
             id: new ClaimId((string) $record->id),
@@ -91,7 +84,7 @@ final class EloquentClaimRepository implements ClaimRepository
             ),
             objectMentionId: $record->object_mention_id === null ? null : new MentionId((string) $record->object_mention_id),
             value: $valuePayload === null ? null : ClaimValueSerializer::deserialize($valuePayload),
-            qualifiers: $qualifiers,
+            qualifiers: ClaimQualifiers::deserialize((string) $record->qualifiers_payload),
             rawText: $record->raw_text === null ? null : (string) $record->raw_text,
             origin: ClaimOrigin::deserialize((string) $record->origin_payload),
             transcriptionCertainty: new ClaimCertainty(
@@ -117,8 +110,6 @@ final class EloquentClaimRepository implements ClaimRepository
             'object_mention_id' => $claim->objectMentionId?->value,
             'value_payload' => $claim->value === null ? null : ClaimValueSerializer::serialize($claim->value),
             'qualifiers_payload' => $claim->qualifiers->serialize(),
-            'qualifier_place_mention_id' => $claim->qualifiers->placeMentionId?->value,
-            'qualifier_workplace_mention_id' => $claim->qualifiers->workplaceMentionId?->value,
             'raw_text' => $claim->rawText,
             'origin_payload' => $claim->origin->serialize(),
             'transcription_certainty' => $claim->transcriptionCertainty->code,
