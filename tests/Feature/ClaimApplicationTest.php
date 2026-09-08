@@ -18,6 +18,8 @@ use App\Domain\Acquisition\ClaimCertainty;
 use App\Domain\Acquisition\ClaimOrigin;
 use App\Domain\Acquisition\ClaimOriginKind;
 use App\Domain\Acquisition\ClaimQualifiers;
+use App\Domain\Acquisition\DateClaimValue;
+use App\Domain\Acquisition\HistoricalDate;
 use App\Domain\Acquisition\ImageBoundingBoxLocatorValue;
 use App\Domain\Acquisition\MediaTimestampLocatorValue;
 use App\Domain\Acquisition\MentionKind;
@@ -34,7 +36,7 @@ final class ClaimApplicationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_literal_claim_preserves_descriptor_qualifier_provenance_and_certainties(): void
+    public function test_literal_claim_preserves_temporal_qualifier_provenance_and_certainties(): void
     {
         $source = app(CreateSource::class)->handle(SourceType::generic());
         $person = app(CreateMention::class)->handle($source->id, MentionKind::person(), 'person.subject');
@@ -45,23 +47,104 @@ final class ClaimApplicationTest extends TestCase
             subjectMentionId: $person->id,
             predicate: PredicateVocabulary::get(PredicateKey::PersonOccupation),
             value: new TextClaimValue('włościan'),
-            qualifiers: new ClaimQualifiers(workplaceMentionId: $place->id),
+            qualifiers: new ClaimQualifiers(
+                effectiveTime: DateClaimValue::range(
+                    '1890-1895',
+                    HistoricalDate::year(1890),
+                    HistoricalDate::year(1895),
+                ),
+            ),
             rawText: 'Jan Kowalski, włościan ze wsi X',
             origin: ClaimOrigin::manualDirectSource(),
             transcriptionCertainty: new ClaimCertainty('certain'),
             interpretationCertainty: new ClaimCertainty('probable'),
         );
 
+        app(CreateClaim::class)->handle(
+            sourceId: $source->id,
+            subjectMentionId: $person->id,
+            predicate: PredicateVocabulary::get(PredicateKey::PersonWorkPlace),
+            objectMentionId: $place->id,
+        );
+
         $loaded = app(GetClaim::class)->handle($source->id, $created->id);
+        $claims = app(ListSourceClaims::class)->handle($source->id);
 
         self::assertSame('person.occupation', $loaded->predicate->key->value);
         self::assertInstanceOf(TextClaimValue::class, $loaded->value);
         self::assertSame('włościan', $loaded->value->rawValue);
-        self::assertSame($place->id->value, $loaded->qualifiers->workplaceMentionId?->value);
+        self::assertSame('range', $loaded->qualifiers->effectiveTime?->kind->value);
+        self::assertSame('1890-1895', $loaded->qualifiers->effectiveTime?->rawValue);
         self::assertSame('manual_direct_source', $loaded->origin->kind->value);
         self::assertSame('certain', $loaded->transcriptionCertainty->code);
         self::assertSame('probable', $loaded->interpretationCertainty->code);
         self::assertSame('Jan Kowalski, włościan ze wsi X', $loaded->rawText);
+        self::assertContains('person.work_place', array_map(
+            static fn ($claim): string => $claim->predicate->key->value,
+            $claims,
+        ));
+    }
+
+    public function test_reified_migration_event_persists_as_atomic_source_local_claim_graph(): void
+    {
+        $source = app(CreateSource::class)->handle(SourceType::generic());
+        $migration = app(CreateMention::class)->handle($source->id, MentionKind::event(), 'event.migration');
+        $jan = app(CreateMention::class)->handle($source->id, MentionKind::person(), 'person.jan');
+        $anna = app(CreateMention::class)->handle($source->id, MentionKind::person(), 'person.anna');
+        $origin = app(CreateMention::class)->handle($source->id, MentionKind::place(), 'place.origin');
+        $destination = app(CreateMention::class)->handle($source->id, MentionKind::place(), 'place.destination');
+
+        foreach ([$jan->id, $anna->id] as $participantId) {
+            app(CreateClaim::class)->handle(
+                sourceId: $source->id,
+                subjectMentionId: $migration->id,
+                predicate: PredicateVocabulary::get(PredicateKey::EventParticipant),
+                objectMentionId: $participantId,
+            );
+        }
+
+        app(CreateClaim::class)->handle(
+            sourceId: $source->id,
+            subjectMentionId: $migration->id,
+            predicate: PredicateVocabulary::get(PredicateKey::EventOriginPlace),
+            objectMentionId: $origin->id,
+        );
+        app(CreateClaim::class)->handle(
+            sourceId: $source->id,
+            subjectMentionId: $migration->id,
+            predicate: PredicateVocabulary::get(PredicateKey::EventDestinationPlace),
+            objectMentionId: $destination->id,
+        );
+        app(CreateClaim::class)->handle(
+            sourceId: $source->id,
+            subjectMentionId: $migration->id,
+            predicate: PredicateVocabulary::get(PredicateKey::EventDate),
+            value: DateClaimValue::exact('1912', HistoricalDate::year(1912)),
+        );
+        app(CreateClaim::class)->handle(
+            sourceId: $source->id,
+            subjectMentionId: $migration->id,
+            predicate: PredicateVocabulary::get(PredicateKey::EventReason),
+            value: new TextClaimValue('praca'),
+        );
+
+        $eventClaims = array_values(array_filter(
+            app(ListSourceClaims::class)->handle($source->id),
+            static fn ($claim): bool => $claim->subjectMentionId->value === $migration->id->value,
+        ));
+
+        self::assertCount(6, $eventClaims);
+        self::assertEqualsCanonicalizing(
+            [
+                'event.participant',
+                'event.participant',
+                'event.origin_place',
+                'event.destination_place',
+                'event.date',
+                'event.reason',
+            ],
+            array_map(static fn ($claim): string => $claim->predicate->key->value, $eventClaims),
+        );
     }
 
     public function test_mention_to_mention_claim_cannot_cross_source_boundary(): void
