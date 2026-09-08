@@ -25,8 +25,6 @@ final class ClaimRecord extends Model
         'object_mention_id',
         'value_payload',
         'qualifiers_payload',
-        'qualifier_place_mention_id',
-        'qualifier_workplace_mention_id',
         'raw_text',
         'origin_payload',
         'transcription_certainty',
