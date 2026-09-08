@@ -14,6 +14,7 @@ use App\Application\Acquisition\ListSourceClaims;
 use App\Application\Acquisition\MentionNotFound;
 use App\Application\Acquisition\RemoveClaim;
 use App\Application\Acquisition\UpdateClaim;
+use App\Domain\Acquisition\Claim;
 use App\Domain\Acquisition\ClaimCertainty;
 use App\Domain\Acquisition\ClaimOrigin;
 use App\Domain\Acquisition\ClaimOriginKind;
@@ -69,10 +70,11 @@ final class ClaimApplicationTest extends TestCase
 
         $loaded = app(GetClaim::class)->handle($source->id, $created->id);
         $claims = app(ListSourceClaims::class)->handle($source->id);
+        $loadedValue = $loaded->value;
 
         self::assertSame('person.occupation', $loaded->predicate->key->value);
-        self::assertInstanceOf(TextClaimValue::class, $loaded->value);
-        self::assertSame('włościan', $loaded->value->rawValue);
+        self::assertInstanceOf(TextClaimValue::class, $loadedValue);
+        self::assertSame('włościan', $loadedValue->rawValue);
         self::assertSame('range', $loaded->qualifiers->effectiveTime?->kind->value);
         self::assertSame('1890-1895', $loaded->qualifiers->effectiveTime?->rawValue);
         self::assertSame('manual_direct_source', $loaded->origin->kind->value);
@@ -80,7 +82,7 @@ final class ClaimApplicationTest extends TestCase
         self::assertSame('probable', $loaded->interpretationCertainty->code);
         self::assertSame('Jan Kowalski, włościan ze wsi X', $loaded->rawText);
         self::assertContains('person.work_place', array_map(
-            static fn ($claim): string => $claim->predicate->key->value,
+            static fn (Claim $claim): string => $claim->predicate->key->value,
             $claims,
         ));
     }
@@ -130,7 +132,7 @@ final class ClaimApplicationTest extends TestCase
 
         $eventClaims = array_values(array_filter(
             app(ListSourceClaims::class)->handle($source->id),
-            static fn ($claim): bool => $claim->subjectMentionId->value === $migration->id->value,
+            static fn (Claim $claim): bool => $claim->subjectMentionId->value === $migration->id->value,
         ));
 
         self::assertCount(6, $eventClaims);
@@ -143,7 +145,7 @@ final class ClaimApplicationTest extends TestCase
                 'event.date',
                 'event.reason',
             ],
-            array_map(static fn ($claim): string => $claim->predicate->key->value, $eventClaims),
+            array_map(static fn (Claim $claim): string => $claim->predicate->key->value, $eventClaims),
         );
     }
 
@@ -191,7 +193,7 @@ final class ClaimApplicationTest extends TestCase
 
         self::assertCount(2, $claims);
         self::assertEqualsCanonicalizing(['provider-a', 'provider-b'], array_map(
-            static fn ($claim): ?string => $claim->origin->providerKey,
+            static fn (Claim $claim): ?string => $claim->origin->providerKey,
             $claims,
         ));
     }
