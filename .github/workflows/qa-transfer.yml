@@ -15,7 +15,7 @@ jobs:
       - name: Checkout exact PR head
         uses: actions/checkout@v4
         with:
-          ref: a17e0d281bc3da99cda2e803311f328ac70af687
+          ref: 5ab98faf1fc8052530f1f7012ee4e8b196dfddd2
           path: source
 
       - name: Package source and published QA bundle
