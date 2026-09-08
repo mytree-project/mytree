@@ -28,8 +28,6 @@ return new class extends Migration
             $table->uuid('object_mention_id')->nullable();
             $table->text('value_payload')->nullable();
             $table->text('qualifiers_payload');
-            $table->uuid('qualifier_place_mention_id')->nullable();
-            $table->uuid('qualifier_workplace_mention_id')->nullable();
             $table->text('raw_text')->nullable();
             $table->text('origin_payload');
             $table->string('transcription_certainty', 64);
@@ -43,14 +41,6 @@ return new class extends Migration
                 ->on('mentions')
                 ->restrictOnDelete();
             $table->foreign(['source_id', 'object_mention_id'])
-                ->references(['source_id', 'id'])
-                ->on('mentions')
-                ->restrictOnDelete();
-            $table->foreign(['source_id', 'qualifier_place_mention_id'])
-                ->references(['source_id', 'id'])
-                ->on('mentions')
-                ->restrictOnDelete();
-            $table->foreign(['source_id', 'qualifier_workplace_mention_id'])
                 ->references(['source_id', 'id'])
                 ->on('mentions')
                 ->restrictOnDelete();
