@@ -8,6 +8,8 @@ use App\Application\Acquisition\AcquisitionTransaction;
 use App\Application\Acquisition\ClaimRepository;
 use App\Application\Acquisition\ClaimRevisionClock;
 use App\Application\Acquisition\ClaimRevisionRepository;
+use App\Application\Acquisition\EvidenceStateClock;
+use App\Application\Acquisition\EvidenceStateRepository;
 use App\Application\Acquisition\MentionRepository;
 use App\Application\Acquisition\MentionRevisionClock;
 use App\Application\Acquisition\MentionRevisionRepository;
@@ -28,10 +30,12 @@ use App\Infrastructure\Acquisition\LaravelAcquisitionTransaction;
 use App\Infrastructure\Acquisition\LaravelSourceAssetStorage;
 use App\Infrastructure\Acquisition\NativeSourceIdentifierGenerator;
 use App\Infrastructure\Acquisition\SystemClaimRevisionClock;
+use App\Infrastructure\Acquisition\SystemEvidenceStateClock;
 use App\Infrastructure\Acquisition\SystemMentionRevisionClock;
 use App\Infrastructure\Acquisition\SystemSourceRevisionClock;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentClaimRepository;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentClaimRevisionRepository;
+use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentEvidenceStateRepository;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentMentionRepository;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentMentionRevisionRepository;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentSourceAssetRepository;
@@ -68,11 +72,13 @@ final class AppServiceProvider extends ServiceProvider
         $this->app->bind(MentionRevisionRepository::class, EloquentMentionRevisionRepository::class);
         $this->app->bind(ClaimRepository::class, EloquentClaimRepository::class);
         $this->app->bind(ClaimRevisionRepository::class, EloquentClaimRevisionRepository::class);
+        $this->app->bind(EvidenceStateRepository::class, EloquentEvidenceStateRepository::class);
         $this->app->bind(SourceLocatorRepository::class, EloquentSourceLocatorRepository::class);
         $this->app->bind(AcquisitionTransaction::class, LaravelAcquisitionTransaction::class);
         $this->app->singleton(SourceRevisionClock::class, SystemSourceRevisionClock::class);
         $this->app->singleton(MentionRevisionClock::class, SystemMentionRevisionClock::class);
         $this->app->singleton(ClaimRevisionClock::class, SystemClaimRevisionClock::class);
+        $this->app->singleton(EvidenceStateClock::class, SystemEvidenceStateClock::class);
         $this->app->singleton(SourceIdentifierGenerator::class, NativeSourceIdentifierGenerator::class);
     }
 
