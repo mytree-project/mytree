@@ -172,11 +172,17 @@ final class ClaimRevisionApplicationTest extends TestCase
         $state = app(GetClaimRevision::class)->handle($source->id, $claim->id, 1)->reconstruct();
         $currentMentionRevisions = app(ListMentionRevisions::class)->handle($source->id, $person->id);
 
+        if ($currentMentionRevisions === []) {
+            self::fail('Expected current Mention revision history.');
+        }
+
+        $latestMentionRevision = $currentMentionRevisions[count($currentMentionRevisions) - 1];
+
         self::assertSame($subjectRevision->id->value, $state->subjectMentionRevisionId->value);
         self::assertSame($objectRevision->id->value, $state->objectMentionRevisionId?->value);
         self::assertNotSame(
             $state->subjectMentionRevisionId->value,
-            $currentMentionRevisions[array_key_last($currentMentionRevisions)]->id->value,
+            $latestMentionRevision->id->value,
         );
     }
 
