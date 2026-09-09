@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Acquisition;
 
 use App\Application\Acquisition\AcquisitionTransaction;
+use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\DB;
 
 final class LaravelAcquisitionTransaction implements AcquisitionTransaction
@@ -17,6 +18,8 @@ final class LaravelAcquisitionTransaction implements AcquisitionTransaction
      */
     public function run(callable $operation): mixed
     {
-        return DB::transaction($operation);
+        return DB::transaction(
+            static fn (Connection $_connection) => $operation(),
+        );
     }
 }
