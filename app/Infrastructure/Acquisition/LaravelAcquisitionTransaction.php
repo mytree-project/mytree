@@ -13,7 +13,6 @@ final class LaravelAcquisitionTransaction implements AcquisitionTransaction
      * @template T
      *
      * @param  callable(): T  $operation
-     *
      * @return T
      */
     public function run(callable $operation): mixed
