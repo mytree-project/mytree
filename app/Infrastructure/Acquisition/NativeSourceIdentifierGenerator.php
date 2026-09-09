@@ -7,6 +7,7 @@ namespace App\Infrastructure\Acquisition;
 use App\Application\Acquisition\SourceIdentifierGenerator;
 use App\Domain\Acquisition\ClaimId;
 use App\Domain\Acquisition\ClaimRevisionId;
+use App\Domain\Acquisition\EvidenceStateId;
 use App\Domain\Acquisition\MentionId;
 use App\Domain\Acquisition\MentionRevisionId;
 use App\Domain\Acquisition\SourceAssetId;
@@ -49,6 +50,11 @@ final class NativeSourceIdentifierGenerator implements SourceIdentifierGenerator
     public function claimRevisionId(): ClaimRevisionId
     {
         return new ClaimRevisionId($this->uuidV4());
+    }
+
+    public function evidenceStateId(): EvidenceStateId
+    {
+        return new EvidenceStateId($this->uuidV4());
     }
 
     public function sourceLocatorId(): SourceLocatorId
