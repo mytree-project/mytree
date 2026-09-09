@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Acquisition;
 
 use App\Domain\Acquisition\ClaimId;
+use App\Domain\Acquisition\ClaimRevisionId;
 use App\Domain\Acquisition\MentionId;
 use App\Domain\Acquisition\MentionRevisionId;
 use App\Domain\Acquisition\SourceAssetId;
@@ -25,6 +26,8 @@ interface SourceIdentifierGenerator
     public function mentionRevisionId(): MentionRevisionId;
 
     public function claimId(): ClaimId;
+
+    public function claimRevisionId(): ClaimRevisionId;
 
     public function sourceLocatorId(): SourceLocatorId;
 }
