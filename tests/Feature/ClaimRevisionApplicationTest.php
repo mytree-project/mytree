@@ -24,7 +24,6 @@ use App\Domain\Acquisition\ClaimRevision;
 use App\Domain\Acquisition\DateClaimValue;
 use App\Domain\Acquisition\HistoricalDate;
 use App\Domain\Acquisition\MentionKind;
-use App\Domain\Acquisition\MentionRevision;
 use App\Domain\Acquisition\PdfPageLocatorValue;
 use App\Domain\Acquisition\PredicateKey;
 use App\Domain\Acquisition\PredicateVocabulary;
