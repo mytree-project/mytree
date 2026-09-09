@@ -19,6 +19,8 @@ final readonly class CreateClaim
         private ClaimRepository $claims,
         private SourceIdentifierGenerator $identifiers,
         private ClaimReferenceValidator $references,
+        private ClaimRevisionRecorder $revisions,
+        private AcquisitionTransaction $transaction,
     ) {}
 
     public function handle(
@@ -32,6 +34,8 @@ final readonly class CreateClaim
         ?ClaimOrigin $origin = null,
         ?ClaimCertainty $transcriptionCertainty = null,
         ?ClaimCertainty $interpretationCertainty = null,
+        ?string $changeNote = null,
+        ?string $changedBy = null,
     ): Claim {
         $claim = new Claim(
             id: $this->identifiers->claimId(),
@@ -48,8 +52,13 @@ final readonly class CreateClaim
         );
 
         $this->references->validate($claim);
-        $this->claims->add($claim);
+        $snapshot = $this->revisions->capture($claim);
 
-        return $claim;
+        return $this->transaction->run(function () use ($claim, $snapshot, $changeNote, $changedBy): Claim {
+            $this->claims->add($claim);
+            $this->revisions->append($snapshot, $changeNote, $changedBy);
+
+            return $claim;
+        });
     }
 }
