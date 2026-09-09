@@ -29,17 +29,17 @@ final class EvidenceStateApplicationTest extends TestCase
 
     public function test_current_source_state_can_be_captured_and_reconstructed_from_immutable_revisions(): void
     {
-        $source = app(CreateSource::class)->create(
+        $source = app(CreateSource::class)->handle(
             new SourceType('civil.birth'),
             new SourceMetadata(['title' => 'Birth record']),
         );
-        $mention = app(CreateMention::class)->create(
+        $mention = app(CreateMention::class)->handle(
             sourceId: $source->id,
             kind: new MentionKind('person'),
             localKey: 'person-1',
             rawData: new MentionRawData(['descriptor' => 'włościanin']),
         );
-        app(CreateClaim::class)->create(
+        app(CreateClaim::class)->handle(
             sourceId: $source->id,
             subjectMentionId: $mention->id,
             predicate: PredicateVocabulary::get(PredicateKey::PersonOccupation),
