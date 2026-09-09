@@ -16,6 +16,9 @@ final readonly class CreateSourceLocator
         private SourceLocatorRepository $locators,
         private SourceIdentifierGenerator $identifiers,
         private SourceLocatorReferenceValidator $references,
+        private ClaimRepository $claims,
+        private ClaimRevisionRecorder $revisions,
+        private AcquisitionTransaction $transaction,
     ) {}
 
     public function handle(
@@ -23,6 +26,8 @@ final readonly class CreateSourceLocator
         ClaimId $claimId,
         SourceLocatorValue $value,
         ?SourceAssetId $sourceAssetId = null,
+        ?string $changeNote = null,
+        ?string $changedBy = null,
     ): SourceLocator {
         $locator = new SourceLocator(
             id: $this->identifiers->sourceLocatorId(),
@@ -33,8 +38,14 @@ final readonly class CreateSourceLocator
         );
 
         $this->references->validate($locator);
-        $this->locators->add($locator);
+        $claim = $this->claims->find($sourceId, $claimId)
+            ?? throw ClaimNotFound::forSourceAndId($sourceId, $claimId);
 
-        return $locator;
+        return $this->transaction->run(function () use ($locator, $claim, $changeNote, $changedBy): SourceLocator {
+            $this->locators->add($locator);
+            $this->revisions->record($claim, $changeNote, $changedBy);
+
+            return $locator;
+        });
     }
 }
