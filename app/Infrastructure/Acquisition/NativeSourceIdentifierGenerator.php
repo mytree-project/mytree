@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Infrastructure\Acquisition;
 
 use App\Application\Acquisition\SourceIdentifierGenerator;
+use App\Domain\Acquisition\ClaimId;
 use App\Domain\Acquisition\MentionId;
 use App\Domain\Acquisition\SourceAssetId;
 use App\Domain\Acquisition\SourceId;
+use App\Domain\Acquisition\SourceLocatorId;
 use App\Domain\Acquisition\SourceTextId;
 
 final class NativeSourceIdentifierGenerator implements SourceIdentifierGenerator
@@ -30,6 +32,16 @@ final class NativeSourceIdentifierGenerator implements SourceIdentifierGenerator
     public function mentionId(): MentionId
     {
         return new MentionId($this->uuidV4());
+    }
+
+    public function claimId(): ClaimId
+    {
+        return new ClaimId($this->uuidV4());
+    }
+
+    public function sourceLocatorId(): SourceLocatorId
+    {
+        return new SourceLocatorId($this->uuidV4());
     }
 
     private function uuidV4(): string
