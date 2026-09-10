@@ -256,8 +256,10 @@ final readonly class EvidenceStateSnapshot
     }
 
     /**
-     * @param  array<int, object>  $ids
-     * @param  class-string  $expectedClass
+     * @template T of SourceRevisionId|MentionRevisionId|ClaimRevisionId
+     *
+     * @param  list<T>  $ids
+     * @param  class-string<T>  $expectedClass
      * @return list<string>
      */
     private static function normalizedIdValues(array $ids, string $expectedClass, string $kind): array
@@ -269,7 +271,6 @@ final readonly class EvidenceStateSnapshot
                 throw new InvalidArgumentException(sprintf('EvidenceState %s identity has an invalid type.', $kind));
             }
 
-            /** @var SourceRevisionId|MentionRevisionId|ClaimRevisionId $id */
             $values[] = $id->value;
         }
 
