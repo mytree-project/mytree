@@ -14,6 +14,7 @@ final class SourceRevisionRecord extends Model
 
     /** @var list<string> */
     protected $fillable = [
+        'revision_id',
         'source_id',
         'revision_number',
         'snapshot_schema_version',
