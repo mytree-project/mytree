@@ -23,12 +23,5 @@ final readonly class EvidenceState
         if ($changedBy !== null && trim($changedBy) === '') {
             throw new InvalidArgumentException('EvidenceState attribution must not be empty when provided.');
         }
-
-        $snapshot->reconstruct();
-    }
-
-    public function manifest(): EvidenceStateManifest
-    {
-        return $this->snapshot->reconstruct();
     }
 }
