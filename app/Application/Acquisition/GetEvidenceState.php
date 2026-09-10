@@ -16,31 +16,31 @@ final readonly class GetEvidenceState
         private ClaimRevisionRepository $claimRevisions,
     ) {}
 
-    public function get(EvidenceStateId $id): EvidenceStateView
+    public function get(EvidenceStateId $id): ResolvedEvidenceState
     {
         $evidenceState = $this->evidenceStates->find($id)
             ?? throw EvidenceStateNotFound::forId($id);
-        $manifest = $evidenceState->manifest();
+        $snapshot = $evidenceState->snapshot;
         $sourceRevisions = [];
 
-        foreach ($manifest->sourceRevisions as $reference) {
-            $sourceRevisions[] = $this->sourceRevisions->find($reference->sourceId, $reference->revisionNumber)
+        foreach ($snapshot->sourceRevisionIds as $revisionId) {
+            $sourceRevisions[] = $this->sourceRevisions->find($revisionId)
                 ?? throw new UnexpectedValueException('EvidenceState references a missing SourceRevision.');
         }
 
         $mentionRevisions = [];
-        foreach ($manifest->mentionRevisionIds as $revisionId) {
+        foreach ($snapshot->mentionRevisionIds as $revisionId) {
             $mentionRevisions[] = $this->mentionRevisions->find($revisionId)
                 ?? throw new UnexpectedValueException('EvidenceState references a missing MentionRevision.');
         }
 
         $claimRevisions = [];
-        foreach ($manifest->claimRevisionIds as $revisionId) {
+        foreach ($snapshot->claimRevisionIds as $revisionId) {
             $claimRevisions[] = $this->claimRevisions->find($revisionId)
                 ?? throw new UnexpectedValueException('EvidenceState references a missing ClaimRevision.');
         }
 
-        return new EvidenceStateView(
+        return new ResolvedEvidenceState(
             evidenceState: $evidenceState,
             sourceRevisions: $sourceRevisions,
             mentionRevisions: $mentionRevisions,

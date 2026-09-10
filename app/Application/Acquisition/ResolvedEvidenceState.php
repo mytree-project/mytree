@@ -9,7 +9,7 @@ use App\Domain\Acquisition\EvidenceState;
 use App\Domain\Acquisition\MentionRevision;
 use App\Domain\Acquisition\SourceRevision;
 
-final readonly class EvidenceStateView
+final readonly class ResolvedEvidenceState
 {
     /**
      * @param  list<SourceRevision>  $sourceRevisions

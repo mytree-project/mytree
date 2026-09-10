@@ -13,6 +13,7 @@ use App\Domain\Acquisition\MentionRevisionId;
 use App\Domain\Acquisition\SourceAssetId;
 use App\Domain\Acquisition\SourceId;
 use App\Domain\Acquisition\SourceLocatorId;
+use App\Domain\Acquisition\SourceRevisionId;
 use App\Domain\Acquisition\SourceTextId;
 
 final class NativeSourceIdentifierGenerator implements SourceIdentifierGenerator
@@ -30,6 +31,11 @@ final class NativeSourceIdentifierGenerator implements SourceIdentifierGenerator
     public function sourceAssetId(): SourceAssetId
     {
         return new SourceAssetId($this->uuidV4());
+    }
+
+    public function sourceRevisionId(): SourceRevisionId
+    {
+        return new SourceRevisionId($this->uuidV4());
     }
 
     public function mentionId(): MentionId

@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace App\Infrastructure\Persistence\Eloquent\Acquisition;
 
 use App\Application\Acquisition\EvidenceStateRepository;
+use App\Domain\Acquisition\ClaimRevisionId;
 use App\Domain\Acquisition\EvidenceState;
 use App\Domain\Acquisition\EvidenceStateId;
 use App\Domain\Acquisition\EvidenceStateSnapshot;
+use App\Domain\Acquisition\MentionRevisionId;
+use App\Domain\Acquisition\SourceRevisionId;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\Models\ClaimRevisionRecord;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\Models\EvidenceStateRecord;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\Models\MentionRevisionRecord;
+use App\Infrastructure\Persistence\Eloquent\Acquisition\Models\SourceRevisionRecord;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Illuminate\Support\Facades\DB;
@@ -25,25 +29,23 @@ final class EloquentEvidenceStateRepository implements EvidenceStateRepository
         ?string $changeNote = null,
         ?string $changedBy = null,
     ): EvidenceState {
-        $manifest = $snapshot->reconstruct();
-
-        return DB::transaction(function () use ($id, $snapshot, $createdAt, $changeNote, $changedBy, $manifest): EvidenceState {
+        return DB::transaction(function () use ($id, $snapshot, $createdAt, $changeNote, $changedBy): EvidenceState {
+            $sourceRecords = $this->sourceRecordsFor($snapshot);
             $sourceIds = [];
 
-            foreach ($manifest->sourceRevisions as $reference) {
-                $exists = DB::table('source_revisions')
-                    ->where('source_id', $reference->sourceId->value)
-                    ->where('revision_number', $reference->revisionNumber)
-                    ->exists();
+            foreach ($sourceRecords as $record) {
+                $sourceId = (string) $record->source_id;
 
-                if (! $exists) {
-                    throw new UnexpectedValueException('EvidenceState references a missing SourceRevision.');
+                if (isset($sourceIds[$sourceId])) {
+                    throw new UnexpectedValueException('EvidenceState may contain only one SourceRevision per Source.');
                 }
 
-                $sourceIds[$reference->sourceId->value] = true;
+                $sourceIds[$sourceId] = true;
             }
 
-            foreach ($manifest->mentionRevisionIds as $revisionId) {
+            $this->assertLegacySourceReferencesMatch($snapshot, $sourceRecords);
+
+            foreach ($snapshot->mentionRevisionIds as $revisionId) {
                 $record = MentionRevisionRecord::query()->find($revisionId->value);
 
                 if ($record === null || ! isset($sourceIds[(string) $record->source_id])) {
@@ -51,7 +53,7 @@ final class EloquentEvidenceStateRepository implements EvidenceStateRepository
                 }
             }
 
-            foreach ($manifest->claimRevisionIds as $revisionId) {
+            foreach ($snapshot->claimRevisionIds as $revisionId) {
                 $record = ClaimRevisionRecord::query()->find($revisionId->value);
 
                 if ($record === null || ! isset($sourceIds[(string) $record->source_id])) {
@@ -83,22 +85,23 @@ final class EloquentEvidenceStateRepository implements EvidenceStateRepository
                 'changed_by' => $state->changedBy,
             ]);
 
-            foreach ($manifest->sourceRevisions as $reference) {
+            foreach ($sourceRecords as $record) {
                 DB::table('evidence_state_source_revisions')->insert([
                     'evidence_state_id' => $state->id->value,
-                    'source_id' => $reference->sourceId->value,
-                    'revision_number' => $reference->revisionNumber,
+                    'source_id' => (string) $record->source_id,
+                    'revision_number' => (int) $record->revision_number,
+                    'source_revision_id' => (string) $record->revision_id,
                 ]);
             }
 
-            foreach ($manifest->mentionRevisionIds as $revisionId) {
+            foreach ($snapshot->mentionRevisionIds as $revisionId) {
                 DB::table('evidence_state_mention_revisions')->insert([
                     'evidence_state_id' => $state->id->value,
                     'mention_revision_id' => $revisionId->value,
                 ]);
             }
 
-            foreach ($manifest->claimRevisionIds as $revisionId) {
+            foreach ($snapshot->claimRevisionIds as $revisionId) {
                 DB::table('evidence_state_claim_revisions')->insert([
                     'evidence_state_id' => $state->id->value,
                     'claim_revision_id' => $revisionId->value,
@@ -123,10 +126,17 @@ final class EloquentEvidenceStateRepository implements EvidenceStateRepository
             throw new UnexpectedValueException('Stored EvidenceState timestamp must be a date-time value.');
         }
 
+        $schemaVersion = (int) $record->snapshot_schema_version;
+        $canonicalPayload = (string) $record->canonical_payload;
+        $legacySourceRevisionIds = $schemaVersion === EvidenceStateSnapshot::LEGACY_SCHEMA_VERSION
+            ? $this->resolveLegacySourceRevisionIds($canonicalPayload)
+            : [];
+
         $snapshot = EvidenceStateSnapshot::rehydrate(
-            schemaVersion: (int) $record->snapshot_schema_version,
-            canonicalPayload: (string) $record->canonical_payload,
+            schemaVersion: $schemaVersion,
+            canonicalPayload: $canonicalPayload,
             payloadHash: (string) $record->payload_hash,
+            legacySourceRevisionIds: $legacySourceRevisionIds,
         );
         $this->assertPersistedReferencesMatchSnapshot($id, $snapshot);
 
@@ -137,6 +147,81 @@ final class EloquentEvidenceStateRepository implements EvidenceStateRepository
             changeNote: $record->change_note === null ? null : (string) $record->change_note,
             changedBy: $record->changed_by === null ? null : (string) $record->changed_by,
         );
+    }
+
+    /** @return list<SourceRevisionRecord> */
+    private function sourceRecordsFor(EvidenceStateSnapshot $snapshot): array
+    {
+        $records = [];
+
+        foreach ($snapshot->sourceRevisionIds as $revisionId) {
+            $record = SourceRevisionRecord::query()
+                ->where('revision_id', $revisionId->value)
+                ->first();
+
+            if ($record === null) {
+                throw new UnexpectedValueException('EvidenceState references a missing SourceRevision.');
+            }
+
+            $records[] = $record;
+        }
+
+        return $records;
+    }
+
+    /**
+     * @param  list<SourceRevisionRecord>  $sourceRecords
+     */
+    private function assertLegacySourceReferencesMatch(EvidenceStateSnapshot $snapshot, array $sourceRecords): void
+    {
+        if ($snapshot->schemaVersion !== EvidenceStateSnapshot::LEGACY_SCHEMA_VERSION) {
+            return;
+        }
+
+        $expected = [];
+        foreach ($snapshot->legacySourceReferences() as $reference) {
+            $expected[] = sprintf(
+                '%s:%d',
+                $reference['sourceId']->value,
+                $reference['revisionNumber'],
+            );
+        }
+        sort($expected, SORT_STRING);
+
+        $actual = array_map(
+            static fn (SourceRevisionRecord $record): string => sprintf(
+                '%s:%d',
+                (string) $record->source_id,
+                (int) $record->revision_number,
+            ),
+            $sourceRecords,
+        );
+        sort($actual, SORT_STRING);
+
+        if ($expected !== $actual) {
+            throw new UnexpectedValueException('Legacy EvidenceState SourceRevision identities do not match its retained snapshot.');
+        }
+    }
+
+    /** @return list<SourceRevisionId> */
+    private function resolveLegacySourceRevisionIds(string $canonicalPayload): array
+    {
+        $ids = [];
+
+        foreach (EvidenceStateSnapshot::legacySourceReferencesFromCanonicalPayload($canonicalPayload) as $reference) {
+            $record = SourceRevisionRecord::query()
+                ->where('source_id', $reference['sourceId']->value)
+                ->where('revision_number', $reference['revisionNumber'])
+                ->first();
+
+            if ($record === null || ! is_string($record->revision_id) || $record->revision_id === '') {
+                throw new UnexpectedValueException('Legacy EvidenceState references a SourceRevision without an immutable identity.');
+            }
+
+            $ids[] = new SourceRevisionId($record->revision_id);
+        }
+
+        return $ids;
     }
 
     private function assertClaimMentionRevisionExists(string $revisionId, string $sourceId): void
@@ -153,19 +238,17 @@ final class EloquentEvidenceStateRepository implements EvidenceStateRepository
 
     private function assertPersistedReferencesMatchSnapshot(EvidenceStateId $id, EvidenceStateSnapshot $snapshot): void
     {
-        $manifest = $snapshot->reconstruct();
-
-        $sourceReferences = DB::table('evidence_state_source_revisions')
+        $sourceRevisionIds = DB::table('evidence_state_source_revisions')
             ->where('evidence_state_id', $id->value)
-            ->orderBy('source_id')
-            ->get(['source_id', 'revision_number'])
-            ->map(static fn (object $row): string => sprintf('%s:%d', $row->source_id, $row->revision_number))
+            ->orderBy('source_revision_id')
+            ->pluck('source_revision_id')
+            ->map(static fn (mixed $value): string => (string) $value)
             ->all();
-        $manifestSourceReferences = array_map(
-            static fn ($reference): string => sprintf('%s:%d', $reference->sourceId->value, $reference->revisionNumber),
-            $manifest->sourceRevisions,
+        $snapshotSourceRevisionIds = array_map(
+            static fn (SourceRevisionId $revisionId): string => $revisionId->value,
+            $snapshot->sourceRevisionIds,
         );
-        sort($manifestSourceReferences, SORT_STRING);
+        sort($snapshotSourceRevisionIds, SORT_STRING);
 
         $mentionReferences = DB::table('evidence_state_mention_revisions')
             ->where('evidence_state_id', $id->value)
@@ -173,8 +256,11 @@ final class EloquentEvidenceStateRepository implements EvidenceStateRepository
             ->pluck('mention_revision_id')
             ->map(static fn (mixed $value): string => (string) $value)
             ->all();
-        $manifestMentionReferences = array_map(static fn ($revisionId): string => $revisionId->value, $manifest->mentionRevisionIds);
-        sort($manifestMentionReferences, SORT_STRING);
+        $snapshotMentionReferences = array_map(
+            static fn (MentionRevisionId $revisionId): string => $revisionId->value,
+            $snapshot->mentionRevisionIds,
+        );
+        sort($snapshotMentionReferences, SORT_STRING);
 
         $claimReferences = DB::table('evidence_state_claim_revisions')
             ->where('evidence_state_id', $id->value)
@@ -182,13 +268,21 @@ final class EloquentEvidenceStateRepository implements EvidenceStateRepository
             ->pluck('claim_revision_id')
             ->map(static fn (mixed $value): string => (string) $value)
             ->all();
-        $manifestClaimReferences = array_map(static fn ($revisionId): string => $revisionId->value, $manifest->claimRevisionIds);
-        sort($manifestClaimReferences, SORT_STRING);
+        $snapshotClaimReferences = array_map(
+            static fn (ClaimRevisionId $revisionId): string => $revisionId->value,
+            $snapshot->claimRevisionIds,
+        );
+        sort($snapshotClaimReferences, SORT_STRING);
 
-        if ($sourceReferences !== $manifestSourceReferences
-            || $mentionReferences !== $manifestMentionReferences
-            || $claimReferences !== $manifestClaimReferences) {
+        if ($sourceRevisionIds !== $snapshotSourceRevisionIds
+            || $mentionReferences !== $snapshotMentionReferences
+            || $claimReferences !== $snapshotClaimReferences) {
             throw new UnexpectedValueException('Stored EvidenceState references do not match its canonical snapshot.');
+        }
+
+        if ($snapshot->schemaVersion === EvidenceStateSnapshot::LEGACY_SCHEMA_VERSION) {
+            $sourceRecords = $this->sourceRecordsFor($snapshot);
+            $this->assertLegacySourceReferencesMatch($snapshot, $sourceRecords);
         }
     }
 }

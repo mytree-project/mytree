@@ -7,8 +7,7 @@ namespace Tests\Unit\Domain\Acquisition;
 use App\Domain\Acquisition\EvidenceState;
 use App\Domain\Acquisition\EvidenceStateId;
 use App\Domain\Acquisition\EvidenceStateSnapshot;
-use App\Domain\Acquisition\EvidenceStateSourceRevision;
-use App\Domain\Acquisition\SourceId;
+use App\Domain\Acquisition\SourceRevisionId;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 
@@ -17,10 +16,7 @@ final class EvidenceStateTest extends TestCase
     public function test_identity_is_distinct_from_semantic_snapshot(): void
     {
         $snapshot = EvidenceStateSnapshot::capture(
-            [new EvidenceStateSourceRevision(
-                new SourceId('11111111-1111-4111-8111-111111111111'),
-                1,
-            )],
+            [new SourceRevisionId('11111111-1111-4111-8111-111111111111')],
             [],
             [],
         );

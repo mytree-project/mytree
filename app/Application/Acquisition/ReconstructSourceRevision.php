@@ -15,7 +15,7 @@ final readonly class ReconstructSourceRevision
 
     public function handle(SourceId $sourceId, int $revisionNumber): SourceRevisionState
     {
-        $revision = $this->revisions->find($sourceId, $revisionNumber)
+        $revision = $this->revisions->findForSource($sourceId, $revisionNumber)
             ?? throw SourceRevisionNotFound::forRevision($sourceId, $revisionNumber);
 
         return $revision->snapshot->reconstruct();

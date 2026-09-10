@@ -7,6 +7,7 @@ namespace App\Infrastructure\Persistence\Eloquent\Acquisition;
 use App\Application\Acquisition\SourceRevisionRepository;
 use App\Domain\Acquisition\SourceId;
 use App\Domain\Acquisition\SourceRevision;
+use App\Domain\Acquisition\SourceRevisionId;
 use App\Domain\Acquisition\SourceRevisionSnapshot;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\Models\SourceRecord;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\Models\SourceRevisionRecord;
@@ -18,13 +19,14 @@ use UnexpectedValueException;
 final class EloquentSourceRevisionRepository implements SourceRevisionRepository
 {
     public function append(
+        SourceRevisionId $revisionId,
         SourceId $sourceId,
         SourceRevisionSnapshot $snapshot,
         DateTimeImmutable $createdAt,
         ?string $changeNote = null,
         ?string $changedBy = null,
     ): SourceRevision {
-        return DB::transaction(function () use ($sourceId, $snapshot, $createdAt, $changeNote, $changedBy): SourceRevision {
+        return DB::transaction(function () use ($revisionId, $sourceId, $snapshot, $createdAt, $changeNote, $changedBy): SourceRevision {
             SourceRecord::query()
                 ->whereKey($sourceId->value)
                 ->lockForUpdate()
@@ -36,6 +38,7 @@ final class EloquentSourceRevisionRepository implements SourceRevisionRepository
             $revisionNumber = is_numeric($lastRevision) ? (int) $lastRevision + 1 : 1;
 
             $record = SourceRevisionRecord::query()->create([
+                'revision_id' => $revisionId->value,
                 'source_id' => $sourceId->value,
                 'revision_number' => $revisionNumber,
                 'snapshot_schema_version' => $snapshot->schemaVersion,
@@ -50,11 +53,30 @@ final class EloquentSourceRevisionRepository implements SourceRevisionRepository
         });
     }
 
-    public function find(SourceId $sourceId, int $revisionNumber): ?SourceRevision
+    public function find(SourceRevisionId $revisionId): ?SourceRevision
+    {
+        $record = SourceRevisionRecord::query()
+            ->where('revision_id', $revisionId->value)
+            ->first();
+
+        return $record === null ? null : $this->toDomain($record);
+    }
+
+    public function findForSource(SourceId $sourceId, int $revisionNumber): ?SourceRevision
     {
         $record = SourceRevisionRecord::query()
             ->where('source_id', $sourceId->value)
             ->where('revision_number', $revisionNumber)
+            ->first();
+
+        return $record === null ? null : $this->toDomain($record);
+    }
+
+    public function latestForSource(SourceId $sourceId): ?SourceRevision
+    {
+        $record = SourceRevisionRecord::query()
+            ->where('source_id', $sourceId->value)
+            ->orderByDesc('revision_number')
             ->first();
 
         return $record === null ? null : $this->toDomain($record);
@@ -78,12 +100,18 @@ final class EloquentSourceRevisionRepository implements SourceRevisionRepository
     private function toDomain(SourceRevisionRecord $record): SourceRevision
     {
         $recordedAt = $record->getAttribute('recorded_at');
+        $revisionId = $record->getAttribute('revision_id');
 
         if (! $recordedAt instanceof DateTimeInterface) {
             throw new UnexpectedValueException('Stored SourceRevision timestamp must be a date-time value.');
         }
 
+        if (! is_string($revisionId) || $revisionId === '') {
+            throw new UnexpectedValueException('Stored SourceRevision must have an immutable revision identity.');
+        }
+
         return new SourceRevision(
+            id: new SourceRevisionId($revisionId),
             sourceId: new SourceId((string) $record->source_id),
             revisionNumber: (int) $record->revision_number,
             snapshot: SourceRevisionSnapshot::rehydrate(

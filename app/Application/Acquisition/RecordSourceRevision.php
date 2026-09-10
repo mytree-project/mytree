@@ -14,6 +14,7 @@ final readonly class RecordSourceRevision
         private SourceRepository $sources,
         private SourceAssetRepository $assets,
         private SourceRevisionRepository $revisions,
+        private SourceIdentifierGenerator $identifiers,
         private SourceRevisionClock $clock,
     ) {}
 
@@ -29,6 +30,7 @@ final readonly class RecordSourceRevision
         );
 
         return $this->revisions->append(
+            revisionId: $this->identifiers->sourceRevisionId(),
             sourceId: $sourceId,
             snapshot: $snapshot,
             createdAt: $this->clock->now(),
