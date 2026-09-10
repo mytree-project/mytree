@@ -178,14 +178,14 @@ final class EloquentEvidenceStateRepository implements EvidenceStateRepository
             return;
         }
 
-        $expected = array_map(
-            static fn (array $reference): string => sprintf(
+        $expected = [];
+        foreach ($snapshot->legacySourceReferences() as $reference) {
+            $expected[] = sprintf(
                 '%s:%d',
                 $reference['sourceId']->value,
                 $reference['revisionNumber'],
-            ),
-            $snapshot->legacySourceReferences(),
-        );
+            );
+        }
         sort($expected, SORT_STRING);
 
         $actual = array_map(
