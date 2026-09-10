@@ -16,9 +16,13 @@ return new class extends Migration
             $table->uuid('revision_id')->nullable()->after('id');
         });
 
-        foreach (DB::table('source_revisions')->select('id')->orderBy('id')->get() as $row) {
+        foreach (DB::table('source_revisions')->orderBy('id')->pluck('id') as $rowId) {
+            if (! is_int($rowId) && ! is_string($rowId)) {
+                throw new RuntimeException('Cannot read SourceRevision persistence identity for UUID backfill.');
+            }
+
             DB::table('source_revisions')
-                ->where('id', $row->id)
+                ->where('id', $rowId)
                 ->update(['revision_id' => (string) Str::uuid()]);
         }
 
@@ -35,9 +39,20 @@ return new class extends Migration
             ->get();
 
         foreach ($references as $reference) {
+            $data = get_object_vars($reference);
+            $evidenceStateId = $data['evidence_state_id'] ?? null;
+            $sourceId = $data['source_id'] ?? null;
+            $revisionNumber = $data['revision_number'] ?? null;
+
+            if (! is_string($evidenceStateId)
+                || ! is_string($sourceId)
+                || (! is_int($revisionNumber) && ! is_string($revisionNumber))) {
+                throw new RuntimeException('Cannot read legacy EvidenceState SourceRevision reference for UUID backfill.');
+            }
+
             $revisionId = DB::table('source_revisions')
-                ->where('source_id', $reference->source_id)
-                ->where('revision_number', $reference->revision_number)
+                ->where('source_id', $sourceId)
+                ->where('revision_number', (int) $revisionNumber)
                 ->value('revision_id');
 
             if (! is_string($revisionId) || $revisionId === '') {
@@ -45,8 +60,8 @@ return new class extends Migration
             }
 
             DB::table('evidence_state_source_revisions')
-                ->where('evidence_state_id', $reference->evidence_state_id)
-                ->where('source_id', $reference->source_id)
+                ->where('evidence_state_id', $evidenceStateId)
+                ->where('source_id', $sourceId)
                 ->update(['source_revision_id' => $revisionId]);
         }
 
