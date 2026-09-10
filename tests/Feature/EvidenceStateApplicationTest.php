@@ -46,7 +46,7 @@ final class EvidenceStateApplicationTest extends TestCase
             value: new TextClaimValue('włościanin'),
             qualifiers: new ClaimQualifiers,
             rawText: 'włościanin',
-            origin: new ClaimOrigin(ClaimOriginKind::Manual),
+            origin: new ClaimOrigin(ClaimOriginKind::ManualDirectSource),
             transcriptionCertainty: new ClaimCertainty('certain'),
             interpretationCertainty: new ClaimCertainty('certain'),
         );
