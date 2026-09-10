@@ -62,13 +62,21 @@ final class SourceRevisionApplicationTest extends TestCase
         );
         app(DetachSourceAsset::class)->handle($asset->id);
 
-        $revisions = app(SourceRevisionRepository::class)->forSource($source->id);
+        $repository = app(SourceRevisionRepository::class);
+        $revisions = $repository->forSource($source->id);
 
         self::assertCount(4, $revisions);
         self::assertSame([1, 2, 3, 4], array_map(
             static fn (SourceRevision $revision): int => $revision->revisionNumber,
             $revisions,
         ));
+        self::assertCount(4, array_unique(array_map(
+            static fn (SourceRevision $revision): string => $revision->id->value,
+            $revisions,
+        )));
+        self::assertSame($revisions[0]->id->value, $repository->find($revisions[0]->id)?->id->value);
+        self::assertSame($revisions[2]->id->value, $repository->findForSource($source->id, 3)?->id->value);
+        self::assertSame($revisions[3]->id->value, $repository->latestForSource($source->id)?->id->value);
         self::assertSame(SourceRevisionSnapshot::SCHEMA_VERSION, $revisions[0]->snapshot->schemaVersion);
         self::assertSame('Initial entry', $revisions[0]->changeNote);
         self::assertSame('researcher:test', $revisions[0]->changedBy);
@@ -96,6 +104,7 @@ final class SourceRevisionApplicationTest extends TestCase
             'source_id' => null,
         ]);
         $this->assertDatabaseHas('source_revisions', [
+            'revision_id' => $revisions[3]->id->value,
             'source_id' => $source->id->value,
             'revision_number' => 4,
             'snapshot_schema_version' => SourceRevisionSnapshot::SCHEMA_VERSION,
