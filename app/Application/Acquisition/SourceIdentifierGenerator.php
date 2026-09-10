@@ -12,6 +12,7 @@ use App\Domain\Acquisition\MentionRevisionId;
 use App\Domain\Acquisition\SourceAssetId;
 use App\Domain\Acquisition\SourceId;
 use App\Domain\Acquisition\SourceLocatorId;
+use App\Domain\Acquisition\SourceRevisionId;
 use App\Domain\Acquisition\SourceTextId;
 
 interface SourceIdentifierGenerator
@@ -21,6 +22,8 @@ interface SourceIdentifierGenerator
     public function sourceTextId(): SourceTextId;
 
     public function sourceAssetId(): SourceAssetId;
+
+    public function sourceRevisionId(): SourceRevisionId;
 
     public function mentionId(): MentionId;
 
