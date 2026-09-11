@@ -6,7 +6,7 @@ This repository is intentionally at a very early `0.0.x` stage. Database schema,
 
 ## Current scope
 
-This first application-foundation milestone contains:
+The current implemented baseline contains:
 
 - Laravel 13,
 - Filament 5,
@@ -21,9 +21,14 @@ This first application-foundation milestone contains:
 - Filament administrator authentication and a baseline system dashboard,
 - containerized PHPUnit, Laravel Pint and Larastan/PHPStan quality gates,
 - GitHub Actions CI for pull requests and pushes to `main`,
-- explicit repository-local application dependency and persistence boundaries.
+- explicit repository-local application dependency and persistence boundaries,
+- a versioned application Settings foundation with Application contracts/use cases, Eloquent persistence and a Filament Settings page,
+- framework-independent Source Acquisition Domain and Application foundations for Source, assets/text, Mention, controlled Predicate and typed Claim values, Claim and SourceLocator workflows,
+- immutable Source/Mention/Claim revision history using `SourceRevision`, `MentionRevision` and `ClaimRevision`,
+- immutable `EvidenceState` capture and reconstruction that identifies an exact composition of retained Source/Mention/Claim revisions,
+- Eloquent persistence adapters and migrations for the implemented Acquisition contracts.
 
-It does **not** yet implement Source Acquisition, provider integration, application Settings or Engine integration.
+Source Acquisition is therefore implemented at the domain/application/persistence level through the M3 baseline, but the user-facing M4 acquisition flow is not implemented yet. In particular, this repository does **not** yet provide the planned `SourceDraft`-based generic source-entry UI, Source Type Template editing flow, provider integration, search integration or MyTree Engine integration.
 
 ## Application architecture
 
@@ -41,7 +46,7 @@ Filament / Console / Laravel composition roots
 
 Only layers and capability directories required by real code should exist. Framework-independent Domain/Application code must not depend on Laravel, Filament or Eloquent; Eloquent persistence lives explicitly under `app/Infrastructure/Persistence/Eloquent`.
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the repository-local namespace, dependency, adapter and future capability conventions. Canonical project-wide architecture remains in `mytree-project/mytree-project`.
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the repository-local namespace, dependency, adapter and current-capability conventions. Canonical project-wide Source/Mention/Claim and immutable-history semantics remain in `mytree-project/mytree-project`.
 
 ## Host requirements
 
