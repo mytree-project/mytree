@@ -16,6 +16,7 @@ final readonly class UpdateSource
         private SourceRepository $repository,
         private SourceIdentifierGenerator $identifiers,
         private RecordSourceRevision $revisions,
+        private AcquisitionTransaction $transaction,
     ) {}
 
     /** @param list<SourceTextInput> $texts */
@@ -27,21 +28,28 @@ final readonly class UpdateSource
         ?string $changeNote = null,
         ?string $changedBy = null,
     ): Source {
-        if ($this->repository->find($id) === null) {
-            throw SourceNotFound::forId($id);
-        }
+        $current = $this->repository->find($id) ?? throw SourceNotFound::forId($id);
 
         $source = new Source(
             id: $id,
             type: $type,
             metadata: $metadata,
             texts: $this->makeTexts($texts),
+            schemaVersion: $current->schemaVersion,
         );
+        $currentSnapshot = $this->revisions->capture($current);
+        $updatedSnapshot = $this->revisions->capture($source);
 
-        $this->repository->save($source);
-        $this->revisions->handle($source->id, $changeNote, $changedBy);
+        if (hash_equals($currentSnapshot->payloadHash, $updatedSnapshot->payloadHash)) {
+            return $current;
+        }
 
-        return $source;
+        return $this->transaction->run(function () use ($source, $updatedSnapshot, $changeNote, $changedBy): Source {
+            $this->repository->save($source);
+            $this->revisions->append($updatedSnapshot, $changeNote, $changedBy);
+
+            return $source;
+        });
     }
 
     /**
