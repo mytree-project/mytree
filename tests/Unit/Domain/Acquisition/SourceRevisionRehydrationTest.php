@@ -15,7 +15,12 @@ final class SourceRevisionRehydrationTest extends TestCase
     {
         $payload = CanonicalJson::encode([
             'schema' => SourceRevisionSnapshot::SCHEMA_ID,
-            'source' => [],
+            'source' => [
+                'type' => [
+                    'key' => 'generic',
+                    'schema_version' => 1,
+                ],
+            ],
         ]);
 
         $this->expectException(InvalidArgumentException::class);
