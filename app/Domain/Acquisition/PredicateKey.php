@@ -36,6 +36,12 @@ enum PredicateKey: string
     case EventDate = 'event.date';
     case EventPlace = 'event.place';
     case EventParticipant = 'event.participant';
+    case EventChild = 'event.child';
+    case EventParent = 'event.parent';
+    case EventSpouse = 'event.spouse';
+    case EventWitness = 'event.witness';
+    case EventDeclarant = 'event.declarant';
+    case EventOfficiant = 'event.officiant';
     case EventOriginPlace = 'event.origin_place';
     case EventDestinationPlace = 'event.destination_place';
     case EventReason = 'event.reason';
