@@ -118,7 +118,13 @@ final class PredicateVocabulary
                 MentionKind::PLACE,
             ),
 
-            PredicateKey::EventParticipant => self::object(
+            PredicateKey::EventParticipant,
+            PredicateKey::EventChild,
+            PredicateKey::EventParent,
+            PredicateKey::EventSpouse,
+            PredicateKey::EventWitness,
+            PredicateKey::EventDeclarant,
+            PredicateKey::EventOfficiant => self::object(
                 $key,
                 $schemaVersion,
                 MentionKind::EVENT,
