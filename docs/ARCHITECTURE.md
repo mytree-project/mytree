@@ -4,7 +4,7 @@
 
 This document defines repository-local implementation conventions for the `mytree-project/mytree` Laravel + Filament application.
 
-Canonical project-wide architecture remains in `mytree-project/mytree-project/docs`. This file does not redefine Source/Mention/Claim semantics, Engine semantics, provider contracts or other project-wide decisions. It translates the accepted MyTree architecture into concrete dependency and namespace rules for this repository.
+Canonical project-wide architecture remains in `mytree-project/mytree-project/docs`. This file does not redefine Source/Mention/Claim semantics, immutable-history semantics, Engine semantics, provider contracts or other project-wide decisions. It translates the accepted MyTree architecture into concrete dependency and namespace rules for this repository.
 
 ## Dependency direction
 
@@ -52,7 +52,7 @@ Domain code must not depend on:
 - queues, HTTP clients, filesystem/storage APIs or other infrastructure,
 - concrete provider/processor/Engine implementations.
 
-A Laravel application model is not automatically a MyTree domain entity. In particular, a future `Source`, `Mention`, `Claim`, hypothesis or interpretation concept must not become an Eloquent model merely because it is persisted by Laravel.
+A Laravel application model is not automatically a MyTree domain entity. In particular, a `Source`, `Mention`, `Claim`, hypothesis or interpretation concept must not become an Eloquent model merely because it is persisted by Laravel.
 
 ### Application and contracts
 
@@ -109,42 +109,88 @@ Framework-managed UI/entry-point classes may use Laravel container facilities at
 
 ## Capability layout
 
-Future capabilities use consistent capability names across only the layers they actually require. Examples include:
+Capabilities use consistent names across only the layers they actually require. Examples include:
 
-| Capability | Possible homes when real code exists |
+| Capability | Current or possible homes when real code exists |
 | --- | --- |
-| Acquisition | `Domain/Acquisition`, `Application/Acquisition`, `Infrastructure/Acquisition`, `Filament/Acquisition` |
-| Settings | `Application/Settings`, `Infrastructure/Persistence/Eloquent/Settings`, `Filament/Settings` |
+| Acquisition | `Domain/Acquisition`, `Application/Acquisition`, `Infrastructure/Persistence/Eloquent/Acquisition`; future UI under `Filament/Acquisition` when implemented |
+| Settings | `Application/Settings`, `Infrastructure/Persistence/Eloquent/Settings`, `Filament/Pages/Settings.php` |
 | Search | `Domain/Search`, `Application/Search`, `Infrastructure/Search`, `Filament/Search` |
 | Providers | application contracts/use cases plus `Infrastructure/Providers` adapters |
 | Engine | `Application/Engine` orchestration/contracts, `Infrastructure/Engine` adapters, `Filament/Engine` UI |
 | Viewer | application/query code plus `Filament/Viewer`; add Domain/Infrastructure only if justified |
 | Research | `Domain/Research`, `Application/Research`, `Infrastructure/Research`, `Filament/Research` as needed |
 
-These are placement conventions, not a request to create these directories now.
+Entries that do not yet exist are placement conventions, not a request to create those directories now.
 
 When one capability needs another, prefer a stable Domain/Application contract rather than reaching into another capability's Infrastructure implementation. Cross-capability events are appropriate only when they provide meaningful decoupling; straightforward local calls remain preferable when no boundary is gained.
 
 ## Current baseline mapping
 
-The current application intentionally has no MyTree genealogical Domain or Application hierarchy yet.
+The repository now contains real framework-independent MyTree Domain and Application code. The earlier M0/M1 baseline in which these layers were intentionally empty is no longer current.
 
-Existing framework-specific code is placed explicitly as infrastructure:
+### Acquisition
+
+The implemented M3 Acquisition foundation is split across the intended layers:
 
 ```text
-app/Infrastructure/Diagnostics/SystemStatus.php
+app/Domain/Acquisition/...
+app/Application/Acquisition/...
+app/Infrastructure/Persistence/Eloquent/Acquisition/...
+```
+
+`Domain/Acquisition` contains the source-first domain contracts and value objects for the implemented Source/Mention/Claim model, including typed Claim values and immutable history concepts.
+
+`Application/Acquisition` contains use cases and application-owned repository/transaction/clock boundaries for current Acquisition behavior. Current mutation workflows keep mutable state changes and immutable revision recording coordinated at the application boundary rather than hiding that behavior in Eloquent models.
+
+`Infrastructure/Persistence/Eloquent/Acquisition` implements persistence for the Application contracts. The Eloquent records remain infrastructure representations; they are not the canonical `Source`, `Mention`, `Claim`, revision or `EvidenceState` domain objects.
+
+The implemented immutable-history contract uses independent retained histories:
+
+```text
+SourceRevision
+MentionRevision
+ClaimRevision
+```
+
+and composes exact retained revision identities into an immutable `EvidenceState`. `SourceRevision` is Source-level history; it does not own the complete Mention/Claim graph history. Canonical semantics for this model remain in `mytree-project/mytree-project/docs/acquisition`.
+
+The user-facing M4 acquisition workflow is not part of this baseline. In particular, a `SourceDraft`-based generic source-entry/editor flow and Source Type Template UI have not yet been implemented.
+
+### Settings
+
+Application Settings are also implemented rather than merely planned:
+
+```text
+app/Application/Settings/...
+app/Infrastructure/Persistence/Eloquent/Settings/...
+app/Filament/Pages/Settings.php
+```
+
+The Application layer owns setting definitions, typed values, registry/store boundaries and setting use cases. Eloquent provides the persistence adapter and the Filament page is a framework/UI adapter over those application contracts.
+
+### Authentication and diagnostics
+
+Framework-specific authentication persistence remains explicitly infrastructure code:
+
+```text
 app/Infrastructure/Persistence/Eloquent/Models/User.php
 ```
 
 `User` is Laravel/Filament authentication persistence. It is not a genealogical `Person` domain model.
 
-The system status widget remains a Filament adapter:
+Operational diagnostics remain infrastructure/UI concerns:
 
 ```text
+app/Infrastructure/Diagnostics/SystemStatus.php
 app/Filament/Widgets/SystemStatusWidget.php
 ```
 
-This baseline demonstrates the placement rule without introducing Source/Mention/Claim or speculative future modules.
+These boundaries coexist with the real Acquisition and Settings modules; they are no longer examples standing in for an otherwise empty Domain/Application hierarchy.
+
+### Not yet implemented
+
+The current baseline does not claim implementation of future capabilities merely because their placement is documented. Provider integration, Search, MyTree Engine integration, Viewer/Interpretation and Research orchestration remain future work unless concrete code is added under their corresponding boundaries.
 
 ## Testing and enforcement
 
