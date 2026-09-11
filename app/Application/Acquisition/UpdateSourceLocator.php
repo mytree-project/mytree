@@ -10,12 +10,16 @@ use App\Domain\Acquisition\SourceId;
 use App\Domain\Acquisition\SourceLocator;
 use App\Domain\Acquisition\SourceLocatorId;
 use App\Domain\Acquisition\SourceLocatorValue;
+use App\Domain\Acquisition\SourceLocatorValueSerializer;
 
 final readonly class UpdateSourceLocator
 {
     public function __construct(
         private SourceLocatorRepository $locators,
         private SourceLocatorReferenceValidator $references,
+        private ClaimRepository $claims,
+        private ClaimRevisionRecorder $revisions,
+        private AcquisitionTransaction $transaction,
     ) {}
 
     public function handle(
@@ -24,6 +28,8 @@ final readonly class UpdateSourceLocator
         SourceLocatorId $locatorId,
         SourceLocatorValue $value,
         ?SourceAssetId $sourceAssetId = null,
+        ?string $changeNote = null,
+        ?string $changedBy = null,
     ): SourceLocator {
         $current = $this->locators->find($sourceId, $claimId, $locatorId)
             ?? throw SourceLocatorNotFound::forClaimAndId($sourceId, $claimId, $locatorId);
@@ -38,8 +44,25 @@ final readonly class UpdateSourceLocator
         );
 
         $this->references->validate($locator);
-        $this->locators->update($locator);
 
-        return $locator;
+        if ($this->sameSemanticState($current, $locator)) {
+            return $current;
+        }
+
+        $claim = $this->claims->find($sourceId, $claimId)
+            ?? throw ClaimNotFound::forSourceAndId($sourceId, $claimId);
+
+        return $this->transaction->run(function () use ($locator, $claim, $changeNote, $changedBy): SourceLocator {
+            $this->locators->update($locator);
+            $this->revisions->record($claim, $changeNote, $changedBy);
+
+            return $locator;
+        });
+    }
+
+    private function sameSemanticState(SourceLocator $left, SourceLocator $right): bool
+    {
+        return $left->sourceAssetId?->value === $right->sourceAssetId?->value
+            && SourceLocatorValueSerializer::serialize($left->value) === SourceLocatorValueSerializer::serialize($right->value);
     }
 }
