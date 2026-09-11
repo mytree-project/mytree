@@ -7,18 +7,12 @@ namespace App\Domain\Acquisition;
 use DateTimeImmutable;
 use DateTimeZone;
 use InvalidArgumentException;
-use JsonException;
 
 final readonly class SourceRevisionSnapshot
 {
     public const SCHEMA_ID = 'mytree.source-revision.v1';
 
     public const SCHEMA_VERSION = 1;
-
-    private const JSON_FLAGS = JSON_THROW_ON_ERROR
-        | JSON_UNESCAPED_SLASHES
-        | JSON_UNESCAPED_UNICODE
-        | JSON_PRESERVE_ZERO_FRACTION;
 
     private function __construct(
         public int $schemaVersion,
@@ -88,7 +82,7 @@ final readonly class SourceRevisionSnapshot
             ],
         ];
 
-        $canonicalPayload = self::encodeCanonical($payload);
+        $canonicalPayload = CanonicalJson::encode($payload);
 
         return new self(
             schemaVersion: self::SCHEMA_VERSION,
@@ -119,26 +113,29 @@ final readonly class SourceRevisionSnapshot
             throw new InvalidArgumentException('SourceRevision payload hash does not match the stored payload.');
         }
 
-        $decoded = self::decodeObject($canonicalPayload);
+        $decoded = CanonicalJson::decodeObject($canonicalPayload);
 
         if (($decoded['schema'] ?? null) !== self::SCHEMA_ID) {
             throw new InvalidArgumentException('Unsupported SourceRevision snapshot schema identifier.');
         }
 
-        if (self::encodeCanonical($decoded) !== $canonicalPayload) {
+        if (CanonicalJson::encode($decoded) !== $canonicalPayload) {
             throw new InvalidArgumentException('Stored SourceRevision payload is not in canonical form.');
         }
 
-        return new self(
+        $snapshot = new self(
             schemaVersion: $schemaVersion,
             canonicalPayload: $canonicalPayload,
             payloadHash: $normalizedHash,
         );
+        $snapshot->reconstruct();
+
+        return $snapshot;
     }
 
     public function reconstruct(): SourceRevisionState
     {
-        $payload = self::decodeObject($this->canonicalPayload);
+        $payload = CanonicalJson::decodeObject($this->canonicalPayload);
         $sourcePayload = self::objectAt($payload, 'source');
         $typePayload = self::objectAt($sourcePayload, 'type');
         $sourceId = new SourceId(self::stringAt($sourcePayload, 'id'));
@@ -214,50 +211,6 @@ final readonly class SourceRevisionSnapshot
         return $dateTime
             ->setTimezone(new DateTimeZone('UTC'))
             ->format('Y-m-d\TH:i:s.u\Z');
-    }
-
-    /** @param array<array-key, mixed> $value */
-    private static function encodeCanonical(array $value): string
-    {
-        try {
-            return json_encode(self::canonicalize($value), self::JSON_FLAGS);
-        } catch (JsonException $exception) {
-            throw new InvalidArgumentException('SourceRevision state cannot be serialized as canonical JSON.', 0, $exception);
-        }
-    }
-
-    private static function canonicalize(mixed $value): mixed
-    {
-        if (! is_array($value)) {
-            return $value;
-        }
-
-        if (array_is_list($value)) {
-            return array_map(
-                static fn (mixed $nestedValue): mixed => self::canonicalize($nestedValue),
-                $value,
-            );
-        }
-
-        ksort($value, SORT_STRING);
-
-        foreach ($value as $key => $nestedValue) {
-            $value[$key] = self::canonicalize($nestedValue);
-        }
-
-        return $value;
-    }
-
-    /** @return array<string, mixed> */
-    private static function decodeObject(string $payload): array
-    {
-        try {
-            $decoded = json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
-        } catch (JsonException $exception) {
-            throw new InvalidArgumentException('Stored SourceRevision payload is not valid JSON.', 0, $exception);
-        }
-
-        return self::objectValue($decoded, 'SourceRevision payload');
     }
 
     /**

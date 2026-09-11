@@ -20,12 +20,13 @@ final class EloquentSourceRevisionRepository implements SourceRevisionRepository
 {
     public function append(
         SourceRevisionId $revisionId,
-        SourceId $sourceId,
         SourceRevisionSnapshot $snapshot,
         DateTimeImmutable $createdAt,
         ?string $changeNote = null,
         ?string $changedBy = null,
     ): SourceRevision {
+        $sourceId = $snapshot->reconstruct()->source->id;
+
         return DB::transaction(function () use ($revisionId, $sourceId, $snapshot, $createdAt, $changeNote, $changedBy): SourceRevision {
             SourceRecord::query()
                 ->whereKey($sourceId->value)

@@ -15,6 +15,7 @@ final readonly class StoreSourceAsset
         private SourceAssetStorage $storage,
         private SourceIdentifierGenerator $identifiers,
         private RecordSourceRevision $revisions,
+        private AcquisitionTransaction $transaction,
     ) {}
 
     public function handle(
@@ -23,9 +24,7 @@ final readonly class StoreSourceAsset
         ?string $changeNote = null,
         ?string $changedBy = null,
     ): SourceAsset {
-        if ($this->sources->find($sourceId) === null) {
-            throw SourceNotFound::forId($sourceId);
-        }
+        $source = $this->sources->find($sourceId) ?? throw SourceNotFound::forId($sourceId);
 
         $assetId = $this->identifiers->sourceAssetId();
         $storage = $this->storage->referenceFor($sourceId, $assetId);
@@ -43,9 +42,12 @@ final readonly class StoreSourceAsset
         );
 
         $this->storage->write($asset->storage, $input->contents);
-        $this->assets->save($asset);
-        $this->revisions->handle($sourceId, $changeNote, $changedBy);
 
-        return $asset;
+        return $this->transaction->run(function () use ($asset, $source, $changeNote, $changedBy): SourceAsset {
+            $this->assets->save($asset);
+            $this->revisions->record($source, $changeNote, $changedBy);
+
+            return $asset;
+        });
     }
 }

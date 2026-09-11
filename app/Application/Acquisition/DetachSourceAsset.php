@@ -12,6 +12,7 @@ final readonly class DetachSourceAsset
     public function __construct(
         private SourceAssetRepository $assets,
         private RecordSourceRevision $revisions,
+        private AcquisitionTransaction $transaction,
     ) {}
 
     public function handle(
@@ -27,9 +28,12 @@ final readonly class DetachSourceAsset
 
         $sourceId = $asset->sourceId;
         $detached = $asset->detached();
-        $this->assets->save($detached);
-        $this->revisions->handle($sourceId, $changeNote, $changedBy);
 
-        return $detached;
+        return $this->transaction->run(function () use ($sourceId, $detached, $changeNote, $changedBy): SourceAsset {
+            $this->assets->save($detached);
+            $this->revisions->handle($sourceId, $changeNote, $changedBy);
+
+            return $detached;
+        });
     }
 }

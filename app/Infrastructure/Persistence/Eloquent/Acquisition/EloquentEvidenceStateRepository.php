@@ -214,7 +214,7 @@ final class EloquentEvidenceStateRepository implements EvidenceStateRepository
                 ->where('revision_number', $reference['revisionNumber'])
                 ->first();
 
-            if ($record === null || ! is_string($record->revision_id) || $record->revision_id === '') {
+            if ($record === null || $record->revision_id === '') {
                 throw new UnexpectedValueException('Legacy EvidenceState references a SourceRevision without an immutable identity.');
             }
 

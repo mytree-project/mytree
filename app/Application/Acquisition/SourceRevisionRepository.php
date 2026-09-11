@@ -14,7 +14,6 @@ interface SourceRevisionRepository
 {
     public function append(
         SourceRevisionId $revisionId,
-        SourceId $sourceId,
         SourceRevisionSnapshot $snapshot,
         DateTimeImmutable $createdAt,
         ?string $changeNote = null,

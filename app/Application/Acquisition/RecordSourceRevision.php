@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Acquisition;
 
+use App\Domain\Acquisition\Source;
 use App\Domain\Acquisition\SourceId;
 use App\Domain\Acquisition\SourceRevision;
 use App\Domain\Acquisition\SourceRevisionSnapshot;
@@ -18,24 +19,43 @@ final readonly class RecordSourceRevision
         private SourceRevisionClock $clock,
     ) {}
 
+    public function capture(Source $source): SourceRevisionSnapshot
+    {
+        return SourceRevisionSnapshot::capture(
+            $source,
+            $this->assets->forSource($source->id),
+        );
+    }
+
+    public function append(
+        SourceRevisionSnapshot $snapshot,
+        ?string $changeNote = null,
+        ?string $changedBy = null,
+    ): SourceRevision {
+        return $this->revisions->append(
+            revisionId: $this->identifiers->sourceRevisionId(),
+            snapshot: $snapshot,
+            createdAt: $this->clock->now(),
+            changeNote: $changeNote,
+            changedBy: $changedBy,
+        );
+    }
+
+    public function record(
+        Source $source,
+        ?string $changeNote = null,
+        ?string $changedBy = null,
+    ): SourceRevision {
+        return $this->append($this->capture($source), $changeNote, $changedBy);
+    }
+
     public function handle(
         SourceId $sourceId,
         ?string $changeNote = null,
         ?string $changedBy = null,
     ): SourceRevision {
         $source = $this->sources->find($sourceId) ?? throw SourceNotFound::forId($sourceId);
-        $snapshot = SourceRevisionSnapshot::capture(
-            $source,
-            $this->assets->forSource($sourceId),
-        );
 
-        return $this->revisions->append(
-            revisionId: $this->identifiers->sourceRevisionId(),
-            sourceId: $sourceId,
-            snapshot: $snapshot,
-            createdAt: $this->clock->now(),
-            changeNote: $changeNote,
-            changedBy: $changedBy,
-        );
+        return $this->record($source, $changeNote, $changedBy);
     }
 }
