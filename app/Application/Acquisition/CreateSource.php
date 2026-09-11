@@ -15,6 +15,7 @@ final readonly class CreateSource
         private SourceRepository $repository,
         private SourceIdentifierGenerator $identifiers,
         private RecordSourceRevision $revisions,
+        private AcquisitionTransaction $transaction,
     ) {}
 
     /** @param list<SourceTextInput> $texts */
@@ -32,10 +33,12 @@ final readonly class CreateSource
             texts: $this->makeTexts($texts),
         );
 
-        $this->repository->save($source);
-        $this->revisions->handle($source->id, $changeNote, $changedBy);
+        return $this->transaction->run(function () use ($source, $changeNote, $changedBy): Source {
+            $this->repository->save($source);
+            $this->revisions->record($source, $changeNote, $changedBy);
 
-        return $source;
+            return $source;
+        });
     }
 
     /**
