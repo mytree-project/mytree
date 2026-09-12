@@ -108,6 +108,23 @@ final class SourceAcquisitionPageTest extends TestCase
         $this->assertDatabaseCount('evidence_states', 1);
     }
 
+    public function test_invalid_form_does_not_partially_save_source(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+
+        Livewire::test(SourceEditor::class)
+            ->fillForm([
+                'source_type_key' => 'Invalid Type!',
+                'source_type_schema_version' => 1,
+            ])
+            ->call('save')
+            ->assertHasFormErrors(['source_type_key']);
+
+        $this->assertDatabaseCount('sources', 0);
+        $this->assertDatabaseCount('source_revisions', 0);
+        $this->assertDatabaseCount('evidence_states', 0);
+    }
+
     public function test_editor_changes_existing_source_and_semantic_noop_does_not_add_history(): void
     {
         $this->actingAs(User::factory()->admin()->create());
@@ -154,7 +171,7 @@ final class SourceAcquisitionPageTest extends TestCase
         self::assertSame($evidenceBeforeNoop, DB::table('evidence_states')->count());
     }
 
-    public function test_asset_upload_is_attached_by_source_draft_and_detach_keeps_stored_bytes(): void
+    public function test_multiple_asset_uploads_are_attached_and_detach_keeps_stored_bytes(): void
     {
         config(['filesystems.default' => 'local']);
         Storage::fake('local');
@@ -163,18 +180,23 @@ final class SourceAcquisitionPageTest extends TestCase
 
         Livewire::test(SourceEditor::class, ['source' => $source->id->value])
             ->fillForm([
-                'uploads' => [UploadedFile::fake()->createWithContent('scan.txt', 'source-scan-bytes')],
+                'uploads' => [
+                    UploadedFile::fake()->createWithContent('scan-a.txt', 'source-scan-a'),
+                    UploadedFile::fake()->createWithContent('scan-b.txt', 'source-scan-b'),
+                ],
             ])
             ->call('save')
             ->assertHasNoFormErrors()
             ->assertRedirect();
 
         $assets = app(SourceAssetRepository::class)->forSource($source->id);
-        self::assertCount(1, $assets);
-        $asset = $assets[0];
-        self::assertSame(hash('sha256', 'source-scan-bytes'), $asset->sha256);
-        Storage::disk('local')->assertExists($asset->storage->path);
+        self::assertCount(2, $assets);
+        self::assertContains(hash('sha256', 'source-scan-a'), [$assets[0]->sha256, $assets[1]->sha256]);
+        self::assertContains(hash('sha256', 'source-scan-b'), [$assets[0]->sha256, $assets[1]->sha256]);
+        Storage::disk('local')->assertExists($assets[0]->storage->path);
+        Storage::disk('local')->assertExists($assets[1]->storage->path);
 
+        $asset = $assets[0];
         Livewire::test(SourceEditor::class, ['source' => $source->id->value])
             ->fillForm([
                 'detach_asset_ids' => [$asset->id->value],
@@ -183,14 +205,14 @@ final class SourceAcquisitionPageTest extends TestCase
             ->assertHasNoFormErrors()
             ->assertRedirect();
 
-        self::assertCount(0, app(SourceAssetRepository::class)->forSource($source->id));
+        self::assertCount(1, app(SourceAssetRepository::class)->forSource($source->id));
         $detached = app(SourceAssetRepository::class)->find($asset->id);
         self::assertNotNull($detached);
         self::assertNull($detached->sourceId);
         Storage::disk('local')->assertExists($asset->storage->path);
     }
 
-    public function test_source_list_searches_by_basic_metadata_through_application_read_model(): void
+    public function test_source_list_searches_by_basic_metadata_and_renders_type_version(): void
     {
         $this->actingAs(User::factory()->admin()->create());
         $wanted = app(CreateSource::class)->handle(
@@ -210,6 +232,7 @@ final class SourceAcquisitionPageTest extends TestCase
         Livewire::test(Sources::class)
             ->set('search', 'Unique Fond')
             ->assertSee($wanted->id->value)
+            ->assertSee('civil.birth@1')
             ->assertDontSee('Other fond');
     }
 
