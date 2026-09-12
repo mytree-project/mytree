@@ -12,23 +12,22 @@ use App\Application\Acquisition\SourceDraftBaseState;
 use App\Application\Acquisition\SourceDraftChanges;
 use App\Application\Acquisition\SourceDraftConflict;
 use App\Application\Acquisition\SourceDraftValidationResult;
-use App\Application\Acquisition\SourceIdentifierGenerator;
 use App\Application\Acquisition\SourceNotFound;
+use App\Application\Acquisition\SupportedAcquisitionClaimInput;
+use App\Application\Acquisition\SupportedAcquisitionDraftEditor;
+use App\Application\Acquisition\SupportedAcquisitionEditInput;
+use App\Application\Acquisition\SupportedAcquisitionEventContextInput;
 use App\Application\Acquisition\SupportedAcquisitionFieldCatalog;
 use App\Application\Acquisition\SupportedAcquisitionFieldDescriptor;
 use App\Application\Acquisition\SupportedAcquisitionFieldEditorKind;
-use App\Application\Acquisition\SupportedAcquisitionFieldMapper;
-use App\Application\Acquisition\SupportedAcquisitionFieldValueFactory;
 use App\Application\Acquisition\SupportedAcquisitionFieldValueInput;
+use App\Application\Acquisition\SupportedAcquisitionMentionInput;
 use App\Application\Acquisition\ValidateSourceDraft;
 use App\Domain\Acquisition\Claim;
-use App\Domain\Acquisition\ClaimCertainty;
 use App\Domain\Acquisition\ClaimId;
-use App\Domain\Acquisition\ClaimQualifiers;
 use App\Domain\Acquisition\ClaimRevisionId;
 use App\Domain\Acquisition\ClaimValue;
 use App\Domain\Acquisition\ClaimValueType;
-use App\Domain\Acquisition\DateClaimValue;
 use App\Domain\Acquisition\EvidenceStateId;
 use App\Domain\Acquisition\Mention;
 use App\Domain\Acquisition\MentionId;
@@ -97,7 +96,11 @@ final class StructuredFieldsEditor extends Page
 
     public function getSubheading(): string
     {
-        return sprintf('Source %s · Mention/Claim graph · controlled field catalog v%d', $this->sourceId, SupportedAcquisitionFieldCatalog::SCHEMA_VERSION);
+        return sprintf(
+            'Source %s · Mention/Claim graph · controlled field catalog v%d',
+            $this->sourceId,
+            SupportedAcquisitionFieldCatalog::SCHEMA_VERSION,
+        );
     }
 
     public function form(Schema $schema): Schema
@@ -106,7 +109,7 @@ final class StructuredFieldsEditor extends Page
             ->components([
                 Repeater::make('mentions')
                     ->label('Source-local Mentions')
-                    ->helperText('Create or edit person/place/organization/other occurrences. Raw data is preserved as JSON and does not require immediate semantic classification.')
+                    ->helperText('Create or edit person/place/organization/other occurrences. Raw data remains available without forced semantic classification.')
                     ->schema([
                         Hidden::make('id'),
                         Select::make('kind')
@@ -135,14 +138,14 @@ final class StructuredFieldsEditor extends Page
                     ->addActionLabel('Add source-local Mention'),
                 Repeater::make('fields')
                     ->label('Structured fields')
-                    ->helperText('Add any registered direct field. The subject/object references use Mention local keys from this Source. Inputs irrelevant to the selected field type are ignored.')
+                    ->helperText('Add any registered direct field. Subject/object references use Mention local keys from this Source.')
                     ->schema($this->directFieldSchema(includeSubject: true))
                     ->columns(2)
                     ->defaultItems(0)
                     ->addActionLabel('Add supported field'),
                 Repeater::make('event_contexts')
                     ->label('Reified event contexts')
-                    ->helperText('Each group is one source-local event Mention with atomic event Claims. Removing the group removes only that graph fragment when it is safe to do so.')
+                    ->helperText('Each group is one source-local event Mention with atomic event Claims.')
                     ->schema([
                         Hidden::make('id'),
                         TextInput::make('local_key')
@@ -180,7 +183,8 @@ final class StructuredFieldsEditor extends Page
 
         try {
             $draft = $this->draftForSave();
-            $changes = $this->structuredChanges($draft, $data);
+            $input = $this->editInput($data);
+            $changes = app(SupportedAcquisitionDraftEditor::class)->changes($draft, $input);
         } catch (SourceDraftConflict $exception) {
             $this->reportConflict($exception);
 
@@ -234,9 +238,7 @@ final class StructuredFieldsEditor extends Page
         $this->redirect(self::getUrl(['source' => $this->sourceId]));
     }
 
-    /**
-     * @return list<\Filament\Schemas\Components\Component>
-     */
+    /** @return list<\Filament\Schemas\Components\Component> */
     private function directFieldSchema(bool $includeSubject, bool $eventOnly = false): array
     {
         $schema = [
@@ -260,7 +262,7 @@ final class StructuredFieldsEditor extends Page
             ->maxLength(255);
         $schema[] = TextInput::make('value_raw')
             ->label('Raw/source value')
-            ->helperText('Used by literal fields and always preserved as entered.');
+            ->helperText('Used by literal fields and preserved exactly as entered.');
         $schema[] = Select::make('expression_kind')
             ->label('Date / age expression')
             ->options([
@@ -284,6 +286,7 @@ final class StructuredFieldsEditor extends Page
             ]);
         $schema[] = TextInput::make('integer_value')
             ->label('Parsed integer')
+            ->numeric()
             ->integer();
         $schema[] = Select::make('boolean_value')
             ->label('Parsed boolean')
@@ -360,357 +363,216 @@ final class StructuredFieldsEditor extends Page
         );
     }
 
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    private function structuredChanges(SourceDraft $draft, array $data): SourceDraftChanges
+    /** @param array<string, mixed> $data */
+    private function editInput(array $data): SupportedAcquisitionEditInput
     {
-        [$addMentions, $updateMentions, $removeMentionIds, $mentionsByLocalKey, $newEventIds] = $this->mentionChanges($draft, $data);
-        [$addClaims, $updateClaims, $removeClaimIds, $claimsBySubject] = $this->claimChanges($draft, $data, $mentionsByLocalKey);
-
-        $mapper = app(SupportedAcquisitionFieldMapper::class);
-        foreach ($newEventIds as $eventId) {
-            $event = null;
-            foreach ($addMentions as $mention) {
-                if ($mention->id->value === $eventId) {
-                    $event = $mention;
-                    break;
-                }
-            }
-
-            if ($event !== null) {
-                $mapper->reifiedEventContext($event, $claimsBySubject[$eventId] ?? []);
-            }
-        }
-
-        return new SourceDraftChanges(
-            addMentions: $addMentions,
-            updateMentions: $updateMentions,
-            removeMentionIds: $removeMentionIds,
-            addClaims: $addClaims,
-            updateClaims: $updateClaims,
-            removeClaimIds: $removeClaimIds,
-        );
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     * @return array{0: list<Mention>, 1: list<Mention>, 2: list<MentionId>, 3: array<string, Mention>, 4: list<string>}
-     */
-    private function mentionChanges(SourceDraft $draft, array $data): array
-    {
-        $currentById = [];
-        foreach ($draft->current->mentions as $mention) {
-            $currentById[$mention->id->value] = $mention;
-        }
-
-        $rows = $data['mentions'] ?? [];
+        $mentionRows = $data['mentions'] ?? [];
+        $fieldRows = $data['fields'] ?? [];
         $eventRows = $data['event_contexts'] ?? [];
-        if (! is_array($rows) || ! is_array($eventRows)) {
-            throw ValidationException::withMessages(['data.mentions' => 'Mention editors must contain lists.']);
+        if (! is_array($mentionRows) || ! is_array($fieldRows) || ! is_array($eventRows)) {
+            throw ValidationException::withMessages(['data' => 'Structured editor state must contain lists.']);
         }
 
-        $normalizedRows = [];
-        foreach (array_values($rows) as $row) {
+        $mentions = [];
+        foreach (array_values($mentionRows) as $index => $row) {
             if (! is_array($row)) {
-                throw ValidationException::withMessages(['data.mentions' => 'Invalid Mention row.']);
+                throw ValidationException::withMessages(["data.mentions.$index" => 'Invalid Mention row.']);
             }
-            $normalizedRows[] = $row;
-        }
-        foreach (array_values($eventRows) as $row) {
-            if (! is_array($row)) {
-                throw ValidationException::withMessages(['data.event_contexts' => 'Invalid event context row.']);
-            }
-            $row['kind'] = MentionKind::EVENT;
-            $normalizedRows[] = $row;
+            $mentions[] = $this->mentionInput($row, null, "data.mentions.$index");
         }
 
-        $add = [];
-        $update = [];
-        $seenIds = [];
-        $mentionsByLocalKey = [];
-        $newEventIds = [];
-
-        foreach ($normalizedRows as $index => $row) {
-            $id = $row['id'] ?? null;
-            $kind = $row['kind'] ?? null;
-            $localKey = $row['local_key'] ?? null;
-            if (! is_string($kind) || ! is_string($localKey) || trim($localKey) === '') {
-                throw ValidationException::withMessages(["data.mentions.$index" => 'Mention kind and local key are required.']);
-            }
-
-            $existing = null;
-            if (is_string($id) && $id !== '') {
-                $existing = $currentById[$id] ?? null;
-                if ($existing === null || isset($seenIds[$id])) {
-                    throw ValidationException::withMessages(["data.mentions.$index.id" => 'Mention identity is invalid.']);
-                }
-                $seenIds[$id] = true;
-            }
-
-            $mention = new Mention(
-                id: $existing?->id ?? app(SourceIdentifierGenerator::class)->mentionId(),
-                sourceId: $draft->current->source->id,
-                kind: new MentionKind($kind),
-                localKey: trim($localKey),
-                role: $this->optionalString($row['role'] ?? null),
-                displayLabel: $this->optionalString($row['display_label'] ?? null),
-                rawData: new MentionRawData($this->rawData($row['raw_data_json'] ?? null, $index)),
-            );
-
-            if (isset($mentionsByLocalKey[$mention->localKey])) {
-                throw ValidationException::withMessages(["data.mentions.$index.local_key" => 'Mention local keys must be unique within the Source.']);
-            }
-            $mentionsByLocalKey[$mention->localKey] = $mention;
-
-            if ($existing === null) {
-                $add[] = $mention;
-                if ($mention->kind->key === MentionKind::EVENT) {
-                    $newEventIds[] = $mention->id->value;
-                }
-            } else {
-                $update[] = $mention;
-            }
-        }
-
-        $remove = [];
-        foreach ($currentById as $id => $mention) {
-            if (! isset($seenIds[$id])) {
-                $remove[] = $mention->id;
-            }
-        }
-
-        return [$add, $update, $remove, $mentionsByLocalKey, $newEventIds];
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     * @param  array<string, Mention>  $mentionsByLocalKey
-     * @return array{0: list<Claim>, 1: list<Claim>, 2: list<ClaimId>, 3: array<string, list<Claim>>}
-     */
-    private function claimChanges(SourceDraft $draft, array $data, array $mentionsByLocalKey): array
-    {
-        $currentById = [];
-        foreach ($draft->current->claims as $claim) {
-            $currentById[$claim->id->value] = $claim;
-        }
-
-        $rows = [];
-        $directRows = $data['fields'] ?? [];
-        if (! is_array($directRows)) {
-            throw ValidationException::withMessages(['data.fields' => 'Structured fields must be a list.']);
-        }
-        foreach (array_values($directRows) as $index => $row) {
+        $fields = [];
+        foreach (array_values($fieldRows) as $index => $row) {
             if (! is_array($row)) {
                 throw ValidationException::withMessages(["data.fields.$index" => 'Invalid structured field row.']);
             }
-            $rows[] = $row;
+            $fields[] = $this->claimInput($row, null, "data.fields.$index");
         }
 
-        $eventRows = $data['event_contexts'] ?? [];
-        if (! is_array($eventRows)) {
-            throw ValidationException::withMessages(['data.event_contexts' => 'Event contexts must be a list.']);
-        }
+        $eventContexts = [];
         foreach (array_values($eventRows) as $eventIndex => $eventRow) {
             if (! is_array($eventRow)) {
                 throw ValidationException::withMessages(["data.event_contexts.$eventIndex" => 'Invalid event context row.']);
             }
-            $eventLocalKey = $eventRow['local_key'] ?? null;
-            $eventClaims = $eventRow['claims'] ?? [];
-            if (! is_string($eventLocalKey) || ! is_array($eventClaims)) {
-                throw ValidationException::withMessages(["data.event_contexts.$eventIndex" => 'Event local key and claims are invalid.']);
+
+            $event = $this->mentionInput($eventRow, MentionKind::EVENT, "data.event_contexts.$eventIndex");
+            $claimRows = $eventRow['claims'] ?? [];
+            if (! is_array($claimRows)) {
+                throw ValidationException::withMessages(["data.event_contexts.$eventIndex.claims" => 'Event Claims must be a list.']);
             }
-            foreach (array_values($eventClaims) as $claimIndex => $claimRow) {
+
+            $claims = [];
+            foreach (array_values($claimRows) as $claimIndex => $claimRow) {
                 if (! is_array($claimRow)) {
-                    throw ValidationException::withMessages(["data.event_contexts.$eventIndex.claims.$claimIndex" => 'Invalid event field row.']);
+                    throw ValidationException::withMessages(["data.event_contexts.$eventIndex.claims.$claimIndex" => 'Invalid event Claim row.']);
                 }
-                $claimRow['subject_local_key'] = $eventLocalKey;
-                $rows[] = $claimRow;
+                $claims[] = $this->claimInput(
+                    $claimRow,
+                    $event->localKey,
+                    "data.event_contexts.$eventIndex.claims.$claimIndex",
+                );
             }
+
+            $eventContexts[] = new SupportedAcquisitionEventContextInput($event, $claims);
         }
 
-        $catalog = app(SupportedAcquisitionFieldCatalog::class);
-        $mapper = app(SupportedAcquisitionFieldMapper::class);
-        $add = [];
-        $update = [];
-        $seenIds = [];
-        $claimsBySubject = [];
+        return new SupportedAcquisitionEditInput($mentions, $fields, $eventContexts);
+    }
 
-        foreach ($rows as $index => $row) {
-            $fieldKey = $row['field_key'] ?? null;
-            $subjectLocalKey = $row['subject_local_key'] ?? null;
-            if (! is_string($fieldKey) || ! is_string($subjectLocalKey)) {
-                throw ValidationException::withMessages(["data.fields.$index" => 'Supported field and subject Mention are required.']);
-            }
+    /**
+     * @param array<string, mixed> $row
+     */
+    private function mentionInput(array $row, ?string $forcedKind, string $path): SupportedAcquisitionMentionInput
+    {
+        $id = $row['id'] ?? null;
+        $kind = $forcedKind ?? ($row['kind'] ?? null);
+        $localKey = $row['local_key'] ?? null;
+        if (! is_string($kind) || ! is_string($localKey) || trim($localKey) === '') {
+            throw ValidationException::withMessages([$path => 'Mention kind and local key are required.']);
+        }
 
-            $descriptor = $catalog->get($fieldKey);
-            if (! $descriptor->isDirectClaim()) {
-                throw ValidationException::withMessages(["data.fields.$index.field_key" => 'Only direct fields can be stored as a Claim row.']);
-            }
-
-            $subject = $mentionsByLocalKey[$subjectLocalKey] ?? null;
-            if ($subject === null) {
-                throw ValidationException::withMessages(["data.fields.$index.subject_local_key" => 'Subject Mention local key does not exist in this Source.']);
-            }
-
-            $claimIdValue = $row['claim_id'] ?? null;
-            $existing = null;
-            if (is_string($claimIdValue) && $claimIdValue !== '') {
-                $existing = $currentById[$claimIdValue] ?? null;
-                if ($existing === null || isset($seenIds[$claimIdValue])) {
-                    throw ValidationException::withMessages(["data.fields.$index.claim_id" => 'Claim identity is invalid.']);
-                }
-                $seenIds[$claimIdValue] = true;
-            }
-
-            $object = null;
-            $value = null;
-            if ($descriptor->editorKind === SupportedAcquisitionFieldEditorKind::MentionReference) {
-                $objectLocalKey = $row['object_local_key'] ?? null;
-                if (! is_string($objectLocalKey) || trim($objectLocalKey) === '') {
-                    throw ValidationException::withMessages(["data.fields.$index.object_local_key" => 'This field requires an object Mention local key.']);
-                }
-                $object = $mentionsByLocalKey[trim($objectLocalKey)] ?? null;
-                if ($object === null) {
-                    throw ValidationException::withMessages(["data.fields.$index.object_local_key" => 'Object Mention local key does not exist in this Source.']);
-                }
-            } else {
-                $value = $this->literalValue($descriptor, $row, $index);
-            }
-
-            $claim = $mapper->directClaim(
-                fieldKey: $fieldKey,
-                claimId: $existing?->id ?? app(SourceIdentifierGenerator::class)->claimId(),
-                sourceId: $draft->current->source->id,
-                subject: $subject,
-                value: $value,
-                object: $object,
-                qualifiers: $this->qualifiers($row, $index),
-                rawText: $this->optionalString($row['raw_text'] ?? null),
-                origin: $existing?->origin,
-                transcriptionCertainty: $this->certainty($row['transcription_certainty'] ?? null),
-                interpretationCertainty: $this->certainty($row['interpretation_certainty'] ?? null),
+        try {
+            return new SupportedAcquisitionMentionInput(
+                id: is_string($id) && $id !== '' ? new MentionId($id) : null,
+                kind: new MentionKind($kind),
+                localKey: trim($localKey),
+                role: $this->optionalString($row['role'] ?? null),
+                displayLabel: $this->optionalString($row['display_label'] ?? null),
+                rawData: new MentionRawData($this->rawData($row['raw_data_json'] ?? null, "$path.raw_data_json")),
             );
+        } catch (InvalidArgumentException $exception) {
+            throw ValidationException::withMessages([$path => $exception->getMessage()]);
+        }
+    }
 
-            $claimsBySubject[$claim->subjectMentionId->value] ??= [];
-            $claimsBySubject[$claim->subjectMentionId->value][] = $claim;
-
-            if ($existing === null) {
-                $add[] = $claim;
-            } else {
-                $update[] = $claim;
-            }
+    /**
+     * @param array<string, mixed> $row
+     */
+    private function claimInput(array $row, ?string $forcedSubjectLocalKey, string $path): SupportedAcquisitionClaimInput
+    {
+        $fieldKey = $row['field_key'] ?? null;
+        $subjectLocalKey = $forcedSubjectLocalKey ?? ($row['subject_local_key'] ?? null);
+        if (! is_string($fieldKey) || ! is_string($subjectLocalKey) || trim($subjectLocalKey) === '') {
+            throw ValidationException::withMessages([$path => 'Supported field and subject Mention are required.']);
         }
 
-        $remove = [];
-        foreach ($currentById as $id => $claim) {
-            if (! $catalog->has($claim->predicate->key->value)) {
-                continue;
-            }
-            if (! isset($seenIds[$id])) {
-                $remove[] = $claim->id;
-            }
+        try {
+            $descriptor = app(SupportedAcquisitionFieldCatalog::class)->get($fieldKey);
+        } catch (InvalidArgumentException $exception) {
+            throw ValidationException::withMessages(["$path.field_key" => $exception->getMessage()]);
         }
 
-        return [$add, $update, $remove, $claimsBySubject];
+        $claimId = $row['claim_id'] ?? null;
+        $value = $descriptor->editorKind === SupportedAcquisitionFieldEditorKind::MentionReference
+            ? null
+            : $this->literalInput($descriptor, $row, $path);
+
+        return new SupportedAcquisitionClaimInput(
+            id: is_string($claimId) && $claimId !== '' ? new ClaimId($claimId) : null,
+            fieldKey: $fieldKey,
+            subjectLocalKey: trim($subjectLocalKey),
+            objectLocalKey: $this->optionalString($row['object_local_key'] ?? null),
+            value: $value,
+            effectiveTime: $this->effectiveTimeInput($row, $path),
+            rawText: $this->optionalString($row['raw_text'] ?? null),
+            transcriptionCertainty: $this->optionalString($row['transcription_certainty'] ?? null) ?? 'unspecified',
+            interpretationCertainty: $this->optionalString($row['interpretation_certainty'] ?? null) ?? 'unspecified',
+        );
     }
 
     /** @param array<string, mixed> $row */
-    private function literalValue(SupportedAcquisitionFieldDescriptor $descriptor, array $row, int $index): ClaimValue
-    {
+    private function literalInput(
+        SupportedAcquisitionFieldDescriptor $descriptor,
+        array $row,
+        string $path,
+    ): SupportedAcquisitionFieldValueInput {
         $raw = $row['value_raw'] ?? null;
         if (! is_string($raw) || trim($raw) === '') {
-            throw ValidationException::withMessages(["data.fields.$index.value_raw" => 'Literal fields require the raw/source value.']);
+            throw ValidationException::withMessages(["$path.value_raw" => 'Literal fields require the raw/source value.']);
         }
 
-        $boolean = $row['boolean_value'] ?? null;
-        $booleanValue = match ($boolean) {
-            true, 1, '1' => true,
-            false, 0, '0' => false,
-            default => null,
-        };
-
-        $integer = $row['integer_value'] ?? null;
-        $integerValue = is_int($integer)
-            ? $integer
-            : (is_string($integer) && preg_match('/^-?\d+$/D', trim($integer)) === 1 ? (int) trim($integer) : null);
-
-        $input = new SupportedAcquisitionFieldValueInput(
+        return new SupportedAcquisitionFieldValueInput(
             rawValue: $raw,
             expressionKind: $this->optionalString($row['expression_kind'] ?? null),
-            from: is_string($row['value_from'] ?? null) || is_int($row['value_from'] ?? null) ? $row['value_from'] : null,
-            to: is_string($row['value_to'] ?? null) || is_int($row['value_to'] ?? null) ? $row['value_to'] : null,
+            from: $this->stringOrInt($row['value_from'] ?? null),
+            to: $this->stringOrInt($row['value_to'] ?? null),
             ageUnit: $this->optionalString($row['age_unit'] ?? null),
-            integerValue: $integerValue,
-            booleanValue: $booleanValue,
+            integerValue: $this->integerOrNull($row['integer_value'] ?? null),
+            booleanValue: $this->booleanOrNull($row['boolean_value'] ?? null),
             enumKey: $this->optionalString($row['enum_key'] ?? null),
         );
-
-        try {
-            return app(SupportedAcquisitionFieldValueFactory::class)->make($descriptor, $input);
-        } catch (InvalidArgumentException $exception) {
-            throw ValidationException::withMessages(["data.fields.$index" => $exception->getMessage()]);
-        }
     }
 
     /** @param array<string, mixed> $row */
-    private function qualifiers(array $row, int $index): ClaimQualifiers
+    private function effectiveTimeInput(array $row, string $path): ?SupportedAcquisitionFieldValueInput
     {
         $raw = $this->optionalString($row['effective_time_raw'] ?? null);
-        $from = $this->optionalString($row['effective_time_from'] ?? null);
         $kind = $this->optionalString($row['effective_time_kind'] ?? null);
+        $from = $this->optionalString($row['effective_time_from'] ?? null);
+        $to = $this->optionalString($row['effective_time_to'] ?? null);
 
-        if ($raw === null && $from === null && $kind === null) {
-            return ClaimQualifiers::empty();
+        if ($raw === null && $kind === null && $from === null && $to === null) {
+            return null;
         }
-        if ($raw === null || $from === null || $kind === null) {
-            throw ValidationException::withMessages(["data.fields.$index.effective_time_raw" => 'Effective time requires raw value, expression kind and start date.']);
-        }
-
-        try {
-            $effectiveTime = app(SupportedAcquisitionFieldValueFactory::class)->effectiveTime(
-                new SupportedAcquisitionFieldValueInput(
-                    rawValue: $raw,
-                    expressionKind: $kind,
-                    from: $from,
-                    to: $this->optionalString($row['effective_time_to'] ?? null),
-                ),
-            );
-        } catch (InvalidArgumentException $exception) {
-            throw ValidationException::withMessages(["data.fields.$index.effective_time_raw" => $exception->getMessage()]);
+        if ($raw === null || $kind === null || $from === null) {
+            throw ValidationException::withMessages(["$path.effective_time_raw" => 'Effective time requires raw value, expression kind and start date.']);
         }
 
-        return new ClaimQualifiers(effectiveTime: $effectiveTime);
-    }
-
-    private function certainty(mixed $value): ClaimCertainty
-    {
-        $code = $this->optionalString($value) ?? 'unspecified';
-
-        return new ClaimCertainty($code);
+        return new SupportedAcquisitionFieldValueInput(
+            rawValue: $raw,
+            expressionKind: $kind,
+            from: $from,
+            to: $to,
+        );
     }
 
     /** @return array<string, mixed> */
-    private function rawData(mixed $value, int $index): array
+    private function rawData(mixed $value, string $path): array
     {
         if ($value === null || (is_string($value) && trim($value) === '')) {
             return [];
         }
         if (! is_string($value)) {
-            throw ValidationException::withMessages(["data.mentions.$index.raw_data_json" => 'Mention raw data must be a JSON object.']);
+            throw ValidationException::withMessages([$path => 'Mention raw data must be a JSON object.']);
         }
 
         try {
             $decoded = json_decode($value, true, 512, JSON_THROW_ON_ERROR);
         } catch (JsonException $exception) {
-            throw ValidationException::withMessages(["data.mentions.$index.raw_data_json" => $exception->getMessage()]);
+            throw ValidationException::withMessages([$path => $exception->getMessage()]);
         }
 
         if (! is_array($decoded) || ($decoded !== [] && array_is_list($decoded))) {
-            throw ValidationException::withMessages(["data.mentions.$index.raw_data_json" => 'Mention raw data must be a JSON object.']);
+            throw ValidationException::withMessages([$path => 'Mention raw data must be a JSON object.']);
         }
 
         return $decoded;
+    }
+
+    private function stringOrInt(mixed $value): string|int|null
+    {
+        return is_string($value) || is_int($value) ? $value : null;
+    }
+
+    private function integerOrNull(mixed $value): ?int
+    {
+        if (is_int($value)) {
+            return $value;
+        }
+        if (is_string($value) && preg_match('/^-?\d+$/D', trim($value)) === 1) {
+            return (int) trim($value);
+        }
+
+        return null;
+    }
+
+    private function booleanOrNull(mixed $value): ?bool
+    {
+        return match ($value) {
+            true, 1, '1' => true,
+            false, 0, '0' => false,
+            default => null,
+        };
     }
 
     private function optionalString(mixed $value): ?string
@@ -718,7 +580,6 @@ final class StructuredFieldsEditor extends Page
         if (! is_string($value)) {
             return null;
         }
-
         $value = trim($value);
 
         return $value === '' ? null : $value;
@@ -794,7 +655,7 @@ final class StructuredFieldsEditor extends Page
     }
 
     /**
-     * @param  array<string, Mention>  $mentionsById
+     * @param array<string, Mention> $mentionsById
      * @return array<string, mixed>
      */
     private function claimRow(Claim $claim, array $mentionsById): array
