@@ -43,6 +43,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Component;
 use Filament\Schemas\Schema;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
@@ -238,7 +239,7 @@ final class StructuredFieldsEditor extends Page
         $this->redirect(self::getUrl(['source' => $this->sourceId]));
     }
 
-    /** @return list<\Filament\Schemas\Components\Component> */
+    /** @return list<Component> */
     private function directFieldSchema(bool $includeSubject, bool $eventOnly = false): array
     {
         $schema = [
@@ -363,7 +364,7 @@ final class StructuredFieldsEditor extends Page
         );
     }
 
-    /** @param array<string, mixed> $data */
+    /** @param  array<string, mixed>  $data */
     private function editInput(array $data): SupportedAcquisitionEditInput
     {
         $mentionRows = $data['mentions'] ?? [];
@@ -420,7 +421,7 @@ final class StructuredFieldsEditor extends Page
     }
 
     /**
-     * @param array<string, mixed> $row
+     * @param  array<string, mixed>  $row
      */
     private function mentionInput(array $row, ?string $forcedKind, string $path): SupportedAcquisitionMentionInput
     {
@@ -446,7 +447,7 @@ final class StructuredFieldsEditor extends Page
     }
 
     /**
-     * @param array<string, mixed> $row
+     * @param  array<string, mixed>  $row
      */
     private function claimInput(array $row, ?string $forcedSubjectLocalKey, string $path): SupportedAcquisitionClaimInput
     {
@@ -480,7 +481,7 @@ final class StructuredFieldsEditor extends Page
         );
     }
 
-    /** @param array<string, mixed> $row */
+    /** @param  array<string, mixed>  $row */
     private function literalInput(
         SupportedAcquisitionFieldDescriptor $descriptor,
         array $row,
@@ -503,7 +504,7 @@ final class StructuredFieldsEditor extends Page
         );
     }
 
-    /** @param array<string, mixed> $row */
+    /** @param  array<string, mixed>  $row */
     private function effectiveTimeInput(array $row, string $path): ?SupportedAcquisitionFieldValueInput
     {
         $raw = $this->optionalString($row['effective_time_raw'] ?? null);
@@ -655,7 +656,7 @@ final class StructuredFieldsEditor extends Page
     }
 
     /**
-     * @param array<string, Mention> $mentionsById
+     * @param  array<string, Mention>  $mentionsById
      * @return array<string, mixed>
      */
     private function claimRow(Claim $claim, array $mentionsById): array
@@ -698,7 +699,7 @@ final class StructuredFieldsEditor extends Page
         return $row;
     }
 
-    /** @param array<string, mixed> $row */
+    /** @param  array<string, mixed>  $row */
     private function fillValueRow(array &$row, ?ClaimValue $value): void
     {
         if ($value === null) {
@@ -716,7 +717,10 @@ final class StructuredFieldsEditor extends Page
         };
     }
 
-    /** @param array<string, mixed> $row @param array<string, mixed> $data */
+    /**
+     * @param  array<string, mixed>  $row
+     * @param  array<string, mixed>  $data
+     */
     private function fillDateRow(array &$row, array $data): void
     {
         $row['expression_kind'] = $data['kind'] ?? null;
@@ -724,7 +728,10 @@ final class StructuredFieldsEditor extends Page
         $row['value_to'] = $data['to'] ?? null;
     }
 
-    /** @param array<string, mixed> $row @param array<string, mixed> $data */
+    /**
+     * @param  array<string, mixed>  $row
+     * @param  array<string, mixed>  $data
+     */
     private function fillAgeRow(array &$row, array $data): void
     {
         $row['expression_kind'] = $data['kind'] ?? null;
