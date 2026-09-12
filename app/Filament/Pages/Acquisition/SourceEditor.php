@@ -112,7 +112,7 @@ final class SourceEditor extends Page
         return $this->sourceId === null ? 'Create Source' : 'Edit Source';
     }
 
-    public function getSubheading(): ?string
+    public function getSubheading(): string
     {
         if ($this->sourceId === null) {
             return sprintf('%s · blank workspace · unsaved', $this->sourceTypeContext);
@@ -416,7 +416,10 @@ final class SourceEditor extends Page
         return [$add, $update, $remove];
     }
 
-    /** @param  array<string, mixed>  $data */
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
     private function metadataValues(SourceDraft $draft, array $data): array
     {
         $values = [];
@@ -477,7 +480,10 @@ final class SourceEditor extends Page
         };
     }
 
-    /** @param  array<string, mixed>  $data */
+    /**
+     * @param  array<string, mixed>  $data
+     * @return list<SourceAssetId>
+     */
     private function detachAssetIds(array $data): array
     {
         $ids = $data['detach_asset_ids'] ?? [];
@@ -498,9 +504,6 @@ final class SourceEditor extends Page
     private function uploadedFiles(array $data): array
     {
         $uploads = $data['uploads'] ?? [];
-        if ($uploads === null) {
-            return [];
-        }
         if ($uploads instanceof TemporaryUploadedFile) {
             return [$uploads];
         }
