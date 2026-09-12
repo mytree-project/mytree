@@ -12,6 +12,7 @@ use App\Domain\Acquisition\ClaimQualifiers;
 use App\Domain\Acquisition\ClaimValue;
 use App\Domain\Acquisition\Mention;
 use App\Domain\Acquisition\MentionKind;
+use App\Domain\Acquisition\PredicateKey;
 use App\Domain\Acquisition\PredicateVocabulary;
 use App\Domain\Acquisition\SourceId;
 use InvalidArgumentException;
@@ -98,7 +99,7 @@ final readonly class SupportedAcquisitionFieldMapper
         }
 
         $allowedPredicates = array_map(
-            static fn ($key): string => $key->value,
+            static fn (PredicateKey $key): string => $key->value,
             $descriptor->contextPredicateKeys,
         );
 
