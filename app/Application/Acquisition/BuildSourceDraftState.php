@@ -160,8 +160,9 @@ final readonly class BuildSourceDraftState
 
     /**
      * @template T of object
-     * @param list<T> $values
-     * @param callable(T): string $key
+     *
+     * @param  list<T>  $values
+     * @param  callable(T): string  $key
      * @return array<string, T>
      */
     private function keyBy(array $values, callable $key): array
@@ -177,12 +178,13 @@ final readonly class BuildSourceDraftState
     /**
      * @template T of object
      * @template TId of object
-     * @param array<string, T> $current
-     * @param list<T> $add
-     * @param list<T> $update
-     * @param list<TId> $remove
-     * @param callable(T): string $entityId
-     * @param callable(TId): string $removeId
+     *
+     * @param  array<string, T>  $current
+     * @param  list<T>  $add
+     * @param  list<T>  $update
+     * @param  list<TId>  $remove
+     * @param  callable(T): string  $entityId
+     * @param  callable(TId): string  $removeId
      */
     private function applyEntityChanges(
         array &$current,
