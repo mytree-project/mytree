@@ -35,10 +35,10 @@ final readonly class SourceDraftState
     public array $locators;
 
     /**
-     * @param list<SourceAsset> $assets
-     * @param list<Mention> $mentions
-     * @param list<Claim> $claims
-     * @param list<SourceLocator> $locators
+     * @param  list<SourceAsset>  $assets
+     * @param  list<Mention>  $mentions
+     * @param  list<Claim>  $claims
+     * @param  list<SourceLocator>  $locators
      */
     public function __construct(
         public Source $source,
@@ -127,7 +127,7 @@ final readonly class SourceDraftState
         return null;
     }
 
-    /** @param list<SourceLocator> $locators */
+    /** @param  list<SourceLocator>  $locators */
     private function captureClaimSemanticSnapshot(Claim $claim, array $locators): ClaimRevisionSnapshot
     {
         $revisionId = new MentionRevisionId(self::SEMANTIC_REVISION_ID);
@@ -142,8 +142,9 @@ final readonly class SourceDraftState
 
     /**
      * @template T of object
-     * @param list<T> $values
-     * @param callable(T): string $key
+     *
+     * @param  list<T>  $values
+     * @param  callable(T): string  $key
      * @return list<T>
      */
     private static function unique(array $values, callable $key, string $type): array
