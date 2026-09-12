@@ -11,6 +11,7 @@ use App\Domain\Acquisition\MentionRevisionSnapshot;
 use App\Domain\Acquisition\SourceAsset;
 use App\Domain\Acquisition\SourceLocator;
 use App\Domain\Acquisition\SourceLocatorValueSerializer;
+use LogicException;
 
 final readonly class SaveSourceDraft
 {
@@ -79,7 +80,7 @@ final readonly class SaveSourceDraft
                 changedBy: $draft->changedBy,
             );
             $sourceRevisionId = $evidence->snapshot->sourceRevisionIds[0]
-                ?? throw new \LogicException('SourceDraft EvidenceState must contain the edited SourceRevision.');
+                ?? throw new LogicException('SourceDraft EvidenceState must contain the edited SourceRevision.');
             $base = SourceDraftBaseState::capture(
                 sourceRevisionId: $sourceRevisionId,
                 mentionRevisionIds: $evidence->snapshot->mentionRevisionIds,
@@ -169,6 +170,7 @@ final readonly class SaveSourceDraft
             if (! $existing instanceof Mention) {
                 $this->mentions->add($mention);
                 $this->recordMentionRevision($mention, $draft);
+
                 continue;
             }
 
@@ -201,6 +203,7 @@ final readonly class SaveSourceDraft
                 $this->claims->add($claim);
                 $this->syncLocators([], $result->locatorsForClaim($claim->id));
                 $this->claimRevisions->record($claim, $draft->changeNote, $draft->changedBy);
+
                 continue;
             }
 
@@ -260,6 +263,7 @@ final readonly class SaveSourceDraft
             $existing = $beforeById[$id] ?? null;
             if (! $existing instanceof SourceLocator) {
                 $this->locators->add($locator);
+
                 continue;
             }
 
