@@ -63,7 +63,7 @@ final readonly class SupportedAcquisitionFieldDescriptor
             }
         }
 
-        $this->contextPredicateKeys = array_values($contextPredicateKeys);
+        $this->contextPredicateKeys = $contextPredicateKeys;
     }
 
     public function isDirectClaim(): bool
