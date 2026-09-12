@@ -25,8 +25,8 @@ final readonly class SupportedAcquisitionEditInput
         array $fields = [],
         array $eventContexts = [],
     ) {
-        $this->mentions = array_values($mentions);
-        $this->fields = array_values($fields);
-        $this->eventContexts = array_values($eventContexts);
+        $this->mentions = $mentions;
+        $this->fields = $fields;
+        $this->eventContexts = $eventContexts;
     }
 }
