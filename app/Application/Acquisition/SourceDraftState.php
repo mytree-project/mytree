@@ -158,6 +158,6 @@ final readonly class SourceDraftState
             $seen[$id] = true;
         }
 
-        return array_values($values);
+        return $values;
     }
 }
