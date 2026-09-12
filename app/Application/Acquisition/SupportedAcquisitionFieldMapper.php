@@ -122,7 +122,7 @@ final readonly class SupportedAcquisitionFieldMapper
 
         return new SourceDraftChanges(
             addMentions: [$eventMention],
-            addClaims: array_values($claims),
+            addClaims: $claims,
         );
     }
 
