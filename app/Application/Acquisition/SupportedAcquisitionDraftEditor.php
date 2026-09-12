@@ -82,7 +82,7 @@ final readonly class SupportedAcquisitionDraftEditor
             }
 
             $mention = new Mention(
-                id: $existing?->id ?? $this->identifierGenerator->mentionId(),
+                id: $existing->id ?? $this->identifierGenerator->mentionId(),
                 sourceId: $draft->current->source->id,
                 kind: $mentionInput->kind,
                 localKey: $mentionInput->localKey,
@@ -207,7 +207,7 @@ final readonly class SupportedAcquisitionDraftEditor
 
             $claim = $this->fieldMapper->directClaim(
                 fieldKey: $claimInput->fieldKey,
-                claimId: $existing?->id ?? $this->identifierGenerator->claimId(),
+                claimId: $existing->id ?? $this->identifierGenerator->claimId(),
                 sourceId: $draft->current->source->id,
                 subject: $subject,
                 value: $value,
