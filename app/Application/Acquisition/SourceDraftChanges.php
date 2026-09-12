@@ -15,17 +15,17 @@ use App\Domain\Acquisition\SourceLocatorId;
 final readonly class SourceDraftChanges
 {
     /**
-     * @param list<SourceAssetId> $attachAssetIds
-     * @param list<SourceAssetId> $detachAssetIds
-     * @param list<Mention> $addMentions
-     * @param list<Mention> $updateMentions
-     * @param list<MentionId> $removeMentionIds
-     * @param list<Claim> $addClaims
-     * @param list<Claim> $updateClaims
-     * @param list<ClaimId> $removeClaimIds
-     * @param list<SourceLocator> $addLocators
-     * @param list<SourceLocator> $updateLocators
-     * @param list<SourceLocatorId> $removeLocatorIds
+     * @param  list<SourceAssetId>  $attachAssetIds
+     * @param  list<SourceAssetId>  $detachAssetIds
+     * @param  list<Mention>  $addMentions
+     * @param  list<Mention>  $updateMentions
+     * @param  list<MentionId>  $removeMentionIds
+     * @param  list<Claim>  $addClaims
+     * @param  list<Claim>  $updateClaims
+     * @param  list<ClaimId>  $removeClaimIds
+     * @param  list<SourceLocator>  $addLocators
+     * @param  list<SourceLocator>  $updateLocators
+     * @param  list<SourceLocatorId>  $removeLocatorIds
      */
     public function __construct(
         public ?SourceDraftSourceChanges $source = null,
@@ -44,6 +44,6 @@ final readonly class SourceDraftChanges
 
     public static function none(): self
     {
-        return new self();
+        return new self;
     }
 }
