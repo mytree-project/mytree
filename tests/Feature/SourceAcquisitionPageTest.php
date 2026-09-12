@@ -35,7 +35,6 @@ final class SourceAcquisitionPageTest extends TestCase
         parent::setUp();
 
         $panel = Filament::getPanel('admin');
-        self::assertNotNull($panel);
         Filament::setCurrentPanel($panel);
     }
 
