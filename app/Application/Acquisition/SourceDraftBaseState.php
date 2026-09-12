@@ -13,8 +13,8 @@ use App\Domain\Acquisition\SourceRevisionId;
 final readonly class SourceDraftBaseState
 {
     /**
-     * @param list<MentionRevisionId> $mentionRevisionIds
-     * @param list<ClaimRevisionId> $claimRevisionIds
+     * @param  list<MentionRevisionId>  $mentionRevisionIds
+     * @param  list<ClaimRevisionId>  $claimRevisionIds
      */
     public function __construct(
         public SourceRevisionId $sourceRevisionId,
@@ -25,8 +25,8 @@ final readonly class SourceDraftBaseState
     ) {}
 
     /**
-     * @param list<MentionRevisionId> $mentionRevisionIds
-     * @param list<ClaimRevisionId> $claimRevisionIds
+     * @param  list<MentionRevisionId>  $mentionRevisionIds
+     * @param  list<ClaimRevisionId>  $claimRevisionIds
      */
     public static function capture(
         SourceRevisionId $sourceRevisionId,
