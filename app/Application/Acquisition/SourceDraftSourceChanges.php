@@ -12,9 +12,9 @@ use App\Domain\Acquisition\SourceType;
 final readonly class SourceDraftSourceChanges
 {
     /**
-     * @param list<SourceText> $addTexts
-     * @param list<SourceText> $updateTexts
-     * @param list<SourceTextId> $removeTextIds
+     * @param  list<SourceText>  $addTexts
+     * @param  list<SourceText>  $updateTexts
+     * @param  list<SourceTextId>  $removeTextIds
      */
     public function __construct(
         public ?SourceType $type = null,
