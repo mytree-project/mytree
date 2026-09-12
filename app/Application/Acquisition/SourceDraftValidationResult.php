@@ -12,7 +12,7 @@ final readonly class SourceDraftValidationResult
     /** @param list<SourceDraftValidationIssue> $issues */
     public function __construct(array $issues = [])
     {
-        $this->issues = array_values($issues);
+        $this->issues = $issues;
     }
 
     public function isValid(): bool
