@@ -16,7 +16,7 @@
                         <th class="min-w-40 px-6 py-3 font-medium">Type</th>
                         <th class="w-28 px-6 py-3 font-medium">Revision</th>
                         <th class="min-w-72 px-6 py-3 font-medium">Metadata</th>
-                        <th class="w-24 px-6 py-3 font-medium"><span class="sr-only">Actions</span></th>
+                        <th class="w-40 px-6 py-3 font-medium"><span class="sr-only">Actions</span></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-white/10">
@@ -29,9 +29,14 @@
                                 {{ $this->metadataSummary($source) }}
                             </td>
                             <td class="whitespace-nowrap px-6 py-4 text-right">
-                                <x-filament::link href="{{ \App\Filament\Pages\Acquisition\SourceEditor::getUrl(['source' => $source->id->value]) }}">
-                                    Edit
-                                </x-filament::link>
+                                <div class="flex justify-end gap-3">
+                                    <x-filament::link href="{{ \App\Filament\Pages\Acquisition\SourceEditor::getUrl(['source' => $source->id->value]) }}">
+                                        Details
+                                    </x-filament::link>
+                                    <x-filament::link href="{{ \App\Filament\Pages\Acquisition\StructuredFieldsEditor::getUrl(['source' => $source->id->value]) }}">
+                                        Fields
+                                    </x-filament::link>
+                                </div>
                             </td>
                         </tr>
                     @empty
