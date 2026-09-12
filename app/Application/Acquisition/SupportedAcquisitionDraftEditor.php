@@ -10,6 +10,7 @@ use App\Domain\Acquisition\ClaimId;
 use App\Domain\Acquisition\ClaimQualifiers;
 use App\Domain\Acquisition\Mention;
 use App\Domain\Acquisition\MentionId;
+use App\Domain\Acquisition\MentionKind;
 use App\Domain\Acquisition\MentionRawData;
 use InvalidArgumentException;
 
@@ -100,7 +101,7 @@ final readonly class SupportedAcquisitionDraftEditor
 
             if ($existing === null) {
                 $add[] = $mention;
-                if ($mention->kind->key === \App\Domain\Acquisition\MentionKind::EVENT) {
+                if ($mention->kind->key === MentionKind::EVENT) {
                     $newEventIds[] = $mention->id->value;
                 }
             } else {
@@ -241,7 +242,7 @@ final readonly class SupportedAcquisitionDraftEditor
         return [$add, $update, $remove, $claimsBySubject];
     }
 
-    /** @param list<Mention> $mentions */
+    /** @param  list<Mention>  $mentions */
     private function findMentionById(array $mentions, string $id): ?Mention
     {
         foreach ($mentions as $mention) {
