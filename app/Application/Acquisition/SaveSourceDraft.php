@@ -242,8 +242,8 @@ final readonly class SaveSourceDraft
     }
 
     /**
-     * @param list<SourceLocator> $before
-     * @param list<SourceLocator> $after
+     * @param  list<SourceLocator>  $before
+     * @param  list<SourceLocator>  $after
      */
     private function syncLocators(array $before, array $after): void
     {
@@ -282,7 +282,7 @@ final readonly class SaveSourceDraft
     }
 
     /**
-     * @param list<SourceAsset> $assets
+     * @param  list<SourceAsset>  $assets
      * @return array<string, SourceAsset>
      */
     private function assetsById(array $assets): array
@@ -296,7 +296,7 @@ final readonly class SaveSourceDraft
     }
 
     /**
-     * @param list<Mention> $mentions
+     * @param  list<Mention>  $mentions
      * @return array<string, Mention>
      */
     private function mentionsById(array $mentions): array
@@ -310,7 +310,7 @@ final readonly class SaveSourceDraft
     }
 
     /**
-     * @param list<Claim> $claims
+     * @param  list<Claim>  $claims
      * @return array<string, Claim>
      */
     private function claimsById(array $claims): array
@@ -324,7 +324,7 @@ final readonly class SaveSourceDraft
     }
 
     /**
-     * @param list<SourceLocator> $locators
+     * @param  list<SourceLocator>  $locators
      * @return array<string, SourceLocator>
      */
     private function locatorsById(array $locators): array
