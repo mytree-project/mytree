@@ -21,6 +21,6 @@ final readonly class SupportedAcquisitionEventContextInput
             throw new InvalidArgumentException('Supported event context input requires an event Mention.');
         }
 
-        $this->claims = array_values($claims);
+        $this->claims = $claims;
     }
 }
