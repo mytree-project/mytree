@@ -66,7 +66,7 @@ final class SupportedAcquisitionFieldValueFactoryTest extends TestCase
     }
 
     /**
-     * @param class-string $expectedClass
+     * @param  class-string  $expectedClass
      */
     #[DataProvider('scalarValueProvider')]
     public function test_scalar_typed_value_adapters_round_trip(
