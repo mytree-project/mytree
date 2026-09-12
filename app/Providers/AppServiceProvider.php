@@ -15,6 +15,7 @@ use App\Application\Acquisition\MentionRevisionClock;
 use App\Application\Acquisition\MentionRevisionRepository;
 use App\Application\Acquisition\SourceAssetRepository;
 use App\Application\Acquisition\SourceAssetStorage;
+use App\Application\Acquisition\SourceBrowseRepository;
 use App\Application\Acquisition\SourceIdentifierGenerator;
 use App\Application\Acquisition\SourceLocatorRepository;
 use App\Application\Acquisition\SourceRepository;
@@ -39,6 +40,7 @@ use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentEvidenceStateRep
 use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentMentionRepository;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentMentionRevisionRepository;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentSourceAssetRepository;
+use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentSourceBrowseRepository;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentSourceLocatorRepository;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentSourceRepository;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentSourceRevisionRepository;
@@ -65,6 +67,7 @@ final class AppServiceProvider extends ServiceProvider
         $this->app->bind(SettingsStore::class, EloquentSettingsStore::class);
         $this->app->bind(ApplicationSettingsProvider::class, ReadApplicationSettings::class);
         $this->app->bind(SourceRepository::class, EloquentSourceRepository::class);
+        $this->app->bind(SourceBrowseRepository::class, EloquentSourceBrowseRepository::class);
         $this->app->bind(SourceAssetRepository::class, EloquentSourceAssetRepository::class);
         $this->app->bind(SourceAssetStorage::class, LaravelSourceAssetStorage::class);
         $this->app->bind(SourceRevisionRepository::class, EloquentSourceRevisionRepository::class);
