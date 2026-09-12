@@ -54,7 +54,7 @@ final readonly class BuildSourceDraftState
             $changes->removeMentionIds,
             static fn (Mention $mention): string => $mention->id->value,
             static fn (MentionId $id): string => $id->value,
-            'mention',
+            'Mention',
         );
 
         $claims = $this->keyBy($current->claims, static fn (Claim $claim): string => $claim->id->value);
@@ -65,10 +65,21 @@ final readonly class BuildSourceDraftState
             $changes->removeClaimIds,
             static fn (Claim $claim): string => $claim->id->value,
             static fn (ClaimId $id): string => $id->value,
-            'claim',
+            'Claim',
         );
 
         $locators = $this->keyBy($current->locators, static fn (SourceLocator $locator): string => $locator->id->value);
+        foreach ($changes->updateLocators as $index => $locator) {
+            $existing = $locators[$locator->id->value] ?? null;
+            if ($existing instanceof SourceLocator
+                && ($existing->sourceId->value !== $locator->sourceId->value
+                    || $existing->claimId->value !== $locator->claimId->value)) {
+                throw new SourceDraftOperationInvalid(
+                    "changes.updateLocators.$index",
+                    'SourceLocator parent Source and Claim cannot be changed; remove and add the locator instead.',
+                );
+            }
+        }
         $this->applyEntityChanges(
             $locators,
             $changes->addLocators,
@@ -76,7 +87,7 @@ final readonly class BuildSourceDraftState
             $changes->removeLocatorIds,
             static fn (SourceLocator $locator): string => $locator->id->value,
             static fn (SourceLocatorId $id): string => $id->value,
-            'locator',
+            'Locator',
         );
 
         $claimIds = array_fill_keys(array_keys($claims), true);
@@ -180,12 +191,17 @@ final readonly class BuildSourceDraftState
         array $remove,
         callable $entityId,
         callable $removeId,
-        string $name,
+        string $entityName,
     ): void {
+        $collectionName = $entityName.'s';
+
         foreach ($add as $index => $entity) {
             $id = $entityId($entity);
             if (isset($current[$id])) {
-                throw new SourceDraftOperationInvalid("changes.add{$name}s.$index", ucfirst($name).' identity already exists.');
+                throw new SourceDraftOperationInvalid(
+                    "changes.add{$collectionName}.$index",
+                    $entityName.' identity already exists.',
+                );
             }
             $current[$id] = $entity;
         }
@@ -193,7 +209,10 @@ final readonly class BuildSourceDraftState
         foreach ($update as $index => $entity) {
             $id = $entityId($entity);
             if (! isset($current[$id])) {
-                throw new SourceDraftOperationInvalid("changes.update{$name}s.$index", ucfirst($name).' identity does not exist.');
+                throw new SourceDraftOperationInvalid(
+                    "changes.update{$collectionName}.$index",
+                    $entityName.' identity does not exist.',
+                );
             }
             $current[$id] = $entity;
         }
@@ -201,7 +220,10 @@ final readonly class BuildSourceDraftState
         foreach ($remove as $index => $idObject) {
             $id = $removeId($idObject);
             if (! isset($current[$id])) {
-                throw new SourceDraftOperationInvalid("changes.remove{$name}Ids.$index", ucfirst($name).' identity does not exist.');
+                throw new SourceDraftOperationInvalid(
+                    "changes.remove{$entityName}Ids.$index",
+                    $entityName.' identity does not exist.',
+                );
             }
             unset($current[$id]);
         }
