@@ -138,7 +138,7 @@ final readonly class ValidateSourceDraft
         return new SourceDraftValidationResult($issues);
     }
 
-    /** @param list<SourceDraftValidationIssue> $issues */
+    /** @param  list<SourceDraftValidationIssue>  $issues */
     private function validateSubjectKind(Claim $claim, Mention $subject, string $path, array &$issues): void
     {
         try {
@@ -148,7 +148,7 @@ final readonly class ValidateSourceDraft
         }
     }
 
-    /** @param list<SourceDraftValidationIssue> $issues */
+    /** @param  list<SourceDraftValidationIssue>  $issues */
     private function validateObjectKind(Claim $claim, Mention $object, string $path, array &$issues): void
     {
         try {
