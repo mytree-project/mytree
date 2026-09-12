@@ -16,9 +16,9 @@ final readonly class SupportedAcquisitionEditInput
     public array $eventContexts;
 
     /**
-     * @param list<SupportedAcquisitionMentionInput> $mentions
-     * @param list<SupportedAcquisitionClaimInput> $fields
-     * @param list<SupportedAcquisitionEventContextInput> $eventContexts
+     * @param  list<SupportedAcquisitionMentionInput>  $mentions
+     * @param  list<SupportedAcquisitionClaimInput>  $fields
+     * @param  list<SupportedAcquisitionEventContextInput>  $eventContexts
      */
     public function __construct(
         array $mentions = [],
