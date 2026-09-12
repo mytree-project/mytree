@@ -23,7 +23,7 @@
                     @forelse ($this->sources() as $source)
                         <tr wire:key="source-{{ $source->id->value }}">
                             <td class="px-4 py-3 font-mono text-xs">{{ $source->id->value }}</td>
-                            <td class="px-4 py-3">{{ $source->type->key }}@{{ $source->type->schemaVersion }}</td>
+                            <td class="px-4 py-3">{{ $source->type->key.'@'.$source->type->schemaVersion }}</td>
                             <td class="px-4 py-3">{{ $source->revisionNumber }}</td>
                             <td class="max-w-xl truncate px-4 py-3" title="{{ $this->metadataSummary($source) }}">
                                 {{ $this->metadataSummary($source) }}
