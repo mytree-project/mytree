@@ -320,7 +320,7 @@ final class SourceEditor extends Page
         );
     }
 
-    /** @param array<string, mixed> $data */
+    /** @param  array<string, mixed>  $data */
     private function sourceChanges(SourceDraft $draft, array $data): SourceDraftSourceChanges
     {
         $typeKey = $data['source_type_key'] ?? null;
@@ -344,7 +344,7 @@ final class SourceEditor extends Page
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array{0: list<SourceText>, 1: list<SourceText>, 2: list<SourceTextId>}
      */
     private function textChanges(SourceDraft $draft, array $data): array
@@ -416,7 +416,7 @@ final class SourceEditor extends Page
         return [$add, $update, $remove];
     }
 
-    /** @param array<string, mixed> $data */
+    /** @param  array<string, mixed>  $data */
     private function metadataValues(SourceDraft $draft, array $data): array
     {
         $values = [];
@@ -477,7 +477,7 @@ final class SourceEditor extends Page
         };
     }
 
-    /** @param array<string, mixed> $data */
+    /** @param  array<string, mixed>  $data */
     private function detachAssetIds(array $data): array
     {
         $ids = $data['detach_asset_ids'] ?? [];
@@ -492,7 +492,7 @@ final class SourceEditor extends Page
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return list<TemporaryUploadedFile>
      */
     private function uploadedFiles(array $data): array
@@ -510,7 +510,7 @@ final class SourceEditor extends Page
 
         $files = [];
         foreach ($uploads as $upload) {
-            if (! $upload instanceof TemporaryUploadedFile) {
+            if (! ($upload instanceof TemporaryUploadedFile)) {
                 throw ValidationException::withMessages(['data.uploads' => 'Uploaded assets are invalid.']);
             }
             $files[] = $upload;
