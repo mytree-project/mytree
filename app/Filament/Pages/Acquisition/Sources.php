@@ -8,7 +8,6 @@ use App\Application\Acquisition\BrowseSources;
 use App\Application\Acquisition\SourceBrowseItem;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
-use JsonException;
 
 final class Sources extends Page
 {
@@ -30,18 +29,33 @@ final class Sources extends Page
 
     public function metadataSummary(SourceBrowseItem $source): string
     {
-        if ($source->metadata->toArray() === []) {
+        $metadata = $source->metadata->toArray();
+        if ($metadata === []) {
             return 'No metadata';
         }
 
-        try {
-            return json_encode(
-                $source->metadata->toArray(),
-                JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
+        $parts = [];
+        foreach ($metadata as $key => $value) {
+            $parts[] = sprintf(
+                '%s: %s',
+                str_replace('_', ' ', $key),
+                $this->metadataValueSummary($value),
             );
-        } catch (JsonException) {
-            return 'Metadata unavailable';
         }
+
+        return implode(' · ', $parts);
+    }
+
+    private function metadataValueSummary(mixed $value): string
+    {
+        return match (true) {
+            is_string($value) => $value,
+            is_int($value), is_float($value) => (string) $value,
+            is_bool($value) => $value ? 'true' : 'false',
+            $value === null => 'null',
+            is_array($value) => sprintf('[%d items]', count($value)),
+            default => 'unsupported value',
+        };
     }
 
     /** @return list<Action> */
