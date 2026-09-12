@@ -80,6 +80,7 @@ final readonly class ValidateSourceDraft
 
             if ($claim->sourceId->value !== $sourceId) {
                 $issues[] = $this->error('draft.claim.cross_source', "$path.sourceId", 'Claim must belong to the edited Source.');
+
                 continue;
             }
 
