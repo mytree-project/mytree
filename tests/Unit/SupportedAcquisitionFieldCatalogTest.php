@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit;
 
 use App\Application\Acquisition\SupportedAcquisitionFieldCatalog;
+use App\Application\Acquisition\SupportedAcquisitionFieldDescriptor;
 use App\Application\Acquisition\SupportedAcquisitionFieldEditorKind;
 use App\Application\Acquisition\SupportedAcquisitionFieldMappingKind;
 use App\Domain\Acquisition\ClaimValueType;
@@ -76,7 +77,7 @@ final class SupportedAcquisitionFieldCatalogTest extends TestCase
     public function test_catalog_order_is_deterministic_and_keys_are_unique(): void
     {
         $keys = array_map(
-            static fn ($descriptor): string => $descriptor->key,
+            static fn (SupportedAcquisitionFieldDescriptor $descriptor): string => $descriptor->key,
             (new SupportedAcquisitionFieldCatalog)->all(),
         );
         $sorted = $keys;
