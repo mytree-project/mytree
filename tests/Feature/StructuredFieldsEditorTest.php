@@ -7,7 +7,9 @@ namespace Tests\Feature;
 use App\Application\Acquisition\CreateSource;
 use App\Application\Acquisition\LoadSourceDraft;
 use App\Domain\Acquisition\AgeClaimValue;
+use App\Domain\Acquisition\Claim;
 use App\Domain\Acquisition\DateClaimValue;
+use App\Domain\Acquisition\Mention;
 use App\Domain\Acquisition\MentionKind;
 use App\Domain\Acquisition\PredicateKey;
 use App\Domain\Acquisition\SourceType;
@@ -16,7 +18,6 @@ use App\Filament\Pages\Acquisition\StructuredFieldsEditor;
 use App\Infrastructure\Persistence\Eloquent\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -135,7 +136,7 @@ final class StructuredFieldsEditorTest extends TestCase
         self::assertSame(MentionKind::EVENT, $event->kind->key);
         self::assertSame(4, count(array_filter(
             $draft->current->claims,
-            static fn ($claim): bool => $claim->subjectMentionId->value === $event->id->value,
+            static fn (Claim $claim): bool => $claim->subjectMentionId->value === $event->id->value,
         )));
 
         $this->assertDatabaseCount('mention_revisions', 4);
@@ -146,7 +147,8 @@ final class StructuredFieldsEditorTest extends TestCase
     public function test_repeatable_fields_can_coexist_and_one_can_be_removed_without_touching_mention_raw_data(): void
     {
         $source = app(CreateSource::class)->handle(SourceType::generic());
-        $component = Livewire::test(StructuredFieldsEditor::class, ['source' => $source->id->value])
+
+        Livewire::test(StructuredFieldsEditor::class, ['source' => $source->id->value])
             ->fillForm([
                 'mentions' => [[
                     'id' => null,
@@ -165,11 +167,10 @@ final class StructuredFieldsEditorTest extends TestCase
             ->call('save')
             ->assertHasNoFormErrors();
 
-        unset($component);
         $draft = app(LoadSourceDraft::class)->handle($source->id);
         $occupations = array_values(array_filter(
             $draft->current->claims,
-            static fn ($claim): bool => $claim->predicate->key === PredicateKey::PersonOccupation,
+            static fn (Claim $claim): bool => $claim->predicate->key === PredicateKey::PersonOccupation,
         ));
         self::assertCount(2, $occupations);
 
@@ -186,7 +187,7 @@ final class StructuredFieldsEditorTest extends TestCase
         $afterRemoval = app(LoadSourceDraft::class)->handle($source->id);
         self::assertCount(1, array_filter(
             $afterRemoval->current->claims,
-            static fn ($claim): bool => $claim->predicate->key === PredicateKey::PersonOccupation,
+            static fn (Claim $claim): bool => $claim->predicate->key === PredicateKey::PersonOccupation,
         ));
         self::assertSame(
             ['unclassified_descriptor' => 'однодворец'],
@@ -233,7 +234,10 @@ final class StructuredFieldsEditorTest extends TestCase
         self::assertSame('około 40 lat', $claim->value->raw());
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * @param  array{raw: string, kind: string, from: string, to?: string}|null  $effectiveTime
+     * @return array<string, mixed>
+     */
     private function literalRow(
         string $fieldKey,
         ?string $subjectLocalKey,
@@ -276,8 +280,8 @@ final class StructuredFieldsEditorTest extends TestCase
         ];
     }
 
-    /** @param list<\App\Domain\Acquisition\Mention> $mentions */
-    private function mentionByLocalKey(array $mentions, string $localKey): \App\Domain\Acquisition\Mention
+    /** @param  list<Mention>  $mentions */
+    private function mentionByLocalKey(array $mentions, string $localKey): Mention
     {
         foreach ($mentions as $mention) {
             if ($mention->localKey === $localKey) {
@@ -288,8 +292,8 @@ final class StructuredFieldsEditorTest extends TestCase
         self::fail(sprintf('Mention "%s" was not found.', $localKey));
     }
 
-    /** @param list<\App\Domain\Acquisition\Claim> $claims */
-    private function claimByPredicate(array $claims, PredicateKey $predicate): \App\Domain\Acquisition\Claim
+    /** @param  list<Claim>  $claims */
+    private function claimByPredicate(array $claims, PredicateKey $predicate): Claim
     {
         foreach ($claims as $claim) {
             if ($claim->predicate->key === $predicate) {
