@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\Acquisition\SourceEditor;
+use App\Filament\Pages\Acquisition\Sources;
 use App\Filament\Pages\Settings;
 use App\Filament\Widgets\SystemStatusWidget;
 use Filament\Http\Middleware\Authenticate;
@@ -32,6 +34,8 @@ final class AdminPanelProvider extends PanelProvider
             ->login()
             ->pages([
                 Dashboard::class,
+                Sources::class,
+                SourceEditor::class,
                 Settings::class,
             ])
             ->widgets([
