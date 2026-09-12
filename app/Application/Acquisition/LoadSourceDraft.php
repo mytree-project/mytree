@@ -55,7 +55,7 @@ final readonly class LoadSourceDraft
         );
     }
 
-    /** @param list<SourceTextInput> $texts */
+    /** @param  list<SourceTextInput>  $texts */
     public function blank(
         SourceType $type,
         ?SourceMetadata $metadata = null,
@@ -87,8 +87,8 @@ final readonly class LoadSourceDraft
     }
 
     /**
-     * @param list<Mention> $mentions
-     * @param list<Claim> $claims
+     * @param  list<Mention>  $mentions
+     * @param  list<Claim>  $claims
      */
     private function captureBaseState(SourceId $sourceId, array $mentions, array $claims): SourceDraftBaseState
     {
