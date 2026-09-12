@@ -177,8 +177,8 @@ final class StructuredFieldsEditorTest extends TestCase
         Livewire::test(StructuredFieldsEditor::class, ['source' => $source->id->value])
             ->fillForm([
                 'fields' => [[
-                    'claim_id' => $occupations[0]->id->value,
                     ...$this->literalRow(PredicateKey::PersonOccupation->value, 'person.1', $occupations[0]->value?->raw() ?? 'rolnik'),
+                    'claim_id' => $occupations[0]->id->value,
                 ]],
             ])
             ->call('save')
