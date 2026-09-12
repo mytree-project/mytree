@@ -7,6 +7,7 @@ namespace App\Application\Acquisition;
 final readonly class SourceDraftValidationIssue
 {
     public const ERROR = 'error';
+
     public const WARNING = 'warning';
 
     public function __construct(
