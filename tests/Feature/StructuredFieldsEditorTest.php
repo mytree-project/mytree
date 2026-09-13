@@ -141,7 +141,7 @@ final class StructuredFieldsEditorTest extends TestCase
 
         $this->assertDatabaseCount('mention_revisions', 4);
         $this->assertDatabaseCount('claim_revisions', 7);
-        $this->assertDatabaseCount('evidence_states', 2);
+        $this->assertDatabaseCount('evidence_states', 1);
     }
 
     public function test_repeatable_fields_can_coexist_and_one_can_be_removed_without_touching_mention_raw_data(): void
