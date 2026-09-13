@@ -21,7 +21,7 @@ final readonly class SourceTypeTemplateDefinition
 
     /**
      * @param  list<SourceType>  $compatibleSourceTypes
-     * @param  list<string>  $defaultFieldKeys
+     * @param  list<string>      $defaultFieldKeys
      */
     public function __construct(
         string $name,
@@ -77,8 +77,8 @@ final readonly class SourceTypeTemplateDefinition
 
         $this->name = $normalizedName;
         $this->description = $normalizedDescription;
-        $this->compatibleSourceTypes = array_values($compatibleSourceTypes);
-        $this->defaultFieldKeys = array_values($defaultFieldKeys);
+        $this->compatibleSourceTypes = $compatibleSourceTypes;
+        $this->defaultFieldKeys = $defaultFieldKeys;
     }
 
     public function isCompatibleWith(SourceType $sourceType): bool
