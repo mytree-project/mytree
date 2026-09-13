@@ -22,7 +22,6 @@ use App\Application\Acquisition\SourceRepository;
 use App\Application\Acquisition\SourceRevisionClock;
 use App\Application\Acquisition\SourceRevisionRepository;
 use App\Application\Acquisition\SourceTypeTemplateRepository;
-use App\Application\Settings\Acquisition\AcquisitionSettingsSection;
 use App\Application\Settings\Application\ApplicationSettingsProvider;
 use App\Application\Settings\Application\ApplicationSettingsSection;
 use App\Application\Settings\Application\ReadApplicationSettings;
@@ -55,9 +54,9 @@ final class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(ApplicationSettingsSection::class);
-        $this->app->singleton(AcquisitionSettingsSection::class);
+        $this->app->singleton(\App\Application\Settings\Acquisition\AcquisitionSettingsSection::class);
         $this->app->tag(
-            [ApplicationSettingsSection::class, AcquisitionSettingsSection::class],
+            [ApplicationSettingsSection::class, \App\Application\Settings\Acquisition\AcquisitionSettingsSection::class],
             SettingsSection::REGISTRY_TAG,
         );
 

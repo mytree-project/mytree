@@ -189,7 +189,7 @@ final class EloquentSourceTypeTemplateRepository implements SourceTypeTemplateRe
         if ($changedBy !== null && ! is_string($changedBy)) {
             throw new UnexpectedValueException('Stored Source Type Template changed_by must be a string or null.');
         }
-        if (! $createdAt instanceof DateTimeInterface) {
+        if (! ($createdAt instanceof DateTimeInterface)) {
             throw new UnexpectedValueException('Stored Source Type Template created_at must be a date/time value.');
         }
 
