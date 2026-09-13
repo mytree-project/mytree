@@ -21,7 +21,7 @@ final readonly class SourceTypeTemplateDefinition
 
     /**
      * @param  list<SourceType>  $compatibleSourceTypes
-     * @param  list<string>      $defaultFieldKeys
+     * @param  list<string>  $defaultFieldKeys
      */
     public function __construct(
         string $name,
