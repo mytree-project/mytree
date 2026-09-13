@@ -92,7 +92,7 @@ final class ApplicationSettingsTest extends TestCase
 
         self::assertSame(
             ApplicationSettingsSection::KEY,
-            $registry->sections()[0]->key(),
+            $registry->section(ApplicationSettingsSection::KEY)->key(),
         );
     }
 }

@@ -21,6 +21,8 @@ use App\Application\Acquisition\SourceLocatorRepository;
 use App\Application\Acquisition\SourceRepository;
 use App\Application\Acquisition\SourceRevisionClock;
 use App\Application\Acquisition\SourceRevisionRepository;
+use App\Application\Acquisition\SourceTypeTemplateRepository;
+use App\Application\Settings\Acquisition\AcquisitionSettingsSection;
 use App\Application\Settings\Application\ApplicationSettingsProvider;
 use App\Application\Settings\Application\ApplicationSettingsSection;
 use App\Application\Settings\Application\ReadApplicationSettings;
@@ -44,6 +46,7 @@ use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentSourceBrowseRepo
 use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentSourceLocatorRepository;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentSourceRepository;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentSourceRevisionRepository;
+use App\Infrastructure\Persistence\Eloquent\Acquisition\EloquentSourceTypeTemplateRepository;
 use App\Infrastructure\Persistence\Eloquent\Settings\EloquentSettingsStore;
 use Illuminate\Support\ServiceProvider;
 
@@ -52,8 +55,9 @@ final class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(ApplicationSettingsSection::class);
+        $this->app->singleton(AcquisitionSettingsSection::class);
         $this->app->tag(
-            [ApplicationSettingsSection::class],
+            [ApplicationSettingsSection::class, AcquisitionSettingsSection::class],
             SettingsSection::REGISTRY_TAG,
         );
 
@@ -77,6 +81,7 @@ final class AppServiceProvider extends ServiceProvider
         $this->app->bind(ClaimRevisionRepository::class, EloquentClaimRevisionRepository::class);
         $this->app->bind(EvidenceStateRepository::class, EloquentEvidenceStateRepository::class);
         $this->app->bind(SourceLocatorRepository::class, EloquentSourceLocatorRepository::class);
+        $this->app->bind(SourceTypeTemplateRepository::class, EloquentSourceTypeTemplateRepository::class);
         $this->app->bind(AcquisitionTransaction::class, LaravelAcquisitionTransaction::class);
         $this->app->singleton(SourceRevisionClock::class, SystemSourceRevisionClock::class);
         $this->app->singleton(MentionRevisionClock::class, SystemMentionRevisionClock::class);

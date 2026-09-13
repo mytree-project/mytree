@@ -113,7 +113,7 @@ Capabilities use consistent names across only the layers they actually require. 
 
 | Capability | Current or possible homes when real code exists |
 | --- | --- |
-| Acquisition | `Domain/Acquisition`, `Application/Acquisition`, `Infrastructure/Persistence/Eloquent/Acquisition`; future UI under `Filament/Acquisition` when implemented |
+| Acquisition | `Domain/Acquisition`, `Application/Acquisition`, `Infrastructure/Persistence/Eloquent/Acquisition`, `Filament/Pages/Acquisition` |
 | Settings | `Application/Settings`, `Infrastructure/Persistence/Eloquent/Settings`, `Filament/Pages/Settings.php` |
 | Search | `Domain/Search`, `Application/Search`, `Infrastructure/Search`, `Filament/Search` |
 | Providers | application contracts/use cases plus `Infrastructure/Providers` adapters |
@@ -131,12 +131,13 @@ The repository now contains real framework-independent MyTree Domain and Applica
 
 ### Acquisition
 
-The implemented M3 Acquisition foundation is split across the intended layers:
+The implemented Acquisition foundation is split across the intended layers:
 
 ```text
 app/Domain/Acquisition/...
 app/Application/Acquisition/...
 app/Infrastructure/Persistence/Eloquent/Acquisition/...
+app/Filament/Pages/Acquisition/...
 ```
 
 `Domain/Acquisition` contains the source-first domain contracts and value objects for the implemented Source/Mention/Claim model, including typed Claim values and immutable history concepts.
@@ -155,7 +156,9 @@ ClaimRevision
 
 and composes exact retained revision identities into an immutable `EvidenceState`. `SourceRevision` is Source-level history; it does not own the complete Mention/Claim graph history. Canonical semantics for this model remain in `mytree-project/mytree-project/docs/acquisition`.
 
-The user-facing M4 acquisition workflow is not part of this baseline. In particular, a `SourceDraft`-based generic source-entry/editor flow and Source Type Template UI have not yet been implemented.
+The M4 application/UI foundation now includes the `SourceDraft` load/validate/save workflow, the controlled supported-field catalog with generic Mention/Claim editors, and versioned Source Type Template configuration. Templates are application-owned presentation configuration: they reference stable supported-field keys, keep immutable historical versions and never become Source/Mention/Claim truth.
+
+The final integrated template-driven Basic Source Acquisition editing experience is still separate follow-up work. This baseline does not claim that selecting a template on Source create/edit already composes the primary Basic form.
 
 ### Settings
 
@@ -168,6 +171,8 @@ app/Filament/Pages/Settings.php
 ```
 
 The Application layer owns setting definitions, typed values, registry/store boundaries and setting use cases. Eloquent provides the persistence adapter and the Filament page is a framework/UI adapter over those application contracts.
+
+The Settings registry includes an `Acquisition` section. Source Type Templates are managed from the Settings page but use dedicated append-only version persistence under the Acquisition boundary rather than an opaque scalar/JSON setting. Runtime consumers obtain current or historical template configuration through typed Application use cases and contracts.
 
 ### Authentication and diagnostics
 
