@@ -4,18 +4,16 @@
 
         <div class="flex flex-wrap gap-3">
             <x-filament::button type="submit">
-                Save Source
+                Save Structured Fields
             </x-filament::button>
 
-            @if ($sourceId !== null)
-                <x-filament::button
-                    tag="a"
-                    color="gray"
-                    href="{{ \App\Filament\Pages\Acquisition\StructuredFieldsEditor::getUrl(['source' => $sourceId]) }}"
-                >
-                    Edit Structured Fields
-                </x-filament::button>
-            @endif
+            <x-filament::button
+                tag="a"
+                color="gray"
+                href="{{ \App\Filament\Pages\Acquisition\SourceEditor::getUrl(['source' => $sourceId]) }}"
+            >
+                Edit Source Details
+            </x-filament::button>
 
             <x-filament::button
                 tag="a"
