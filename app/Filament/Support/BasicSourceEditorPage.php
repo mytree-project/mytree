@@ -113,7 +113,6 @@ abstract class BasicSourceEditorPage extends Page
 
         $this->sourceId = $sourceId->value;
         $this->revisionNumber = $summary->revisionNumber;
-        $this->sourceTypeContext = sprintf('%s · %s · revision %d · Basic acquisition workspace', $this->sourceId, $summary->type->key.'@'.$summary->type->schemaVersion, $summary->revisionNumber);
         $this->sourceTypeContext = sprintf('%s@%d', $summary->type->key, $summary->type->schemaVersion);
         $this->baseState = $this->serializeBaseState($draft->baseState);
         $this->fillFromDraft($draft);
