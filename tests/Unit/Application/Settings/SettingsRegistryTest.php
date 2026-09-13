@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Application\Settings;
 
+use App\Application\Settings\Acquisition\AcquisitionSettingsSection;
 use App\Application\Settings\Application\ApplicationSettingsSection;
 use App\Application\Settings\SettingsRegistry;
 use App\Application\Settings\SettingsSection;
@@ -16,10 +17,11 @@ final class SettingsRegistryTest extends TestCase
     {
         $registry = new SettingsRegistry([
             new ApplicationSettingsSection,
+            new AcquisitionSettingsSection,
         ]);
 
         self::assertSame(
-            [ApplicationSettingsSection::KEY],
+            [AcquisitionSettingsSection::KEY, ApplicationSettingsSection::KEY],
             array_map(
                 static fn (SettingsSection $section): string => $section->key(),
                 $registry->sections(),
@@ -32,6 +34,7 @@ final class SettingsRegistryTest extends TestCase
                 ->definitions()[0]
                 ->qualifiedKey(),
         );
+        self::assertSame([], $registry->section(AcquisitionSettingsSection::KEY)->definitions());
     }
 
     public function test_duplicate_section_keys_are_rejected(): void
