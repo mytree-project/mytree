@@ -11,6 +11,7 @@ use App\Application\Acquisition\GetSourceTypeTemplateVersion;
 use App\Application\Acquisition\ListSourceTypeTemplates;
 use App\Application\Acquisition\SourceTypeTemplateConflict;
 use App\Application\Acquisition\SourceTypeTemplateDefinition;
+use App\Application\Acquisition\SourceTypeTemplateVersion;
 use App\Application\Acquisition\SupportedAcquisitionFieldCatalog;
 use App\Application\Acquisition\UpdateSourceTypeTemplate;
 use App\Domain\Acquisition\PredicateKey;
@@ -250,13 +251,13 @@ final class SourceTypeTemplateApplicationTest extends TestCase
     }
 
     /**
-     * @param list<\App\Application\Acquisition\SourceTypeTemplateVersion> $templates
+     * @param  list<SourceTypeTemplateVersion>  $templates
      * @return list<string>
      */
     private function sortedTemplateIds(array $templates): array
     {
         $ids = array_map(
-            static fn (\App\Application\Acquisition\SourceTypeTemplateVersion $template): string => $template->templateId->value,
+            static fn (SourceTypeTemplateVersion $template): string => $template->templateId->value,
             $templates,
         );
         sort($ids, SORT_STRING);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Persistence\Eloquent\Acquisition;
 
+use App\Application\Acquisition\SourceTypeTemplateConflict;
 use App\Application\Acquisition\SourceTypeTemplateDefinition;
 use App\Application\Acquisition\SourceTypeTemplateId;
 use App\Application\Acquisition\SourceTypeTemplateNotFound;
@@ -93,7 +94,7 @@ final class EloquentSourceTypeTemplateRepository implements SourceTypeTemplateRe
 
             $currentVersion = $this->version($record);
             if ($currentVersion !== $expectedVersion) {
-                throw new \App\Application\Acquisition\SourceTypeTemplateConflict(
+                throw new SourceTypeTemplateConflict(
                     templateId: $templateId,
                     expectedVersion: $expectedVersion,
                     currentVersion: $currentVersion,
