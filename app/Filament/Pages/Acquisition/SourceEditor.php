@@ -12,6 +12,4 @@ use App\Filament\Support\BasicSourceEditorPage;
  * BasicSourceEditorPage keeps Filament behind the application boundaries and
  * persists through SaveSourceDraft / StageSourceAsset rather than Eloquent.
  */
-final class SourceEditor extends BasicSourceEditorPage
-{
-}
+final class SourceEditor extends BasicSourceEditorPage {}
