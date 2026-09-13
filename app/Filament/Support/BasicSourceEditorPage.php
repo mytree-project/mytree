@@ -113,6 +113,7 @@ abstract class BasicSourceEditorPage extends Page
 
         $this->sourceId = $sourceId->value;
         $this->revisionNumber = $summary->revisionNumber;
+        $this->sourceTypeContext = sprintf('%s · %s · revision %d · Basic acquisition workspace', $this->sourceId, $summary->type->key.'@'.$summary->type->schemaVersion, $summary->revisionNumber);
         $this->sourceTypeContext = sprintf('%s@%d', $summary->type->key, $summary->type->schemaVersion);
         $this->baseState = $this->serializeBaseState($draft->baseState);
         $this->fillFromDraft($draft);
@@ -149,7 +150,9 @@ abstract class BasicSourceEditorPage extends Page
                     ->maxLength(120)
                     ->rules(['regex:/^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*$/'])
                     ->live()
-                    ->afterStateUpdated(fn (): mixed => $this->sourceTypeChanged()),
+                    ->afterStateUpdated(function (): void {
+                        $this->sourceTypeChanged();
+                    }),
                 TextInput::make('source_type_schema_version')
                     ->label('Source type schema version')
                     ->numeric()
@@ -157,14 +160,18 @@ abstract class BasicSourceEditorPage extends Page
                     ->minValue(1)
                     ->required()
                     ->live()
-                    ->afterStateUpdated(fn (): mixed => $this->sourceTypeChanged()),
+                    ->afterStateUpdated(function (): void {
+                        $this->sourceTypeChanged();
+                    }),
                 Select::make('template_id')
                     ->label('Source Type Template')
                     ->helperText('Templates choose default fields only. Selecting or changing one never changes Source/Mention/Claim truth by itself.')
                     ->placeholder('No template / blank structured form')
                     ->options(fn (): array => $this->templateOptions())
                     ->live()
-                    ->afterStateUpdated(fn (?string $state): mixed => $this->templateChanged($state)),
+                    ->afterStateUpdated(function (?string $state): void {
+                        $this->templateChanged($state);
+                    }),
                 Repeater::make('metadata')
                     ->label('Source metadata')
                     ->helperText('Scalar metadata is editable here. Structured array metadata is preserved unchanged.')
@@ -228,7 +235,9 @@ abstract class BasicSourceEditorPage extends Page
                     ->placeholder('Choose a field to add')
                     ->options(fn (): array => app(StructuredAcquisitionFormAdapter::class)->pickerOptions())
                     ->live()
-                    ->afterStateUpdated(fn (?string $state): mixed => $this->supportedFieldSelected($state)),
+                    ->afterStateUpdated(function (?string $state): void {
+                        $this->supportedFieldSelected($state);
+                    }),
                 ...app(StructuredAcquisitionFormAdapter::class)->components(),
             ])
             ->statePath('data');
@@ -397,6 +406,10 @@ abstract class BasicSourceEditorPage extends Page
         $this->redirect(static::getUrl($parameters));
     }
 
+    /**
+     * @param  list<SourceAssetId>  $attachAssetIds
+     * @param  list<SourceAssetId>  $detachAssetIds
+     */
     private function combinedChanges(
         SourceDraftSourceChanges $sourceChanges,
         SourceDraftChanges $structuredChanges,
