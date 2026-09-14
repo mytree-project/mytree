@@ -156,9 +156,15 @@ ClaimRevision
 
 and composes exact retained revision identities into an immutable `EvidenceState`. `SourceRevision` is Source-level history; it does not own the complete Mention/Claim graph history. Canonical semantics for this model remain in `mytree-project/mytree-project/docs/acquisition`.
 
-The M4 application/UI foundation now includes the `SourceDraft` load/validate/save workflow, the controlled supported-field catalog with generic Mention/Claim editors, and versioned Source Type Template configuration. Templates are application-owned presentation configuration: they reference stable supported-field keys, keep immutable historical versions and never become Source/Mention/Claim truth.
+The M4 application/UI baseline includes the `SourceDraft` load/validate/save workflow, the controlled supported-field catalog with generic Mention/Claim editors, versioned Source Type Template configuration and the integrated Basic Source Acquisition workspace. `SourceEditor`/`BasicSourceEditorPage` composes Source metadata, repeated texts, assets, supported structured fields and optional template presentation into one Source-scoped edit and persists it through the Application `SourceDraft` workflow.
 
-The final integrated template-driven Basic Source Acquisition editing experience is still separate follow-up work. This baseline does not claim that selecting a template on Source create/edit already composes the primary Basic form.
+`SourceDraft` is an application editing aggregate, not a persisted second domain model. Its base state identifies the exact current revision composition used for optimistic concurrency. A save validates the complete proposed state and coordinates mutable Source/Mention/Claim changes, immutable revision recording and `EvidenceState` capture transactionally; a semantic no-op does not append history.
+
+Supported acquisition fields are an application-owned UI/mapping catalog over canonical Mention/Claim predicates and typed values. The catalog controls what the generic editor can safely represent; it is not a schema restriction on valid Acquisition data. The UI therefore refuses unsupported existing structured data rather than silently dropping it during round-trip editing.
+
+Source Type Templates are versioned presentation configuration. They reference stable supported-field keys, filter by compatible `SourceType` only for presentation, and never become Source/Mention/Claim truth. Blank/no-template entry remains valid, changing a template does not itself create evidence, existing persisted values win over defaults, and empty template-visible fields do not create Claims.
+
+Claim provenance, qualifiers and `SourceLocator` evidence references remain authoritative Acquisition state during UI edits. The structured editor preserves existing Claim origin when changing represented values and does not implicitly remove locators that are outside the edited field projection.
 
 ### Settings
 
