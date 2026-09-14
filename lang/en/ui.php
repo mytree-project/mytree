@@ -28,7 +28,7 @@ return [
         'active' => 'Active',
         'inactive' => 'Inactive',
         'all_source_types' => 'All Source types',
-        'default_field_count' => ':count default field|:count default fields',
+        'default_field_count' => ':count default fields',
         'new_template' => 'New Source type template',
         'edit_template' => 'Edit Source type template',
         'template_name' => 'Name',
