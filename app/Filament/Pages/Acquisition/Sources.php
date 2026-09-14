@@ -13,13 +13,16 @@ final class Sources extends Page
 {
     protected static ?string $slug = 'acquisition/sources';
 
-    protected static ?string $navigationLabel = 'Source Acquisition';
-
     protected static ?string $title = 'Sources';
 
     protected string $view = 'filament.pages.acquisition.sources';
 
     public string $search = '';
+
+    public static function getNavigationLabel(): string
+    {
+        return __('ui.navigation.source_acquisition');
+    }
 
     /** @return list<SourceBrowseItem> */
     public function sources(): array
@@ -31,7 +34,7 @@ final class Sources extends Page
     {
         $metadata = $source->metadata->toArray();
         if ($metadata === []) {
-            return 'No metadata';
+            return __('ui.sources.no_metadata');
         }
 
         $parts = [];
@@ -63,7 +66,7 @@ final class Sources extends Page
     {
         return [
             Action::make('create')
-                ->label('Create Source')
+                ->label(__('ui.sources.create'))
                 ->url(SourceEditor::getUrl()),
         ];
     }
