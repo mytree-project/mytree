@@ -25,12 +25,14 @@ final readonly class CreateSource
         array $texts = [],
         ?string $changeNote = null,
         ?string $changedBy = null,
+        ?string $name = null,
     ): Source {
         $source = new Source(
             id: $this->identifiers->sourceId(),
             type: $type,
             metadata: $metadata ?? SourceMetadata::empty(),
             texts: $this->makeTexts($texts),
+            name: $name,
         );
 
         return $this->transaction->run(function () use ($source, $changeNote, $changedBy): Source {
