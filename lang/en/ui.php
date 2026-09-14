@@ -1,0 +1,47 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'navigation' => [
+        'settings' => 'Settings',
+    ],
+    'settings' => [
+        'general' => 'General',
+        'acquisition' => 'Acquisition',
+        'language' => 'Language',
+        'language_help' => 'The interface language also determines locale-dependent presentation.',
+        'english' => 'English',
+        'polish' => 'Polish',
+        'edit' => 'Edit',
+        'edit_language' => 'Edit language',
+        'save' => 'Save',
+        'cancel' => 'Cancel',
+        'close' => 'Close',
+        'remove' => 'Remove',
+        'language_saved' => 'Language saved',
+        'source_type_templates' => 'Source type templates',
+        'template_help' => 'Templates choose ordered default fields for convenient data entry. They never limit which supported fields or Source/Mention/Claim data a Source may contain. Deactivate a template instead of deleting its retained history.',
+        'create_template' => 'Create template',
+        'no_templates' => 'No Source type templates have been configured yet.',
+        'version' => 'v:version',
+        'active' => 'Active',
+        'inactive' => 'Inactive',
+        'all_source_types' => 'All Source types',
+        'default_field_count' => ':count default field|:count default fields',
+        'new_template' => 'New Source type template',
+        'edit_template' => 'Edit Source type template',
+        'template_name' => 'Name',
+        'description' => 'Description',
+        'compatible_source_types' => 'Compatible Source types',
+        'compatible_source_types_help' => 'Optional presentation filter. Leave empty to offer the template for every Source type.',
+        'source_type_key' => 'Source type key',
+        'add_source_type' => 'Add Source type',
+        'ordered_default_fields' => 'Ordered default structured fields',
+        'ordered_default_fields_help' => 'The order controls presentation only. Zero fields is a valid blank template.',
+        'supported_field' => 'Supported field',
+        'choose_field' => 'Choose a field',
+        'add_field' => 'Add field',
+        'template_saved' => 'Source type template saved',
+    ],
+];
