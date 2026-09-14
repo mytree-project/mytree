@@ -17,146 +17,243 @@ use App\Application\Settings\Application\ApplicationSettings;
 use App\Application\Settings\Application\ApplicationSettingsProvider;
 use App\Application\Settings\Application\UpdateApplicationSettings;
 use App\Domain\Acquisition\SourceType;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Schemas\Schema;
-use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use UnexpectedValueException;
 
-/**
- * @property-read Schema $form
- */
 final class Settings extends Page
 {
     protected string $view = 'filament.pages.settings';
 
-    /** @var array<string, mixed>|null */
-    public ?array $data = [];
+    public string $language = 'en';
+
+    public bool $editingLanguage = false;
+
+    public bool $templateEditorOpen = false;
+
+    /** @var array<string, mixed> */
+    public array $templateEditor = [];
+
+    public static function getNavigationLabel(): string
+    {
+        return __('ui.navigation.settings');
+    }
 
     public function mount(): void
     {
-        $this->fillForm();
+        $this->reloadLanguage();
+        $this->resetTemplateEditor();
     }
 
-    public function form(Schema $schema): Schema
+    public function startEditingLanguage(): void
     {
-        return $schema
-            ->components([
-                TextInput::make('default_locale')
-                    ->label('Default locale')
-                    ->helperText('Default application locale, for example en or pl-PL.')
-                    ->required()
-                    ->maxLength(35)
-                    ->rules([
-                        'regex:/^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/',
-                    ]),
-                Repeater::make('templates')
-                    ->label('Acquisition · Source type templates')
-                    ->helperText('Templates choose ordered default fields for convenient data entry. They never limit which supported fields or Source/Mention/Claim data a Source may contain. Deactivate a template instead of deleting its retained history.')
-                    ->schema([
-                        Hidden::make('template_id'),
-                        Hidden::make('version'),
-                        TextInput::make('name')
-                            ->required()
-                            ->maxLength(160),
-                        Textarea::make('description')
-                            ->rows(2),
-                        Toggle::make('active')
-                            ->default(true),
-                        Repeater::make('compatible_source_types')
-                            ->label('Compatible Source types')
-                            ->helperText('Optional presentation filter. Leave empty to offer the template for every Source type.')
-                            ->schema([
-                                TextInput::make('key')
-                                    ->label('Source type key')
-                                    ->helperText('Lowercase dot-separated key, for example civil.birth.')
-                                    ->required()
-                                    ->rules([
-                                        'regex:/^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*$/',
-                                    ]),
-                                Hidden::make('schema_version')
-                                    ->default(1),
-                            ])
-                            ->defaultItems(0)
-                            ->addActionLabel('Add compatible Source type')
-                            ->columnSpanFull(),
-                        Repeater::make('default_fields')
-                            ->label('Ordered default structured fields')
-                            ->helperText('Drag rows to change presentation order. Zero fields is a valid blank template.')
-                            ->schema([
-                                Select::make('key')
-                                    ->label('Supported field')
-                                    ->options($this->supportedFieldOptions())
-                                    ->searchable()
-                                    ->required(),
-                            ])
-                            ->defaultItems(0)
-                            ->addActionLabel('Add default field')
-                            ->columnSpanFull(),
-                    ])
-                    ->columns(2)
-                    ->defaultItems(0)
-                    ->addActionLabel('Create Source Type Template')
-                    ->deletable(false),
-            ])
-            ->statePath('data');
+        $this->reloadLanguage();
+        $this->editingLanguage = true;
     }
 
-    public function save(): void
+    public function cancelEditingLanguage(): void
     {
-        /** @var array<string, mixed> $data */
-        $data = $this->form->getState();
-        $defaultLocale = $data['default_locale'] ?? null;
+        $this->reloadLanguage();
+        $this->editingLanguage = false;
+        $this->resetValidation('language');
+    }
 
-        if (! is_string($defaultLocale)) {
-            throw new UnexpectedValueException('Default locale form state must be a string.');
-        }
-
-        $actorId = auth()->id();
-        $changedBy = $actorId === null ? null : (string) $actorId;
-
-        try {
-            $this->saveTemplates($data['templates'] ?? [], $changedBy);
-        } catch (InvalidArgumentException|SourceTypeTemplateConflict|SourceTypeTemplateNotFound $exception) {
-            throw ValidationException::withMessages([
-                'data.templates' => $exception->getMessage(),
-            ]);
-        }
+    public function saveLanguage(): void
+    {
+        $this->validate([
+            'language' => ['required', 'in:en,pl'],
+        ]);
 
         app(UpdateApplicationSettings::class)->handle(
-            settings: new ApplicationSettings(
-                defaultLocale: $defaultLocale,
-            ),
-            changedBy: $changedBy,
+            settings: new ApplicationSettings(defaultLocale: $this->language),
+            changedBy: $this->changedBy(),
         );
 
-        $this->fillForm();
+        app()->setLocale($this->language);
+        $this->editingLanguage = false;
 
         Notification::make()
-            ->title('Settings saved')
+            ->title(__('ui.settings.language_saved'))
             ->success()
             ->send();
     }
 
-    private function fillForm(): void
+    /** @return list<array<string, mixed>> */
+    public function templates(): array
     {
-        $settings = app(ApplicationSettingsProvider::class)->current();
-        $templates = app(ListSourceTypeTemplates::class)->handle();
+        return array_map(
+            fn (SourceTypeTemplateVersion $template): array => $this->serializeTemplate($template),
+            app(ListSourceTypeTemplates::class)->handle(),
+        );
+    }
 
-        $this->form->fill([
-            'default_locale' => $settings->defaultLocale,
-            'templates' => array_map(
-                fn (SourceTypeTemplateVersion $template): array => $this->serializeTemplate($template),
-                $templates,
-            ),
+    public function createTemplate(): void
+    {
+        $this->templateEditor = $this->blankTemplate();
+        $this->templateEditorOpen = true;
+        $this->resetValidation();
+    }
+
+    public function editTemplate(string $templateId): void
+    {
+        foreach (app(ListSourceTypeTemplates::class)->handle() as $template) {
+            if ($template->templateId->value !== $templateId) {
+                continue;
+            }
+
+            $this->templateEditor = $this->serializeTemplate($template);
+            $this->templateEditorOpen = true;
+            $this->resetValidation();
+
+            return;
+        }
+
+        throw new SourceTypeTemplateNotFound(new SourceTypeTemplateId($templateId));
+    }
+
+    public function closeTemplateEditor(): void
+    {
+        $this->templateEditorOpen = false;
+        $this->resetTemplateEditor();
+        $this->resetValidation();
+    }
+
+    public function addCompatibleSourceType(): void
+    {
+        $rows = $this->templateEditor['compatible_source_types'] ?? [];
+        if (! is_array($rows)) {
+            $rows = [];
+        }
+
+        $rows[] = ['key' => '', 'schema_version' => 1];
+        $this->templateEditor['compatible_source_types'] = $rows;
+    }
+
+    public function removeCompatibleSourceType(int $index): void
+    {
+        $rows = $this->templateEditor['compatible_source_types'] ?? [];
+        if (! is_array($rows) || ! array_key_exists($index, $rows)) {
+            return;
+        }
+
+        unset($rows[$index]);
+        $this->templateEditor['compatible_source_types'] = array_values($rows);
+    }
+
+    public function addDefaultField(): void
+    {
+        $rows = $this->templateEditor['default_fields'] ?? [];
+        if (! is_array($rows)) {
+            $rows = [];
+        }
+
+        $rows[] = ['key' => ''];
+        $this->templateEditor['default_fields'] = $rows;
+    }
+
+    public function removeDefaultField(int $index): void
+    {
+        $rows = $this->templateEditor['default_fields'] ?? [];
+        if (! is_array($rows) || ! array_key_exists($index, $rows)) {
+            return;
+        }
+
+        unset($rows[$index]);
+        $this->templateEditor['default_fields'] = array_values($rows);
+    }
+
+    public function saveTemplate(): void
+    {
+        $this->validate([
+            'templateEditor.name' => ['required', 'string', 'max:160'],
+            'templateEditor.description' => ['nullable', 'string'],
+            'templateEditor.active' => ['boolean'],
+            'templateEditor.compatible_source_types' => ['array'],
+            'templateEditor.compatible_source_types.*.key' => [
+                'required',
+                'string',
+                'regex:/^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*$/',
+            ],
+            'templateEditor.default_fields' => ['array'],
+            'templateEditor.default_fields.*.key' => ['required', 'string'],
         ]);
+
+        try {
+            $definition = $this->templateDefinition($this->templateEditor);
+            $templateId = $this->templateEditor['template_id'] ?? null;
+
+            if ($templateId === null || $templateId === '') {
+                app(CreateSourceTypeTemplate::class)->handle($definition, $this->changedBy());
+            } else {
+                if (! is_string($templateId)) {
+                    throw new UnexpectedValueException('Source Type Template id form state must be a string.');
+                }
+
+                app(UpdateSourceTypeTemplate::class)->handle(
+                    templateId: new SourceTypeTemplateId($templateId),
+                    expectedVersion: $this->expectedVersion($this->templateEditor['version'] ?? null),
+                    definition: $definition,
+                    changedBy: $this->changedBy(),
+                );
+            }
+        } catch (InvalidArgumentException|SourceTypeTemplateConflict|SourceTypeTemplateNotFound $exception) {
+            $this->addError('templateEditor.name', $exception->getMessage());
+
+            return;
+        }
+
+        $this->templateEditorOpen = false;
+        $this->resetTemplateEditor();
+
+        Notification::make()
+            ->title(__('ui.settings.template_saved'))
+            ->success()
+            ->send();
+    }
+
+    /** @return array<string, array<string, string>> */
+    public function supportedFieldOptions(): array
+    {
+        $options = [];
+
+        foreach (app(SupportedAcquisitionFieldCatalog::class)->all() as $descriptor) {
+            $options[$descriptor->group][$descriptor->key] = $descriptor->label;
+        }
+
+        return $options;
+    }
+
+    private function reloadLanguage(): void
+    {
+        $locale = app(ApplicationSettingsProvider::class)->current()->defaultLocale;
+        $this->language = str_starts_with(strtolower($locale), 'pl') ? 'pl' : 'en';
+    }
+
+    private function changedBy(): ?string
+    {
+        $actorId = auth()->id();
+
+        return $actorId === null ? null : (string) $actorId;
+    }
+
+    /** @return array<string, mixed> */
+    private function blankTemplate(): array
+    {
+        return [
+            'template_id' => null,
+            'version' => null,
+            'name' => '',
+            'description' => null,
+            'active' => true,
+            'compatible_source_types' => [],
+            'default_fields' => [],
+        ];
+    }
+
+    private function resetTemplateEditor(): void
+    {
+        $this->templateEditor = $this->blankTemplate();
     }
 
     /** @return array<string, mixed> */
@@ -180,39 +277,6 @@ final class Settings extends Page
                 $template->definition->defaultFieldKeys,
             ),
         ];
-    }
-
-    private function saveTemplates(mixed $templates, ?string $changedBy): void
-    {
-        if (! is_array($templates)) {
-            throw new UnexpectedValueException('Source Type Template form state must be an array.');
-        }
-
-        foreach ($templates as $templateState) {
-            if (! is_array($templateState)) {
-                throw new UnexpectedValueException('Source Type Template form item must be an array.');
-            }
-
-            $definition = $this->templateDefinition($templateState);
-            $templateId = $templateState['template_id'] ?? null;
-
-            if ($templateId === null || $templateId === '') {
-                app(CreateSourceTypeTemplate::class)->handle($definition, $changedBy);
-
-                continue;
-            }
-
-            if (! is_string($templateId)) {
-                throw new UnexpectedValueException('Source Type Template id form state must be a string.');
-            }
-
-            app(UpdateSourceTypeTemplate::class)->handle(
-                templateId: new SourceTypeTemplateId($templateId),
-                expectedVersion: $this->expectedVersion($templateState['version'] ?? null),
-                definition: $definition,
-                changedBy: $changedBy,
-            );
-        }
     }
 
     /** @param array<int|string, mixed> $state */
@@ -302,17 +366,5 @@ final class Settings extends Page
         }
 
         return $version;
-    }
-
-    /** @return array<string, array<string, string>> */
-    private function supportedFieldOptions(): array
-    {
-        $options = [];
-
-        foreach (app(SupportedAcquisitionFieldCatalog::class)->all() as $descriptor) {
-            $options[$descriptor->group][$descriptor->key] = $descriptor->label;
-        }
-
-        return $options;
     }
 }
