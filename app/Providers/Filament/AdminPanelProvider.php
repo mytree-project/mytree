@@ -9,6 +9,7 @@ use App\Filament\Pages\Acquisition\Sources;
 use App\Filament\Pages\Acquisition\StructuredFieldsEditor;
 use App\Filament\Pages\Settings;
 use App\Filament\Widgets\SystemStatusWidget;
+use App\Http\Middleware\ApplyApplicationLocale;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -51,6 +52,7 @@ final class AdminPanelProvider extends PanelProvider
                 ShareErrorsFromSession::class,
                 VerifyCsrfToken::class,
                 SubstituteBindings::class,
+                ApplyApplicationLocale::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
