@@ -17,6 +17,7 @@ final class SourceRecord extends Model
     /** @var list<string> */
     protected $fillable = [
         'id',
+        'name',
         'schema_version',
         'source_type_key',
         'source_type_schema_version',
