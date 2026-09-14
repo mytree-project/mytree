@@ -68,7 +68,7 @@ final class SourceNameUxTest extends TestCase
         $this->assertDatabaseCount('source_revisions', 2);
     }
 
-    public function test_source_list_searches_by_name_and_renders_name_with_short_identifier(): void
+    public function test_source_list_searches_by_name_and_renders_name_with_full_copyable_identifier(): void
     {
         $wanted = app(CreateSource::class)->handle(
             type: new SourceType('civil.birth'),
@@ -90,7 +90,13 @@ final class SourceNameUxTest extends TestCase
         Livewire::test(Sources::class)
             ->set('search', 'Jan Kowalski')
             ->assertSee('Birth certificate Jan Kowalski 1880')
-            ->assertSee('ID '.substr($wanted->id->value, 0, 8))
+            ->assertSee('ID')
+            ->assertSee($wanted->id->value)
+            ->assertDontSee('ID '.substr($wanted->id->value, 0, 8).'…')
+            ->assertSee('Copy ID')
+            ->assertDontSee('Copy UUID')
+            ->assertSee('Copied')
+            ->assertSee('navigator.clipboard.writeText($el.dataset.copyValue)', false)
             ->assertSee('civil.birth@1')
             ->assertDontSee('Marriage certificate Anna Nowak 1901');
     }
