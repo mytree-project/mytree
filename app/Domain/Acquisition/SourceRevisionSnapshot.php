@@ -10,9 +10,13 @@ use InvalidArgumentException;
 
 final readonly class SourceRevisionSnapshot
 {
-    public const SCHEMA_ID = 'mytree.source-revision.v1';
+    public const SCHEMA_ID = 'mytree.source-revision.v2';
 
-    public const SCHEMA_VERSION = 1;
+    public const SCHEMA_VERSION = 2;
+
+    private const LEGACY_SCHEMA_ID = 'mytree.source-revision.v1';
+
+    private const LEGACY_SCHEMA_VERSION = 1;
 
     private function __construct(
         public int $schemaVersion,
@@ -72,6 +76,7 @@ final readonly class SourceRevisionSnapshot
             'source' => [
                 'id' => $source->id->value,
                 'schema_version' => $source->schemaVersion,
+                'name' => $source->name,
                 'type' => [
                     'key' => $source->type->key,
                     'schema_version' => $source->type->schemaVersion,
@@ -96,12 +101,14 @@ final readonly class SourceRevisionSnapshot
         string $canonicalPayload,
         string $payloadHash,
     ): self {
-        if ($schemaVersion !== self::SCHEMA_VERSION) {
-            throw new InvalidArgumentException(sprintf(
+        $expectedSchemaId = match ($schemaVersion) {
+            self::LEGACY_SCHEMA_VERSION => self::LEGACY_SCHEMA_ID,
+            self::SCHEMA_VERSION => self::SCHEMA_ID,
+            default => throw new InvalidArgumentException(sprintf(
                 'Unsupported SourceRevision snapshot schema version %d.',
                 $schemaVersion,
-            ));
-        }
+            )),
+        };
 
         $normalizedHash = strtolower($payloadHash);
 
@@ -115,7 +122,7 @@ final readonly class SourceRevisionSnapshot
 
         $decoded = CanonicalJson::decodeObject($canonicalPayload);
 
-        if (($decoded['schema'] ?? null) !== self::SCHEMA_ID) {
+        if (($decoded['schema'] ?? null) !== $expectedSchemaId) {
             throw new InvalidArgumentException('Unsupported SourceRevision snapshot schema identifier.');
         }
 
@@ -162,6 +169,9 @@ final readonly class SourceRevisionSnapshot
             metadata: new SourceMetadata(self::stringKeyedObjectAt($sourcePayload, 'metadata')),
             texts: $texts,
             schemaVersion: self::intAt($sourcePayload, 'schema_version'),
+            name: $this->schemaVersion === self::SCHEMA_VERSION
+                ? self::requiredNullableStringAt($sourcePayload, 'name')
+                : null,
         );
 
         $assets = [];
@@ -277,6 +287,19 @@ final readonly class SourceRevisionSnapshot
     private static function nullableStringAt(array $object, string $key): ?string
     {
         if (! array_key_exists($key, $object) || $object[$key] === null) {
+            return null;
+        }
+
+        return self::stringAt($object, $key);
+    }
+
+    /** @param array<string, mixed> $object */
+    private static function requiredNullableStringAt(array $object, string $key): ?string
+    {
+        if (! array_key_exists($key, $object)) {
+            throw new InvalidArgumentException(sprintf('Stored SourceRevision payload is missing "%s".', $key));
+        }
+        if ($object[$key] === null) {
             return null;
         }
 
