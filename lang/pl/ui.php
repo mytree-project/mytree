@@ -1,0 +1,47 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'navigation' => [
+        'settings' => 'Ustawienia',
+    ],
+    'settings' => [
+        'general' => 'Ogólne',
+        'acquisition' => 'Akwizycja',
+        'language' => 'Język',
+        'language_help' => 'Język interfejsu określa również sposób prezentacji danych zależnych od ustawień regionalnych.',
+        'english' => 'Angielski',
+        'polish' => 'Polski',
+        'edit' => 'Edytuj',
+        'edit_language' => 'Edytuj język',
+        'save' => 'Zapisz',
+        'cancel' => 'Anuluj',
+        'close' => 'Zamknij',
+        'remove' => 'Usuń',
+        'language_saved' => 'Język został zapisany',
+        'source_type_templates' => 'Szablony typów źródeł',
+        'template_help' => 'Szablony określają uporządkowany zestaw domyślnych pól ułatwiających wprowadzanie danych. Nigdy nie ograniczają obsługiwanych pól ani danych Source/Mention/Claim. Zamiast usuwać historię szablonu należy go dezaktywować.',
+        'create_template' => 'Utwórz szablon',
+        'no_templates' => 'Nie skonfigurowano jeszcze żadnych szablonów typów źródeł.',
+        'version' => 'w:version',
+        'active' => 'Aktywny',
+        'inactive' => 'Nieaktywny',
+        'all_source_types' => 'Wszystkie typy źródeł',
+        'default_field_count' => ':count pole domyślne|:count pola domyślne|:count pól domyślnych',
+        'new_template' => 'Nowy szablon typu źródła',
+        'edit_template' => 'Edytuj szablon typu źródła',
+        'template_name' => 'Nazwa',
+        'description' => 'Opis',
+        'compatible_source_types' => 'Zgodne typy źródeł',
+        'compatible_source_types_help' => 'Opcjonalny filtr prezentacji. Pozostaw puste, aby szablon był dostępny dla każdego typu źródła.',
+        'source_type_key' => 'Klucz typu źródła',
+        'add_source_type' => 'Dodaj typ źródła',
+        'ordered_default_fields' => 'Uporządkowane domyślne pola strukturalne',
+        'ordered_default_fields_help' => 'Kolejność wpływa wyłącznie na prezentację. Szablon bez pól jest prawidłowy.',
+        'supported_field' => 'Obsługiwane pole',
+        'choose_field' => 'Wybierz pole',
+        'add_field' => 'Dodaj pole',
+        'template_saved' => 'Szablon typu źródła został zapisany',
+    ],
+];
