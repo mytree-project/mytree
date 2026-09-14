@@ -26,9 +26,15 @@ The current implemented baseline contains:
 - framework-independent Source Acquisition Domain and Application foundations for Source, assets/text, Mention, controlled Predicate and typed Claim values, Claim and SourceLocator workflows,
 - immutable Source/Mention/Claim revision history using `SourceRevision`, `MentionRevision` and `ClaimRevision`,
 - immutable `EvidenceState` capture and reconstruction that identifies an exact composition of retained Source/Mention/Claim revisions,
+- transactional `SourceDraft` load/validate/save application workflows with optimistic base-state conflict detection and semantic no-op handling,
+- an application-owned supported acquisition field catalog with typed Mention/Claim editing, repeatable fields and reified event contexts,
+- versioned Source Type Templates used only as presentation configuration for Basic Source Acquisition,
+- an integrated Filament Basic Source Acquisition workspace for create/edit, template selection, metadata/text/assets and supported structured fields,
 - Eloquent persistence adapters and migrations for the implemented Acquisition contracts.
 
-Source Acquisition is therefore implemented at the domain/application/persistence level through the M3 baseline, but the user-facing M4 acquisition flow is not implemented yet. In particular, this repository does **not** yet provide the planned `SourceDraft`-based generic source-entry UI, Source Type Template editing flow, provider integration, search integration or MyTree Engine integration.
+Source Acquisition is therefore implemented through the M4 Basic Source Acquisition baseline. The editing UI composes one Source-scoped draft and saves through Application use cases; templates and supported-field metadata do not become a second domain model or overwrite Source/Mention/Claim truth. Existing unsupported data is not silently discarded, and persisted Claim provenance, qualifiers and SourceLocators remain part of the authoritative acquisition state.
+
+Provider integration, search integration and MyTree Engine integration are not implemented by this baseline.
 
 ## Application architecture
 
@@ -46,7 +52,7 @@ Filament / Console / Laravel composition roots
 
 Only layers and capability directories required by real code should exist. Framework-independent Domain/Application code must not depend on Laravel, Filament or Eloquent; Eloquent persistence lives explicitly under `app/Infrastructure/Persistence/Eloquent`.
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the repository-local namespace, dependency, adapter and current-capability conventions. Canonical project-wide Source/Mention/Claim and immutable-history semantics remain in `mytree-project/mytree-project`.
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the repository-local namespace, dependency, adapter and current-capability conventions. Canonical project-wide Source/Mention/Claim, `SourceDraft`, template and immutable-history semantics remain in `mytree-project/mytree-project`.
 
 ## Host requirements
 
