@@ -103,6 +103,6 @@ final class M4ConsistencyRegressionTest extends TestCase
         self::assertSame($locator->id->value, $preservedLocator->id->value);
         self::assertSame($claim->id->value, $preservedLocator->claimId->value);
         self::assertSame('quoted_fragment', $preservedLocator->value->type()->value);
-        self::assertSame('rolnik', $preservedLocator->value->toArray()['quote']);
+        self::assertSame('rolnik', $preservedLocator->value->data()['text']);
     }
 }
