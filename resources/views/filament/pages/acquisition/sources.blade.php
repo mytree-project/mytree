@@ -30,6 +30,55 @@
                 vertical-align: middle;
             }
 
+            .mytree-source-id-row {
+                display: flex;
+                align-items: center;
+                gap: 0.375rem;
+                margin-top: 0.25rem;
+                color: rgb(107 114 128);
+                font-size: 0.75rem;
+                line-height: 1rem;
+            }
+
+            .dark .mytree-source-id-row {
+                color: rgb(156 163 175);
+            }
+
+            .mytree-source-id {
+                font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+                white-space: nowrap;
+            }
+
+            .mytree-source-id-copy {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 0.25rem;
+                padding: 0.125rem;
+                color: inherit;
+            }
+
+            .mytree-source-id-copy:hover,
+            .mytree-source-id-copy:focus-visible {
+                color: rgb(55 65 81);
+            }
+
+            .dark .mytree-source-id-copy:hover,
+            .dark .mytree-source-id-copy:focus-visible {
+                color: rgb(229 231 235);
+            }
+
+            .mytree-source-id-copy:focus-visible {
+                outline: 2px solid currentColor;
+                outline-offset: 2px;
+            }
+
+            .mytree-source-id-copy-feedback {
+                white-space: nowrap;
+                font-family: ui-sans-serif, system-ui, sans-serif;
+                font-size: 0.6875rem;
+            }
+
             .mytree-sources-table-metadata {
                 overflow: hidden;
                 text-overflow: ellipsis;
@@ -73,8 +122,39 @@
                                 <div class="font-medium text-gray-950 dark:text-white">
                                     {{ $source->name ?? 'Untitled source' }}
                                 </div>
-                                <div class="mt-1 font-mono text-xs text-gray-500 dark:text-gray-400" title="{{ $source->id->value }}">
-                                    ID {{ substr($source->id->value, 0, 8) }}…
+                                <div
+                                    class="mytree-source-id-row"
+                                    x-data="{ copied: false, timeout: null }"
+                                >
+                                    <span class="mytree-source-id">{{ $source->id->value }}</span>
+                                    <button
+                                        type="button"
+                                        class="mytree-source-id-copy"
+                                        aria-label="{{ __('Copy UUID') }}"
+                                        title="{{ __('Copy UUID') }}"
+                                        x-on:click="
+                                            navigator.clipboard.writeText(@js($source->id->value));
+                                            copied = true;
+                                            clearTimeout(timeout);
+                                            timeout = setTimeout(() => copied = false, 1600);
+                                        "
+                                    >
+                                        <x-filament::icon
+                                            icon="heroicon-m-clipboard-document"
+                                            class="h-4 w-4"
+                                        />
+                                        <span class="sr-only">{{ __('Copy UUID') }}</span>
+                                    </button>
+                                    <span
+                                        x-cloak
+                                        x-show="copied"
+                                        x-transition.opacity
+                                        class="mytree-source-id-copy-feedback"
+                                        role="status"
+                                        aria-live="polite"
+                                    >
+                                        {{ __('Copied') }}
+                                    </span>
                                 </div>
                             </td>
                             <td class="whitespace-nowrap">{{ $source->type->key.'@'.$source->type->schemaVersion }}</td>
