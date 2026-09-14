@@ -90,11 +90,13 @@ final class SourceNameUxTest extends TestCase
         Livewire::test(Sources::class)
             ->set('search', 'Jan Kowalski')
             ->assertSee('Birth certificate Jan Kowalski 1880')
+            ->assertSee('ID')
             ->assertSee($wanted->id->value)
             ->assertDontSee('ID '.substr($wanted->id->value, 0, 8).'…')
-            ->assertSee('Copy UUID')
+            ->assertSee('Copy ID')
+            ->assertDontSee('Copy UUID')
             ->assertSee('Copied')
-            ->assertSee('navigator.clipboard.writeText', false)
+            ->assertSee('navigator.clipboard.writeText($el.dataset.copyValue)', false)
             ->assertSee('civil.birth@1')
             ->assertDontSee('Marriage certificate Anna Nowak 1901');
     }
