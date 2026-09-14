@@ -5,6 +5,24 @@ declare(strict_types=1);
 return [
     'navigation' => [
         'settings' => 'Settings',
+        'source_acquisition' => 'Source Acquisition',
+    ],
+    'sources' => [
+        'title' => 'Sources',
+        'create' => 'Create Source',
+        'search' => 'Search by name, Source ID, type or metadata',
+        'source' => 'Source',
+        'type' => 'Type',
+        'revision' => 'Revision',
+        'metadata' => 'Metadata',
+        'actions' => 'Actions',
+        'untitled' => 'Untitled source',
+        'copy_id' => 'Copy ID',
+        'copied' => 'Copied',
+        'details' => 'Details',
+        'fields' => 'Fields',
+        'empty' => 'No Sources match the current search.',
+        'no_metadata' => 'No metadata',
     ],
     'settings' => [
         'general' => 'General',
