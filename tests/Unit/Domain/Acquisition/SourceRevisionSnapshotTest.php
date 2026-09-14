@@ -124,10 +124,10 @@ final class SourceRevisionSnapshotTest extends TestCase
         $snapshot = SourceRevisionSnapshot::capture($source, []);
 
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Unsupported SourceRevision snapshot schema version 2.');
+        $this->expectExceptionMessage('Unsupported SourceRevision snapshot schema version 3.');
 
         SourceRevisionSnapshot::rehydrate(
-            schemaVersion: 2,
+            schemaVersion: 3,
             canonicalPayload: $snapshot->canonicalPayload,
             payloadHash: $snapshot->payloadHash,
         );

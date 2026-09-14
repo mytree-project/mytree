@@ -27,6 +27,8 @@ final readonly class UpdateSource
         array $texts = [],
         ?string $changeNote = null,
         ?string $changedBy = null,
+        ?string $name = null,
+        bool $replaceName = false,
     ): Source {
         $current = $this->repository->find($id) ?? throw SourceNotFound::forId($id);
 
@@ -36,6 +38,7 @@ final readonly class UpdateSource
             metadata: $metadata,
             texts: $this->makeTexts($texts),
             schemaVersion: $current->schemaVersion,
+            name: $replaceName ? $name : $current->name,
         );
         $currentSnapshot = $this->revisions->capture($current);
         $updatedSnapshot = $this->revisions->capture($source);

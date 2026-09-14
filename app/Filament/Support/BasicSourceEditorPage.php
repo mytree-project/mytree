@@ -142,6 +142,11 @@ abstract class BasicSourceEditorPage extends Page
     {
         return $schema
             ->components([
+                TextInput::make('name')
+                    ->label('Source name')
+                    ->helperText('Human-readable label only; Source identity remains the immutable UUID.')
+                    ->placeholder('e.g. Birth certificate Jan Kowalski 1880')
+                    ->maxLength(255),
                 TextInput::make('source_type_key')
                     ->label('Source type')
                     ->helperText('Use generic when no Source Type Template applies.')
@@ -454,8 +459,15 @@ abstract class BasicSourceEditorPage extends Page
     /** @param  array<string, mixed>  $data */
     private function sourceChanges(SourceDraft $draft, array $data): SourceDraftSourceChanges
     {
+        $name = $data['name'] ?? null;
         $typeKey = $data['source_type_key'] ?? null;
         $schemaVersion = $data['source_type_schema_version'] ?? null;
+
+        if ($name !== null && ! is_string($name)) {
+            throw ValidationException::withMessages([
+                'data.name' => 'Source name must be text.',
+            ]);
+        }
 
         if (! is_string($typeKey) || (! is_int($schemaVersion) && ! is_numeric($schemaVersion))) {
             throw ValidationException::withMessages([
@@ -471,6 +483,8 @@ abstract class BasicSourceEditorPage extends Page
             addTexts: $addTexts,
             updateTexts: $updateTexts,
             removeTextIds: $removeTextIds,
+            name: $name,
+            replaceName: true,
         );
     }
 
@@ -696,6 +710,7 @@ abstract class BasicSourceEditorPage extends Page
         }
 
         $this->form->fill([
+            'name' => $draft->current->source->name,
             'source_type_key' => $draft->current->source->type->key,
             'source_type_schema_version' => $draft->current->source->type->schemaVersion,
             'template_id' => null,

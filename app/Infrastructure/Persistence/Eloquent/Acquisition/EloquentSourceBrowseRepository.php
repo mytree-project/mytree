@@ -68,6 +68,7 @@ final class EloquentSourceBrowseRepository implements SourceBrowseRepository
             ),
             metadata: new SourceMetadata($this->stringKeyedArray($metadata)),
             revisionNumber: (int) $revisionNumber,
+            name: $record->name === null ? null : (string) $record->name,
         );
     }
 
@@ -80,6 +81,7 @@ final class EloquentSourceBrowseRepository implements SourceBrowseRepository
         }
 
         return mb_strtolower(implode(' ', [
+            $item->name ?? '',
             $item->id->value,
             $item->type->key,
             $metadata,

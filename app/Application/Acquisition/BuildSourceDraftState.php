@@ -138,6 +138,7 @@ final readonly class BuildSourceDraftState
             metadata: $changes->metadata ?? $source->metadata,
             texts: array_values($texts),
             schemaVersion: $source->schemaVersion,
+            name: $changes->replaceName ? $changes->name : $source->name,
         );
     }
 

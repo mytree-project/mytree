@@ -22,5 +22,7 @@ final readonly class SourceDraftSourceChanges
         public array $addTexts = [],
         public array $updateTexts = [],
         public array $removeTextIds = [],
+        public ?string $name = null,
+        public bool $replaceName = false,
     ) {}
 }

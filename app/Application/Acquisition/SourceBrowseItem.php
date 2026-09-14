@@ -15,5 +15,6 @@ final readonly class SourceBrowseItem
         public SourceType $type,
         public SourceMetadata $metadata,
         public int $revisionNumber,
+        public ?string $name = null,
     ) {}
 }
