@@ -25,6 +25,7 @@ final class EloquentSourceRepository implements SourceRepository
             SourceRecord::query()->updateOrCreate(
                 ['id' => $source->id->value],
                 [
+                    'name' => $source->name,
                     'schema_version' => $source->schemaVersion,
                     'source_type_key' => $source->type->key,
                     'source_type_schema_version' => $source->type->schemaVersion,
@@ -89,6 +90,7 @@ final class EloquentSourceRepository implements SourceRepository
             metadata: new SourceMetadata($metadata),
             texts: $texts,
             schemaVersion: (int) $record->schema_version,
+            name: $record->name === null ? null : (string) $record->name,
         );
     }
 }
