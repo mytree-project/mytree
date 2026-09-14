@@ -5,6 +5,24 @@ declare(strict_types=1);
 return [
     'navigation' => [
         'settings' => 'Ustawienia',
+        'source_acquisition' => 'Akwizycja źródeł',
+    ],
+    'sources' => [
+        'title' => 'Źródła',
+        'create' => 'Utwórz źródło',
+        'search' => 'Szukaj po nazwie, ID źródła, typie lub metadanych',
+        'source' => 'Źródło',
+        'type' => 'Typ',
+        'revision' => 'Rewizja',
+        'metadata' => 'Metadane',
+        'actions' => 'Akcje',
+        'untitled' => 'Źródło bez nazwy',
+        'copy_id' => 'Kopiuj ID',
+        'copied' => 'Skopiowano',
+        'details' => 'Szczegóły',
+        'fields' => 'Pola',
+        'empty' => 'Brak źródeł pasujących do wyszukiwania.',
+        'no_metadata' => 'Brak metadanych',
     ],
     'settings' => [
         'general' => 'Ogólne',
