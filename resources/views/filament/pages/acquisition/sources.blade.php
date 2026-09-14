@@ -4,7 +4,7 @@
             <x-filament::input
                 type="search"
                 wire:model.live.debounce.300ms="search"
-                placeholder="Search by name, Source id, type or metadata"
+                placeholder="{{ __('ui.sources.search') }}"
             />
         </x-filament::input.wrapper>
 
@@ -108,11 +108,11 @@
                 </colgroup>
                 <thead class="border-b border-gray-200 bg-gray-50 text-gray-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-300">
                     <tr>
-                        <th class="font-medium">Source</th>
-                        <th class="font-medium">Type</th>
-                        <th class="font-medium">Revision</th>
-                        <th class="font-medium">Metadata</th>
-                        <th class="font-medium"><span class="sr-only">Actions</span></th>
+                        <th class="font-medium">{{ __('ui.sources.source') }}</th>
+                        <th class="font-medium">{{ __('ui.sources.type') }}</th>
+                        <th class="font-medium">{{ __('ui.sources.revision') }}</th>
+                        <th class="font-medium">{{ __('ui.sources.metadata') }}</th>
+                        <th class="font-medium"><span class="sr-only">{{ __('ui.sources.actions') }}</span></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-white/10">
@@ -120,7 +120,7 @@
                         <tr wire:key="source-{{ $source->id->value }}">
                             <td>
                                 <div class="font-medium text-gray-950 dark:text-white">
-                                    {{ $source->name ?? 'Untitled source' }}
+                                    {{ $source->name ?? __('ui.sources.untitled') }}
                                 </div>
                                 <div
                                     class="mytree-source-id-row"
@@ -131,7 +131,7 @@
                                     <button
                                         type="button"
                                         class="mytree-source-id-copy"
-                                        aria-label="{{ __('Copy ID') }}"
+                                        aria-label="{{ __('ui.sources.copy_id') }}"
                                         data-copy-value="{{ $source->id->value }}"
                                         x-on:click="
                                             navigator.clipboard.writeText($el.dataset.copyValue);
@@ -153,7 +153,7 @@
                                         role="status"
                                         aria-live="polite"
                                     >
-                                        {{ __('Copied') }}
+                                        {{ __('ui.sources.copied') }}
                                     </span>
                                 </div>
                             </td>
@@ -165,10 +165,10 @@
                             <td class="mytree-sources-table-actions">
                                 <div class="mytree-sources-table-actions-inner">
                                     <x-filament::link href="{{ \App\Filament\Pages\Acquisition\SourceEditor::getUrl(['source' => $source->id->value]) }}">
-                                        Details
+                                        {{ __('ui.sources.details') }}
                                     </x-filament::link>
                                     <x-filament::link href="{{ \App\Filament\Pages\Acquisition\StructuredFieldsEditor::getUrl(['source' => $source->id->value]) }}">
-                                        Fields
+                                        {{ __('ui.sources.fields') }}
                                     </x-filament::link>
                                 </div>
                             </td>
@@ -176,7 +176,7 @@
                     @empty
                         <tr>
                             <td colspan="5" class="py-10 text-center text-gray-500 dark:text-gray-400">
-                                No Sources match the current search.
+                                {{ __('ui.sources.empty') }}
                             </td>
                         </tr>
                     @endforelse
