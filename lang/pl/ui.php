@@ -28,7 +28,7 @@ return [
         'active' => 'Aktywny',
         'inactive' => 'Nieaktywny',
         'all_source_types' => 'Wszystkie typy źródeł',
-        'default_field_count' => ':count pole domyślne|:count pola domyślne|:count pól domyślnych',
+        'default_field_count' => 'Pola domyślne: :count',
         'new_template' => 'Nowy szablon typu źródła',
         'edit_template' => 'Edytuj szablon typu źródła',
         'template_name' => 'Nazwa',
