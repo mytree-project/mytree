@@ -126,24 +126,24 @@
                                     class="mytree-source-id-row"
                                     x-data="{ copied: false, timeout: null }"
                                 >
+                                    <span>ID</span>
                                     <span class="mytree-source-id">{{ $source->id->value }}</span>
                                     <button
                                         type="button"
                                         class="mytree-source-id-copy"
-                                        aria-label="{{ __('Copy UUID') }}"
-                                        title="{{ __('Copy UUID') }}"
-                                        x-on:click='
-                                            navigator.clipboard.writeText(@js($source->id->value));
+                                        aria-label="{{ __('Copy ID') }}"
+                                        data-copy-value="{{ $source->id->value }}"
+                                        x-on:click="
+                                            navigator.clipboard.writeText($el.dataset.copyValue);
                                             copied = true;
                                             clearTimeout(timeout);
                                             timeout = setTimeout(() => copied = false, 1600);
-                                        '
+                                        "
                                     >
                                         <x-filament::icon
                                             icon="heroicon-m-clipboard-document"
                                             class="h-4 w-4"
                                         />
-                                        <span class="sr-only">{{ __('Copy UUID') }}</span>
                                     </button>
                                     <span
                                         x-cloak
