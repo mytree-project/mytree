@@ -132,12 +132,12 @@
                                         class="mytree-source-id-copy"
                                         aria-label="{{ __('Copy UUID') }}"
                                         title="{{ __('Copy UUID') }}"
-                                        x-on:click="
+                                        x-on:click='
                                             navigator.clipboard.writeText(@js($source->id->value));
                                             copied = true;
                                             clearTimeout(timeout);
                                             timeout = setTimeout(() => copied = false, 1600);
-                                        "
+                                        '
                                     >
                                         <x-filament::icon
                                             icon="heroicon-m-clipboard-document"
