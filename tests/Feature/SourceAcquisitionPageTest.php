@@ -54,12 +54,43 @@ final class SourceAcquisitionPageTest extends TestCase
             ->assertOk()
             ->assertSee('Create Source')
             ->assertSee('Source metadata')
-            ->assertSee('Source text')
+            ->assertSee('Transcription')
+            ->assertSee('Translation')
+            ->assertSee('Mentions &amp; Claims', false)
             ->assertSee('Attach new assets');
 
         $this->actingAs($regularUser)
             ->get('/admin/acquisition/sources')
             ->assertForbidden();
+    }
+
+    public function test_workspace_renders_accessible_resizable_split_and_switchable_panel_modes(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+        $source = app(CreateSource::class)->handle(SourceType::generic());
+
+        $this->get(SourceEditor::getUrl(['source' => $source->id->value]))
+            ->assertOk()
+            ->assertSee('data-source-workspace', false)
+            ->assertSee('data-source-workspace-resizer', false)
+            ->assertSee('role="separator"', false)
+            ->assertSee('aria-orientation="vertical"', false)
+            ->assertSee('@keydown.left.prevent', false)
+            ->assertSee('@keydown.right.prevent', false)
+            ->assertSee('@media (min-width: 1024px)', false);
+
+        Livewire::test(SourceEditor::class, ['source' => $source->id->value])
+            ->assertSet('leftPanel', 'asset')
+            ->assertSet('rightPanel', 'evidence')
+            ->call('setWorkspacePanel', 'left', 'transcription')
+            ->assertSet('leftPanel', 'transcription')
+            ->assertSet('rightPanel', 'evidence')
+            ->call('setWorkspacePanel', 'right', 'translation')
+            ->assertSet('leftPanel', 'transcription')
+            ->assertSet('rightPanel', 'translation')
+            ->call('setWorkspacePanel', 'left', 'translation')
+            ->assertSet('leftPanel', 'translation')
+            ->assertSet('rightPanel', 'transcription');
     }
 
     public function test_blank_workspace_creates_source_with_scalar_metadata_and_repeated_source_text(): void
@@ -74,22 +105,22 @@ final class SourceAcquisitionPageTest extends TestCase
                     ['key' => 'archive_reference', 'type' => 'string', 'value' => 'Fond 12 / Act 7'],
                     ['key' => 'page', 'type' => 'integer', 'value' => '4'],
                 ],
-                'texts' => [
-                    [
-                        'id' => null,
-                        'kind' => SourceTextKind::Transcription->value,
-                        'language' => 'ru',
-                        'content' => 'Original transcription',
-                    ],
-                    [
-                        'id' => null,
-                        'kind' => SourceTextKind::Translation->value,
-                        'language' => 'pl',
-                        'content' => 'Polish translation',
-                    ],
-                ],
                 'detach_asset_ids' => [],
                 'uploads' => [],
+            ])
+            ->set('sourceTexts', [
+                [
+                    'id' => null,
+                    'kind' => SourceTextKind::Transcription->value,
+                    'language' => 'ru',
+                    'content' => 'Original transcription',
+                ],
+                [
+                    'id' => null,
+                    'kind' => SourceTextKind::Translation->value,
+                    'language' => 'pl',
+                    'content' => 'Polish translation',
+                ],
             ])
             ->call('save')
             ->assertHasNoFormErrors()
@@ -140,17 +171,15 @@ final class SourceAcquisitionPageTest extends TestCase
                 'metadata' => [
                     ['key' => 'archive', 'type' => 'string', 'value' => 'B'],
                 ],
-                'texts' => [
-                    [
-                        'id' => null,
-                        'kind' => SourceTextKind::ResearchNote->value,
-                        'language' => 'pl',
-                        'content' => 'Checked against second scan.',
-                    ],
-                ],
                 'detach_asset_ids' => [],
                 'uploads' => [],
             ])
+            ->set('sourceTexts', [[
+                'id' => null,
+                'kind' => SourceTextKind::ResearchNote->value,
+                'language' => 'pl',
+                'content' => 'Checked against second scan.',
+            ]])
             ->call('save')
             ->assertHasNoFormErrors()
             ->assertRedirect();
@@ -210,6 +239,48 @@ final class SourceAcquisitionPageTest extends TestCase
         self::assertNotNull($detached);
         self::assertNull($detached->sourceId);
         Storage::disk('local')->assertExists($asset->storage->path);
+    }
+
+    public function test_source_asset_preview_stream_is_private_source_scoped_and_admin_only(): void
+    {
+        config(['filesystems.default' => 'local']);
+        Storage::fake('local');
+        $administrator = User::factory()->admin()->create();
+        $regularUser = User::factory()->create();
+        $source = app(CreateSource::class)->handle(SourceType::generic());
+        $otherSource = app(CreateSource::class)->handle(SourceType::generic());
+        $asset = app(StoreSourceAsset::class)->handle(
+            $source->id,
+            new StoreSourceAssetInput(
+                contents: 'preview-bytes',
+                originalFilename: 'scan.txt',
+                mimeType: 'text/plain',
+                retrievedAt: new DateTimeImmutable('2026-09-15T09:00:00+00:00'),
+            ),
+        );
+
+        $url = route('acquisition.source-assets.show', [
+            'source' => $source->id->value,
+            'asset' => $asset->id->value,
+        ]);
+
+        $response = $this->actingAs($administrator)->get($url);
+        $response
+            ->assertOk()
+            ->assertHeader('X-Content-Type-Options', 'nosniff')
+            ->assertContent('preview-bytes');
+        self::assertStringStartsWith('text/plain', (string) $response->headers->get('Content-Type'));
+
+        $this->actingAs($administrator)
+            ->get(route('acquisition.source-assets.show', [
+                'source' => $otherSource->id->value,
+                'asset' => $asset->id->value,
+            ]))
+            ->assertNotFound();
+
+        $this->actingAs($regularUser)
+            ->get($url)
+            ->assertForbidden();
     }
 
     public function test_source_list_searches_by_basic_metadata_and_renders_type_version(): void
