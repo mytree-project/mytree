@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Application\Acquisition\BrowseSources;
+use App\Application\Acquisition\CreateSource;
 use App\Domain\Acquisition\SourceId;
 use App\Domain\Acquisition\SourceType;
 use App\Filament\Pages\Acquisition\SourceEditor;
+use App\Filament\Pages\Acquisition\Sources;
 use App\Filament\Support\SourceTypePresentationCatalog;
 use App\Infrastructure\Persistence\Eloquent\Models\User;
 use Filament\Facades\Filament;
@@ -59,6 +61,17 @@ final class SourceTypePresentationTest extends TestCase
         self::assertSame('Custom source type (archive.custom) · v3', $options['archive.custom']);
         self::assertSame('archive.custom@3', $catalog->diagnostic($current));
         self::assertNull($catalog->schemaVersion('archive.custom'));
+    }
+
+    public function test_source_list_uses_localized_label_and_keeps_key_as_secondary_diagnostic(): void
+    {
+        app()->setLocale('en');
+        $this->actingAs(User::factory()->admin()->create());
+        app(CreateSource::class)->handle(new SourceType('civil.birth'));
+
+        Livewire::test(Sources::class)
+            ->assertSee('Birth record · v1')
+            ->assertSee('civil.birth@1');
     }
 
     public function test_source_editor_derives_schema_version_and_persists_canonical_key(): void
