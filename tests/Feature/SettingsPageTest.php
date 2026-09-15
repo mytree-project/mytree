@@ -102,7 +102,7 @@ final class SettingsPageTest extends TestCase
 
         Livewire::test(Settings::class)
             ->assertSee('Civil birth record')
-            ->assertSee('civil.birth')
+            ->assertSee('Birth record · v1')
             ->call('editTemplate', $created->templateId->value)
             ->assertSet('templateEditorOpen', true)
             ->assertSet('templateEditor.name', 'Civil birth record')
