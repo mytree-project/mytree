@@ -17,6 +17,7 @@ use App\Application\Settings\Application\ApplicationSettings;
 use App\Application\Settings\Application\ApplicationSettingsProvider;
 use App\Application\Settings\Application\UpdateApplicationSettings;
 use App\Domain\Acquisition\SourceType;
+use App\Filament\Support\SourceTypePresentationCatalog;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use InvalidArgumentException;
@@ -83,7 +84,7 @@ final class Settings extends Page
     public function templates(): array
     {
         return array_map(
-            fn (SourceTypeTemplateVersion $template): array => $this->serializeTemplate($template),
+            fn (SourceTypeTemplateVersion $template): array => $this->serializeTemplateForList($template),
             app(ListSourceTypeTemplates::class)->handle(),
         );
     }
@@ -254,6 +255,23 @@ final class Settings extends Page
     private function resetTemplateEditor(): void
     {
         $this->templateEditor = $this->blankTemplate();
+    }
+
+    /** @return array<string, mixed> */
+    private function serializeTemplateForList(SourceTypeTemplateVersion $template): array
+    {
+        $serialized = $this->serializeTemplate($template);
+        $serialized['compatible_source_types'] = array_map(
+            static function (array $sourceType): array {
+                $type = new SourceType($sourceType['key'], (int) $sourceType['schema_version']);
+                $sourceType['key'] = app(SourceTypePresentationCatalog::class)->display($type);
+
+                return $sourceType;
+            },
+            $serialized['compatible_source_types'],
+        );
+
+        return $serialized;
     }
 
     /** @return array<string, mixed> */
