@@ -42,6 +42,7 @@ final class SettingsPageTest extends TestCase
             ->assertSee('Language')
             ->assertSee('Source type templates')
             ->assertSee('never limit')
+            ->assertSee('data-mytree-source-type-template-combobox-assets', false)
             ->assertDontSee('wire:submit="save"', false);
     }
 
