@@ -118,6 +118,20 @@ final class SettingsPageTest extends TestCase
         self::assertSame('Civil birth record 1850+', $templates[0]->definition->name);
     }
 
+    public function test_template_source_type_selector_derives_catalog_schema_version(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+
+        Livewire::test(Settings::class)
+            ->call('createTemplate')
+            ->call('addCompatibleSourceType')
+            ->set('templateEditor.compatible_source_types.0.schema_version', 99)
+            ->set('templateEditor.compatible_source_types.0.key', 'civil.marriage')
+            ->call('compatibleSourceTypeChanged', 0)
+            ->assertSet('templateEditor.compatible_source_types.0.schema_version', 1)
+            ->assertSee('Marriage record · v1');
+    }
+
     public function test_create_template_uses_the_same_drawer_editor(): void
     {
         $this->actingAs(User::factory()->admin()->create());
