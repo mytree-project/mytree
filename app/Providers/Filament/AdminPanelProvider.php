@@ -17,6 +17,9 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
+use Filament\Support\Facades\FilamentView;
+use Filament\View\PanelsRenderHook;
+use Illuminate\Contracts\View\View;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -26,6 +29,15 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 final class AdminPanelProvider extends PanelProvider
 {
+    public function boot(): void
+    {
+        FilamentView::registerRenderHook(
+            PanelsRenderHook::PAGE_END,
+            fn (): View => view('filament.support.source-type-template-combobox'),
+            scopes: Settings::class,
+        );
+    }
+
     public function panel(Panel $panel): Panel
     {
         return $panel
