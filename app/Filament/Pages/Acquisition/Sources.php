@@ -14,8 +14,6 @@ final class Sources extends Page
 {
     protected static ?string $slug = 'acquisition/sources';
 
-    protected static ?string $title = 'Sources';
-
     protected string $view = 'filament.pages.acquisition.sources';
 
     public string $search = '';
@@ -23,6 +21,11 @@ final class Sources extends Page
     public static function getNavigationLabel(): string
     {
         return __('ui.navigation.source_acquisition');
+    }
+
+    public function getTitle(): string
+    {
+        return __('ui.sources.title');
     }
 
     /** @return list<SourceBrowseItem> */
@@ -58,6 +61,21 @@ final class Sources extends Page
         }
 
         return implode(' · ', $parts);
+    }
+
+    /**
+     * @return array{id: string, name: string, type: string, type_diagnostic: string, revision: int, metadata: string}
+     */
+    public function sourceDetails(SourceBrowseItem $source): array
+    {
+        return [
+            'id' => $source->id->value,
+            'name' => $source->name ?? __('ui.sources.untitled'),
+            'type' => $this->sourceTypeLabel($source),
+            'type_diagnostic' => $this->sourceTypeDiagnostic($source),
+            'revision' => $source->revisionNumber,
+            'metadata' => $this->metadataSummary($source),
+        ];
     }
 
     private function metadataValueSummary(mixed $value): string
