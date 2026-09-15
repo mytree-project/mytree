@@ -593,13 +593,17 @@
                                 @foreach ($templateEditor['compatible_source_types'] as $index => $sourceType)
                                     <div wire:key="compatible-source-type-{{ $index }}">
                                         <div class="mytree-repeater-row">
-                                            <input
-                                                type="text"
-                                                wire:model="templateEditor.compatible_source_types.{{ $index }}.key"
-                                                placeholder="civil.birth"
-                                                class="mytree-drawer-input"
+                                            <select
+                                                wire:model.live="templateEditor.compatible_source_types.{{ $index }}.key"
+                                                wire:change="compatibleSourceTypeChanged({{ $index }})"
+                                                class="mytree-drawer-select"
                                                 aria-label="{{ __('ui.settings.source_type_key') }}"
                                             >
+                                                <option value="">{{ __('ui.settings.choose_source_type') }}</option>
+                                                @foreach ($this->sourceTypeOptions($sourceType['key'] ?? null, $sourceType['schema_version'] ?? 1) as $key => $label)
+                                                    <option value="{{ $key }}">{{ $label }}</option>
+                                                @endforeach
+                                            </select>
                                             <button type="button" wire:click="removeCompatibleSourceType({{ $index }})" class="mytree-icon-button" aria-label="{{ __('ui.settings.remove') }}">
                                                 <x-filament::icon icon="heroicon-m-trash" />
                                             </button>
