@@ -67,6 +67,7 @@ return [
         'compatible_source_types_help' => 'Opcjonalny filtr prezentacji. Pozostaw puste, aby szablon był dostępny dla każdego typu źródła.',
         'source_type_key' => 'Klucz typu źródła',
         'choose_source_type' => 'Wybierz typ źródła',
+        'no_source_type_matches' => 'Brak typów źródeł pasujących do wyszukiwania.',
         'add_source_type' => 'Dodaj typ źródła',
         'ordered_default_fields' => 'Uporządkowane domyślne pola strukturalne',
         'ordered_default_fields_help' => 'Kolejność wpływa wyłącznie na prezentację. Szablon bez pól jest prawidłowy.',
