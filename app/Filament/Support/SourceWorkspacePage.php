@@ -746,6 +746,7 @@ abstract class SourceWorkspacePage extends Page
             ],
             $draft->current->source->texts,
         );
+
         $this->assetChoices = [];
         $this->assetPreviews = [];
         foreach ($draft->current->assets as $asset) {
