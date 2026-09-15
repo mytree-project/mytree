@@ -16,7 +16,7 @@
 >
     <template x-if="assets.length === 0">
         <div class="source-workspace-empty">
-            No Source assets are attached. Use Source details &amp; asset management below to attach a scan or file.
+            {{ __('ui.workspace.asset.empty') }}
         </div>
     </template>
 
@@ -24,16 +24,16 @@
         <div class="source-asset-viewer-shell">
             <div class="source-asset-toolbar">
                 <div class="source-asset-navigation">
-                    <button type="button" @click="previous" :disabled="index === 0">Previous</button>
+                    <button type="button" @click="previous" :disabled="index === 0">{{ __('ui.workspace.asset.previous') }}</button>
                     <span><strong x-text="index + 1"></strong> / <span x-text="assets.length"></span></span>
-                    <button type="button" @click="next" :disabled="index >= assets.length - 1">Next</button>
+                    <button type="button" @click="next" :disabled="index >= assets.length - 1">{{ __('ui.workspace.asset.next') }}</button>
                 </div>
 
                 <div class="source-asset-zoom" x-show="isImage()">
                     <button type="button" @click="zoom = Math.max(.5, zoom - .25)">−</button>
                     <span x-text="Math.round(zoom * 100) + '%'">100%</span>
                     <button type="button" @click="zoom = Math.min(4, zoom + .25)">+</button>
-                    <button type="button" @click="zoom = 1">Reset</button>
+                    <button type="button" @click="zoom = 1">{{ __('ui.workspace.asset.reset') }}</button>
                 </div>
             </div>
 
@@ -41,7 +41,7 @@
                 <strong x-text="current()?.filename"></strong>
                 <span x-text="current()?.mime_type"></span>
                 <span x-text="current()?.size"></span>
-                <a :href="current()?.url" target="_blank" rel="noopener">Open original</a>
+                <a :href="current()?.url" target="_blank" rel="noopener">{{ __('ui.workspace.asset.open_original') }}</a>
             </div>
 
             <div class="source-asset-stage">
@@ -49,7 +49,7 @@
                     <div class="source-asset-image-pan">
                         <img
                             :src="current()?.url"
-                            :alt="current()?.filename ?? 'Source asset'"
+                            :alt="current()?.filename ?? @js(__('ui.workspace.asset.alt'))"
                             :style="`transform: scale(${zoom}); transform-origin: top left;`"
                         >
                     </div>
@@ -59,7 +59,7 @@
                     <iframe
                         class="source-asset-pdf"
                         :src="current()?.url + '#view=FitH'"
-                        :title="current()?.filename ?? 'Source PDF'"
+                        :title="current()?.filename ?? @js(__('ui.workspace.asset.pdf_title'))"
                     ></iframe>
                 </template>
 
@@ -73,7 +73,7 @@
 
                 <template x-if="!isImage() && !isPdf() && !isVideo() && !isAudio()">
                     <div class="source-workspace-empty">
-                        This asset type does not have an inline viewer. Use “Open original” to inspect it.
+                        {{ __('ui.workspace.asset.unsupported') }}
                     </div>
                 </template>
             </div>
