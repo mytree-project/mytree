@@ -137,21 +137,24 @@ abstract class SourceWorkspacePage extends Page
 
     public function getTitle(): string
     {
-        return $this->sourceId === null ? 'Create Source' : 'Source Acquisition';
+        return $this->sourceId === null
+            ? __('ui.workspace.create_title')
+            : __('ui.workspace.edit_title');
     }
 
     public function getSubheading(): string
     {
         if ($this->sourceId === null) {
-            return sprintf('%s · Source Acquisition workspace · unsaved', $this->sourceTypeContext);
+            return __('ui.workspace.subheading_new', [
+                'type' => $this->sourceTypeContext,
+            ]);
         }
 
-        return sprintf(
-            'Source %s · %s · revision %d · Source Acquisition workspace',
-            $this->sourceId,
-            $this->sourceTypeContext,
-            $this->revisionNumber ?? 0,
-        );
+        return __('ui.workspace.subheading_existing', [
+            'id' => $this->sourceId,
+            'type' => $this->sourceTypeContext,
+            'revision' => $this->revisionNumber ?? 0,
+        ]);
     }
 
     public function form(Schema $schema): Schema
@@ -159,9 +162,9 @@ abstract class SourceWorkspacePage extends Page
         return $schema
             ->components([
                 TextInput::make('name')
-                    ->label('Source name')
-                    ->helperText('Human-readable label only; Source identity remains the immutable UUID.')
-                    ->placeholder('e.g. Birth certificate Jan Kowalski 1880')
+                    ->label(__('ui.workspace.form.source_name'))
+                    ->helperText(__('ui.workspace.form.source_name_help'))
+                    ->placeholder(__('ui.workspace.form.source_name_placeholder'))
                     ->maxLength(255),
                 Select::make('source_type_key')
                     ->label(__('ui.source_types.field_label'))
@@ -177,17 +180,17 @@ abstract class SourceWorkspacePage extends Page
                 Hidden::make('source_type_schema_version')
                     ->required(),
                 Select::make('template_id')
-                    ->label('Source Type Template')
-                    ->helperText('Templates choose default fields only. Selecting or changing one never changes Source/Mention/Claim truth by itself.')
-                    ->placeholder('No template / blank structured form')
+                    ->label(__('ui.workspace.form.template'))
+                    ->helperText(__('ui.workspace.form.template_help'))
+                    ->placeholder(__('ui.workspace.form.template_none'))
                     ->options(fn (): array => $this->templateOptions())
                     ->live()
                     ->afterStateUpdated(function (?string $state): void {
                         $this->templateChanged($state);
                     }),
                 Repeater::make('metadata')
-                    ->label('Source metadata')
-                    ->helperText('Scalar metadata is editable here. Structured array metadata is preserved unchanged.')
+                    ->label(__('ui.workspace.form.metadata'))
+                    ->helperText(__('ui.workspace.form.metadata_help'))
                     ->schema([
                         TextInput::make('key')
                             ->required()
@@ -195,26 +198,26 @@ abstract class SourceWorkspacePage extends Page
                         Select::make('type')
                             ->required()
                             ->options([
-                                'string' => 'Text',
-                                'integer' => 'Integer',
-                                'number' => 'Number',
-                                'boolean' => 'Boolean',
-                                'null' => 'Null',
+                                'string' => __('ui.workspace.form.type_text'),
+                                'integer' => __('ui.workspace.form.type_integer'),
+                                'number' => __('ui.workspace.form.type_number'),
+                                'boolean' => __('ui.workspace.form.type_boolean'),
+                                'null' => __('ui.workspace.form.type_null'),
                             ]),
                         TextInput::make('value')
-                            ->helperText('For Boolean use true or false. Null ignores this value.'),
+                            ->helperText(__('ui.workspace.form.metadata_value_help')),
                     ])
                     ->columns(3)
                     ->defaultItems(0)
-                    ->addActionLabel('Add metadata field'),
+                    ->addActionLabel(__('ui.workspace.form.add_metadata')),
                 CheckboxList::make('detach_asset_ids')
-                    ->label('Attached assets')
-                    ->helperText('Select an existing asset only when it should be detached from the current Source. Stored bytes are not purged.')
+                    ->label(__('ui.workspace.form.attached_assets'))
+                    ->helperText(__('ui.workspace.form.attached_assets_help'))
                     ->options(fn (): array => $this->assetChoices)
                     ->columns(1),
                 FileUpload::make('uploads')
-                    ->label('Attach new assets')
-                    ->helperText('Uploads are staged through the SourceAsset storage boundary and attached by the atomic SourceDraft save.')
+                    ->label(__('ui.workspace.form.attach_assets'))
+                    ->helperText(__('ui.workspace.form.attach_assets_help'))
                     ->multiple()
                     ->storeFiles(false)
                     ->previewable(false),
@@ -227,9 +230,9 @@ abstract class SourceWorkspacePage extends Page
         return $schema
             ->components([
                 Select::make('add_supported_field')
-                    ->label('Add supported structured field')
-                    ->helperText('The picker is independent of the selected template. Event predicates create an event context because their subject must be an event Mention.')
-                    ->placeholder('Choose a field to add')
+                    ->label(__('ui.workspace.evidence.add_field'))
+                    ->helperText(__('ui.workspace.evidence.add_field_help'))
+                    ->placeholder(__('ui.workspace.evidence.choose_field'))
                     ->options(fn (): array => app(StructuredAcquisitionFormAdapter::class)->pickerOptions())
                     ->live()
                     ->afterStateUpdated(function (?string $state): void {
@@ -269,7 +272,7 @@ abstract class SourceWorkspacePage extends Page
         $templateId = $this->optionalString($templateId);
         $template = $templateId === null ? null : $this->findSelectableTemplate($templateId);
         if ($templateId !== null && $template === null) {
-            $this->addError('data.template_id', 'The selected template is not active and compatible with the current Source type.');
+            $this->addError('data.template_id', __('ui.workspace.template_incompatible'));
             $templateId = null;
         } else {
             $this->resetErrorBag('data.template_id');
@@ -439,10 +442,10 @@ abstract class SourceWorkspacePage extends Page
         }
 
         $notification = Notification::make()
-            ->title($result->changed ? 'Source saved' : 'No Source changes')
+            ->title($result->changed ? __('ui.workspace.saved') : __('ui.workspace.no_changes'))
             ->body($result->changed
-                ? 'Source, SourceText, Mention/Claim revisions, and the resulting EvidenceState were updated atomically.'
-                : 'No semantic change was detected, so no new revision or EvidenceState was created.');
+                ? __('ui.workspace.saved_body')
+                : __('ui.workspace.no_changes_body'));
 
         if ($result->changed) {
             $notification->success();
@@ -964,15 +967,15 @@ abstract class SourceWorkspacePage extends Page
     {
         $this->addError('data', $exception->getMessage());
         Notification::make()
-            ->title('Source changed elsewhere')
-            ->body('Reload the Source before saving again.')
+            ->title(__('ui.workspace.changed_elsewhere'))
+            ->body(__('ui.workspace.changed_elsewhere_body'))
             ->danger()
             ->send();
     }
 
     private function reportDraftValidation(SourceDraftValidationResult $validation): void
     {
-        $firstMessage = 'SourceDraft validation failed.';
+        $firstMessage = __('ui.workspace.validation_failed');
 
         foreach ($validation->issues as $issue) {
             $path = str_starts_with($issue->path, 'changes.detachAssetIds')
@@ -986,7 +989,7 @@ abstract class SourceWorkspacePage extends Page
         }
 
         Notification::make()
-            ->title('Source could not be saved')
+            ->title(__('ui.workspace.save_failed'))
             ->body($firstMessage)
             ->danger()
             ->send();
