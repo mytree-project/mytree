@@ -157,7 +157,10 @@
                                     </span>
                                 </div>
                             </td>
-                            <td class="whitespace-nowrap">{{ $source->type->key.'@'.$source->type->schemaVersion }}</td>
+                            <td class="whitespace-nowrap">
+                                <div class="font-medium text-gray-950 dark:text-white">{{ $this->sourceTypeLabel($source) }}</div>
+                                <div class="mt-1 font-mono text-xs text-gray-500 dark:text-gray-400">{{ $this->sourceTypeDiagnostic($source) }}</div>
+                            </td>
                             <td class="whitespace-nowrap">{{ $source->revisionNumber }}</td>
                             <td class="mytree-sources-table-metadata" title="{{ $this->metadataSummary($source) }}">
                                 {{ $this->metadataSummary($source) }}
