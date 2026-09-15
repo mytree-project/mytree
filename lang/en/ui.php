@@ -67,6 +67,7 @@ return [
         'compatible_source_types_help' => 'Optional presentation filter. Leave empty to offer the template for every Source type.',
         'source_type_key' => 'Source type key',
         'choose_source_type' => 'Choose a Source type',
+        'no_source_type_matches' => 'No Source types match this search.',
         'add_source_type' => 'Add Source type',
         'ordered_default_fields' => 'Ordered default structured fields',
         'ordered_default_fields_help' => 'The order controls presentation only. Zero fields is a valid blank template.',
