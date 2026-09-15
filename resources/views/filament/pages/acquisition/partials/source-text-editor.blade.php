@@ -1,11 +1,6 @@
 @php
-    $isTranslation = $kind === \App\Domain\Acquisition\SourceTextKind::Translation->value;
-    $label = $isTranslation ? 'Translation' : ($kind === \App\Domain\Acquisition\SourceTextKind::Transcription->value ? 'Transcription' : ucfirst(str_replace('_', ' ', $kind)));
-    $description = $isTranslation
-        ? 'Derived representation. Keep it separate from the transcription and record the target language.'
-        : ($kind === \App\Domain\Acquisition\SourceTextKind::Transcription->value
-            ? 'Source representation. Enter what the document says without replacing it with an interpretation.'
-            : 'Additional SourceText representation retained in Source history.');
+    $label = __('ui.workspace.text_kinds.'.$kind);
+    $description = __('ui.workspace.text_descriptions.'.$kind);
     $hasRows = false;
 @endphp
 
@@ -22,26 +17,26 @@
         <article class="source-text-card" wire:key="source-text-{{ $kind }}-{{ $text['id'] ?? 'new-'.$index }}-{{ $index }}">
             <div class="source-text-card-toolbar">
                 <label>
-                    <span>Language</span>
+                    <span>{{ __('ui.workspace.language') }}</span>
                     <input
                         type="text"
                         maxlength="35"
-                        placeholder="e.g. pl, ru, la"
+                        placeholder="{{ __('ui.workspace.language_placeholder') }}"
                         wire:model.blur="sourceTexts.{{ $index }}.language"
                     >
                 </label>
 
                 <button type="button" wire:click="removeSourceText({{ $index }})">
-                    Remove
+                    {{ __('ui.workspace.remove') }}
                 </button>
             </div>
 
             <label class="source-text-content-field">
-                <span>{{ $label }} text</span>
+                <span>{{ __('ui.workspace.text_content_label', ['label' => $label]) }}</span>
                 <textarea
                     rows="18"
                     wire:model.blur="sourceTexts.{{ $index }}.content"
-                    placeholder="Enter {{ strtolower($label) }}…"
+                    placeholder="{{ __('ui.workspace.text_placeholder', ['label' => mb_strtolower($label)]) }}"
                 ></textarea>
             </label>
 
@@ -53,11 +48,11 @@
 
     @if (! $hasRows)
         <div class="source-workspace-empty">
-            No {{ strtolower($label) }} has been recorded for this Source yet.
+            {{ __('ui.workspace.text_empty', ['label' => mb_strtolower($label)]) }}
         </div>
     @endif
 
     <button type="button" class="source-workspace-secondary-button" wire:click="addSourceText('{{ $kind }}')">
-        Add {{ strtolower($label) }}
+        {{ __('ui.workspace.text_add', ['label' => mb_strtolower($label)]) }}
     </button>
 </div>
