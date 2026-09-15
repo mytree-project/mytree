@@ -24,6 +24,18 @@ return [
         'empty' => 'No Sources match the current search.',
         'no_metadata' => 'No metadata',
     ],
+    'source_types' => [
+        'generic' => 'Generic source',
+        'civil_birth' => 'Birth record',
+        'civil_marriage' => 'Marriage record',
+        'civil_death' => 'Death record',
+        'oral_testimony' => 'Oral testimony',
+        'family_tradition' => 'Family tradition',
+        'fallback' => 'Custom source type (:key)',
+        'with_version' => ':label · v:version',
+        'field_label' => 'Source type',
+        'field_help' => 'Choose a Source type. Its canonical key is stored unchanged and the schema version is selected automatically.',
+    ],
     'settings' => [
         'general' => 'General',
         'acquisition' => 'Acquisition',
