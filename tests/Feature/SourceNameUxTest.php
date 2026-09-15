@@ -39,7 +39,6 @@ final class SourceNameUxTest extends TestCase
                 'source_type_key' => 'generic',
                 'source_type_schema_version' => 1,
                 'metadata' => [],
-                'texts' => [],
                 'detach_asset_ids' => [],
                 'uploads' => [],
             ])
