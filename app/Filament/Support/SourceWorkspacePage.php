@@ -347,8 +347,7 @@ abstract class SourceWorkspacePage extends Page
             return;
         }
 
-        unset($this->sourceTexts[$index]);
-        $this->sourceTexts = array_values($this->sourceTexts);
+        array_splice($this->sourceTexts, $index, 1);
     }
 
     public function save(): void
@@ -747,7 +746,6 @@ abstract class SourceWorkspacePage extends Page
             ],
             $draft->current->source->texts,
         );
-
         $this->assetChoices = [];
         $this->assetPreviews = [];
         foreach ($draft->current->assets as $asset) {
