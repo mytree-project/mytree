@@ -17,7 +17,13 @@ final readonly class ReadSourceAsset
     public function handle(SourceId $sourceId, SourceAssetId $assetId): SourceAssetPayload
     {
         $asset = $this->assets->find($assetId);
-        if ($asset === null || $asset->sourceId === null || $asset->sourceId->value !== $sourceId->value) {
+        if ($asset === null) {
+            throw SourceAssetNotFound::forId($assetId);
+        }
+        if ($asset->sourceId === null) {
+            throw SourceAssetNotFound::forId($assetId);
+        }
+        if ($asset->sourceId->value !== $sourceId->value) {
             throw SourceAssetNotFound::forId($assetId);
         }
 
