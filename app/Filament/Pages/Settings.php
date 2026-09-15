@@ -131,6 +131,24 @@ final class Settings extends Page
         $this->templateEditor['compatible_source_types'] = $rows;
     }
 
+    public function compatibleSourceTypeChanged(int $index): void
+    {
+        $row = $this->templateEditor['compatible_source_types'][$index] ?? null;
+        if (! is_array($row)) {
+            return;
+        }
+
+        $key = $row['key'] ?? null;
+        if (! is_string($key)) {
+            return;
+        }
+
+        $schemaVersion = app(SourceTypePresentationCatalog::class)->schemaVersion($key);
+        if ($schemaVersion !== null) {
+            $this->templateEditor['compatible_source_types'][$index]['schema_version'] = $schemaVersion;
+        }
+    }
+
     public function removeCompatibleSourceType(int $index): void
     {
         $rows = $this->templateEditor['compatible_source_types'] ?? [];
@@ -223,6 +241,21 @@ final class Settings extends Page
         }
 
         return $options;
+    }
+
+    /** @return array<string, string> */
+    public function sourceTypeOptions(?string $currentKey = null, mixed $currentSchemaVersion = 1): array
+    {
+        $current = null;
+        if (is_string($currentKey) && $currentKey !== '' && (is_int($currentSchemaVersion) || is_numeric($currentSchemaVersion))) {
+            try {
+                $current = new SourceType($currentKey, (int) $currentSchemaVersion);
+            } catch (InvalidArgumentException) {
+                $current = null;
+            }
+        }
+
+        return app(SourceTypePresentationCatalog::class)->options($current);
     }
 
     private function reloadLanguage(): void
