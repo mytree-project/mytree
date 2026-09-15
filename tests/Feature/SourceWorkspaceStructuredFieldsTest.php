@@ -14,14 +14,14 @@ use App\Domain\Acquisition\MentionKind;
 use App\Domain\Acquisition\PredicateKey;
 use App\Domain\Acquisition\SourceType;
 use App\Domain\Acquisition\TextClaimValue;
-use App\Filament\Pages\Acquisition\StructuredFieldsEditor;
+use App\Filament\Pages\Acquisition\SourceEditor;
 use App\Infrastructure\Persistence\Eloquent\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
 
-final class StructuredFieldsEditorTest extends TestCase
+final class SourceWorkspaceStructuredFieldsTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -37,7 +37,7 @@ final class StructuredFieldsEditorTest extends TestCase
     {
         $source = app(CreateSource::class)->handle(new SourceType('civil.birth'));
 
-        Livewire::test(StructuredFieldsEditor::class, ['source' => $source->id->value])
+        Livewire::test(SourceEditor::class, ['source' => $source->id->value])
             ->fillForm([
                 'mentions' => [
                     [
@@ -111,7 +111,7 @@ final class StructuredFieldsEditorTest extends TestCase
                         ],
                     ],
                 ],
-            ])
+            ], 'evidenceForm')
             ->call('save')
             ->assertHasNoFormErrors()
             ->assertRedirect();
@@ -148,7 +148,7 @@ final class StructuredFieldsEditorTest extends TestCase
     {
         $source = app(CreateSource::class)->handle(SourceType::generic());
 
-        Livewire::test(StructuredFieldsEditor::class, ['source' => $source->id->value])
+        Livewire::test(SourceEditor::class, ['source' => $source->id->value])
             ->fillForm([
                 'mentions' => [[
                     'id' => null,
@@ -163,7 +163,7 @@ final class StructuredFieldsEditorTest extends TestCase
                     $this->literalRow(PredicateKey::PersonOccupation->value, 'person.1', 'kowal'),
                 ],
                 'event_contexts' => [],
-            ])
+            ], 'evidenceForm')
             ->call('save')
             ->assertHasNoFormErrors();
 
@@ -174,13 +174,13 @@ final class StructuredFieldsEditorTest extends TestCase
         ));
         self::assertCount(2, $occupations);
 
-        Livewire::test(StructuredFieldsEditor::class, ['source' => $source->id->value])
+        Livewire::test(SourceEditor::class, ['source' => $source->id->value])
             ->fillForm([
                 'fields' => [[
                     ...$this->literalRow(PredicateKey::PersonOccupation->value, 'person.1', $occupations[0]->value?->raw() ?? 'rolnik'),
                     'claim_id' => $occupations[0]->id->value,
                 ]],
-            ])
+            ], 'evidenceForm')
             ->call('save')
             ->assertHasNoFormErrors();
 
@@ -199,7 +199,7 @@ final class StructuredFieldsEditorTest extends TestCase
     {
         $source = app(CreateSource::class)->handle(SourceType::generic());
 
-        Livewire::test(StructuredFieldsEditor::class, ['source' => $source->id->value])
+        Livewire::test(SourceEditor::class, ['source' => $source->id->value])
             ->fillForm([
                 'mentions' => [[
                     'id' => null,
@@ -220,7 +220,7 @@ final class StructuredFieldsEditorTest extends TestCase
                     'age_unit' => 'years',
                 ]],
                 'event_contexts' => [],
-            ])
+            ], 'evidenceForm')
             ->call('save')
             ->assertHasNoFormErrors();
 
