@@ -13,4 +13,6 @@ interface SourceAssetStorage
     public function referenceFor(SourceId $sourceId, SourceAssetId $assetId): SourceAssetStorageReference;
 
     public function write(SourceAssetStorageReference $reference, string $contents): void;
+
+    public function read(SourceAssetStorageReference $reference): string;
 }
