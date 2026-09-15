@@ -17,6 +17,7 @@ use App\Application\Settings\Application\ApplicationSettings;
 use App\Application\Settings\Application\ApplicationSettingsProvider;
 use App\Application\Settings\Application\UpdateApplicationSettings;
 use App\Domain\Acquisition\SourceType;
+use App\Filament\Support\SourceTypePresentationCatalog;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use InvalidArgumentException;
@@ -83,7 +84,7 @@ final class Settings extends Page
     public function templates(): array
     {
         return array_map(
-            fn (SourceTypeTemplateVersion $template): array => $this->serializeTemplate($template),
+            fn (SourceTypeTemplateVersion $template): array => $this->serializeTemplateForList($template),
             app(ListSourceTypeTemplates::class)->handle(),
         );
     }
@@ -128,6 +129,24 @@ final class Settings extends Page
 
         $rows[] = ['key' => '', 'schema_version' => 1];
         $this->templateEditor['compatible_source_types'] = $rows;
+    }
+
+    public function compatibleSourceTypeChanged(int $index): void
+    {
+        $row = $this->templateEditor['compatible_source_types'][$index] ?? null;
+        if (! is_array($row)) {
+            return;
+        }
+
+        $key = $row['key'] ?? null;
+        if (! is_string($key)) {
+            return;
+        }
+
+        $schemaVersion = app(SourceTypePresentationCatalog::class)->schemaVersion($key);
+        if ($schemaVersion !== null) {
+            $this->templateEditor['compatible_source_types'][$index]['schema_version'] = $schemaVersion;
+        }
     }
 
     public function removeCompatibleSourceType(int $index): void
@@ -224,6 +243,21 @@ final class Settings extends Page
         return $options;
     }
 
+    /** @return array<string, string> */
+    public function sourceTypeOptions(?string $currentKey = null, mixed $currentSchemaVersion = 1): array
+    {
+        $current = null;
+        if (is_string($currentKey) && $currentKey !== '' && (is_int($currentSchemaVersion) || is_numeric($currentSchemaVersion))) {
+            try {
+                $current = new SourceType($currentKey, (int) $currentSchemaVersion);
+            } catch (InvalidArgumentException) {
+                $current = null;
+            }
+        }
+
+        return app(SourceTypePresentationCatalog::class)->options($current);
+    }
+
     private function reloadLanguage(): void
     {
         $locale = app(ApplicationSettingsProvider::class)->current()->defaultLocale;
@@ -254,6 +288,23 @@ final class Settings extends Page
     private function resetTemplateEditor(): void
     {
         $this->templateEditor = $this->blankTemplate();
+    }
+
+    /** @return array<string, mixed> */
+    private function serializeTemplateForList(SourceTypeTemplateVersion $template): array
+    {
+        $serialized = $this->serializeTemplate($template);
+        $serialized['compatible_source_types'] = array_map(
+            static function (array $sourceType): array {
+                $type = new SourceType($sourceType['key'], (int) $sourceType['schema_version']);
+                $sourceType['key'] = app(SourceTypePresentationCatalog::class)->display($type);
+
+                return $sourceType;
+            },
+            $serialized['compatible_source_types'],
+        );
+
+        return $serialized;
     }
 
     /** @return array<string, mixed> */

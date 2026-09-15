@@ -74,7 +74,7 @@ abstract class BasicSourceEditorPage extends Page
 
     public ?int $revisionNumber = null;
 
-    public string $sourceTypeContext = 'generic@1';
+    public string $sourceTypeContext = '';
 
     /** @var array<string, string> */
     public array $assetChoices = [];
@@ -113,7 +113,7 @@ abstract class BasicSourceEditorPage extends Page
 
         $this->sourceId = $sourceId->value;
         $this->revisionNumber = $summary->revisionNumber;
-        $this->sourceTypeContext = sprintf('%s@%d', $summary->type->key, $summary->type->schemaVersion);
+        $this->sourceTypeContext = app(SourceTypePresentationCatalog::class)->display($summary->type);
         $this->baseState = $this->serializeBaseState($draft->baseState);
         $this->fillFromDraft($draft);
         $this->applyRequestedTemplate();
@@ -147,26 +147,19 @@ abstract class BasicSourceEditorPage extends Page
                     ->helperText('Human-readable label only; Source identity remains the immutable UUID.')
                     ->placeholder('e.g. Birth certificate Jan Kowalski 1880')
                     ->maxLength(255),
-                TextInput::make('source_type_key')
-                    ->label('Source type')
-                    ->helperText('Use generic when no Source Type Template applies.')
+                Select::make('source_type_key')
+                    ->label(__('ui.source_types.field_label'))
+                    ->helperText(__('ui.source_types.field_help'))
+                    ->options(fn (): array => $this->sourceTypeOptions())
+                    ->searchable()
                     ->required()
-                    ->maxLength(120)
                     ->rules(['regex:/^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*$/'])
                     ->live()
                     ->afterStateUpdated(function (): void {
                         $this->sourceTypeChanged();
                     }),
-                TextInput::make('source_type_schema_version')
-                    ->label('Source type schema version')
-                    ->numeric()
-                    ->integer()
-                    ->minValue(1)
-                    ->required()
-                    ->live()
-                    ->afterStateUpdated(function (): void {
-                        $this->sourceTypeChanged();
-                    }),
+                Hidden::make('source_type_schema_version')
+                    ->required(),
                 Select::make('template_id')
                     ->label('Source Type Template')
                     ->helperText('Templates choose default fields only. Selecting or changing one never changes Source/Mention/Claim truth by itself.')
@@ -249,6 +242,22 @@ abstract class BasicSourceEditorPage extends Page
 
     public function sourceTypeChanged(): void
     {
+        $state = is_array($this->data) ? $this->data : [];
+        $key = $state['source_type_key'] ?? null;
+        if (is_string($key)) {
+            $schemaVersion = app(SourceTypePresentationCatalog::class)->schemaVersion($key);
+            if ($schemaVersion !== null) {
+                $state['source_type_schema_version'] = $schemaVersion;
+                $this->data = $state;
+                $this->form->fill($state);
+            }
+        }
+
+        $sourceType = $this->currentFormSourceType();
+        if ($sourceType !== null) {
+            $this->sourceTypeContext = app(SourceTypePresentationCatalog::class)->display($sourceType);
+        }
+
         $selectedTemplateId = $this->selectedTemplateId();
         if ($selectedTemplateId === null) {
             return;
@@ -709,6 +718,7 @@ abstract class BasicSourceEditorPage extends Page
             abort(409, $exception->getMessage());
         }
 
+        $this->sourceTypeContext = app(SourceTypePresentationCatalog::class)->display($draft->current->source->type);
         $this->form->fill([
             'name' => $draft->current->source->name,
             'source_type_key' => $draft->current->source->type->key,
@@ -729,6 +739,12 @@ abstract class BasicSourceEditorPage extends Page
         if (is_string($requestedTemplate) && trim($requestedTemplate) !== '') {
             $this->templateChanged($requestedTemplate);
         }
+    }
+
+    /** @return array<string, string> */
+    private function sourceTypeOptions(): array
+    {
+        return app(SourceTypePresentationCatalog::class)->options($this->currentFormSourceType());
     }
 
     /** @return array<string, string> */

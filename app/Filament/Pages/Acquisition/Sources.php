@@ -6,6 +6,7 @@ namespace App\Filament\Pages\Acquisition;
 
 use App\Application\Acquisition\BrowseSources;
 use App\Application\Acquisition\SourceBrowseItem;
+use App\Filament\Support\SourceTypePresentationCatalog;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
 
@@ -28,6 +29,16 @@ final class Sources extends Page
     public function sources(): array
     {
         return app(BrowseSources::class)->search($this->search);
+    }
+
+    public function sourceTypeLabel(SourceBrowseItem $source): string
+    {
+        return app(SourceTypePresentationCatalog::class)->display($source->type);
+    }
+
+    public function sourceTypeDiagnostic(SourceBrowseItem $source): string
+    {
+        return app(SourceTypePresentationCatalog::class)->diagnostic($source->type);
     }
 
     public function metadataSummary(SourceBrowseItem $source): string
