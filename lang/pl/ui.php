@@ -24,6 +24,18 @@ return [
         'empty' => 'Brak źródeł pasujących do wyszukiwania.',
         'no_metadata' => 'Brak metadanych',
     ],
+    'source_types' => [
+        'generic' => 'Źródło ogólne',
+        'civil_birth' => 'Akt urodzenia',
+        'civil_marriage' => 'Akt małżeństwa',
+        'civil_death' => 'Akt zgonu',
+        'oral_testimony' => 'Relacja ustna',
+        'family_tradition' => 'Tradycja rodzinna',
+        'fallback' => 'Niestandardowy typ źródła (:key)',
+        'with_version' => ':label · w:version',
+        'field_label' => 'Typ źródła',
+        'field_help' => 'Wybierz typ źródła. Jego kanoniczny klucz jest zapisywany bez zmian, a wersja schematu jest dobierana automatycznie.',
+    ],
     'settings' => [
         'general' => 'Ogólne',
         'acquisition' => 'Akwizycja',
