@@ -510,7 +510,7 @@ abstract class SourceWorkspacePage extends Page
         );
     }
 
-    /** @param array<string, mixed> $data */
+    /** @param  array<string, mixed>  $data */
     private function sourceChanges(SourceDraft $draft, array $data): SourceDraftSourceChanges
     {
         $name = $data['name'] ?? null;
@@ -543,7 +543,7 @@ abstract class SourceWorkspacePage extends Page
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array{0: list<SourceText>, 1: list<SourceText>, 2: list<SourceTextId>}
      */
     private function textChanges(SourceDraft $draft, array $data): array
@@ -616,7 +616,7 @@ abstract class SourceWorkspacePage extends Page
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
     private function metadataValues(SourceDraft $draft, array $data): array
@@ -682,7 +682,7 @@ abstract class SourceWorkspacePage extends Page
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return list<SourceAssetId>
      */
     private function detachAssetIds(array $data): array
@@ -699,7 +699,7 @@ abstract class SourceWorkspacePage extends Page
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return list<TemporaryUploadedFile>
      */
     private function uploadedFiles(array $data): array
@@ -714,7 +714,7 @@ abstract class SourceWorkspacePage extends Page
 
         $files = [];
         foreach ($uploads as $upload) {
-            if (! ($upload instanceof TemporaryUploadedFile)) {
+            if (! $upload instanceof TemporaryUploadedFile) {
                 throw ValidationException::withMessages(['data.uploads' => 'Uploaded assets are invalid.']);
             }
             $files[] = $upload;
