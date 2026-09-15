@@ -182,8 +182,8 @@
                 input.focus();
             };
 
-            const renderOptions = () => {
-                const query = input.value.trim().toLocaleLowerCase();
+            const renderOptions = (queryValue = input.value) => {
+                const query = queryValue.trim().toLocaleLowerCase();
                 const options = sourceTypeOptions(select).filter((option) => {
                     if (query === '') {
                         return true;
@@ -226,8 +226,11 @@
                 input.setAttribute('aria-expanded', 'true');
             };
 
-            input.addEventListener('focus', renderOptions);
-            input.addEventListener('input', renderOptions);
+            input.addEventListener('focus', () => {
+                input.select();
+                renderOptions('');
+            });
+            input.addEventListener('input', () => renderOptions());
             input.addEventListener('keydown', (event) => {
                 if (event.key === 'Escape') {
                     close();
@@ -237,7 +240,7 @@
                 if (event.key === 'ArrowDown') {
                     event.preventDefault();
                     if (list.hidden) {
-                        renderOptions();
+                        renderOptions('');
                     }
                     list.querySelector('button')?.focus();
                     return;
