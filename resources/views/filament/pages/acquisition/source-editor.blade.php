@@ -24,7 +24,7 @@
             <div
                 class="source-workspace-resizer"
                 role="separator"
-                aria-label="Resize Source Acquisition panels"
+                aria-label="{{ __('ui.workspace.resize_panels') }}"
                 aria-orientation="vertical"
                 aria-valuemin="25"
                 aria-valuemax="75"
@@ -48,14 +48,14 @@
         </div>
 
         <details class="source-workspace-details" open>
-            <summary>Source details &amp; asset management</summary>
+            <summary>{{ __('ui.workspace.source_details_assets') }}</summary>
             <div class="source-workspace-details-content">
                 {{ $this->form }}
             </div>
         </details>
 
         <details class="source-workspace-details">
-            <summary>Other SourceText representations</summary>
+            <summary>{{ __('ui.workspace.other_texts') }}</summary>
             <div class="source-workspace-details-content source-workspace-other-texts">
                 @include('filament.pages.acquisition.partials.source-text-editor', [
                     'kind' => \App\Domain\Acquisition\SourceTextKind::Summary->value,
@@ -68,7 +68,7 @@
 
         <div class="source-workspace-actions">
             <x-filament::button type="submit">
-                Save Source
+                {{ __('ui.workspace.save_source') }}
             </x-filament::button>
 
             <x-filament::button
@@ -76,7 +76,7 @@
                 color="gray"
                 href="{{ \App\Filament\Pages\Acquisition\Sources::getUrl() }}"
             >
-                Back to Sources
+                {{ __('ui.workspace.back_to_sources') }}
             </x-filament::button>
         </div>
     </form>
