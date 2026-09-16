@@ -16,6 +16,8 @@ return [
     'claim_value_required' => 'Claim nr :number wymaga wartości źródłowej.',
     'claim_effective_time_incomplete' => 'Claim nr :number ma niekompletne określenie czasu obowiązywania.',
     'claim_invalid' => 'Claim nr :number zawiera nieprawidłowe dane.',
+    'event_json_syntax' => 'Błąd składni JSON w Event nr :number:key_suffix.',
+    'event_json_object' => 'Dane JSON w Event nr :number:key_suffix muszą być obiektem JSON.',
     'event_invalid' => 'Event nr :number:key_suffix zawiera nieprawidłowe dane.',
     'event_claim_invalid' => 'Claim nr :claim_number w Event nr :event_number zawiera nieprawidłowe dane.',
     'metadata_invalid' => 'Pole metadanych nr :number zawiera nieprawidłowe dane.',
