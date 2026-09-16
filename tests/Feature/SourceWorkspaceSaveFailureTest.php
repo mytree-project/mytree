@@ -30,6 +30,7 @@ final class SourceWorkspaceSaveFailureTest extends TestCase
     public function test_structured_validation_failure_is_visible_preserves_state_and_does_not_persist(): void
     {
         $this->actingAs(User::factory()->admin()->create());
+        app()->setLocale('pl');
         $source = app(CreateSource::class)->handle(SourceType::generic());
 
         $sourceRevisionCount = DB::table('source_revisions')->count();
@@ -38,20 +39,32 @@ final class SourceWorkspaceSaveFailureTest extends TestCase
         $evidenceStateCount = DB::table('evidence_states')->count();
 
         Livewire::test(SourceEditor::class, ['source' => $source->id->value])
-            ->set('evidenceData.mentions', [[
-                'id' => null,
-                'kind' => MentionKind::PERSON,
-                'local_key' => 'person_valentin',
-                'role' => 'declarant',
-                'display_label' => 'Valentin Wiśniewski',
-                'raw_data_json' => '{"broken":',
-            ]])
+            ->set('evidenceData.mentions', [
+                [
+                    'id' => null,
+                    'kind' => MentionKind::PERSON,
+                    'local_key' => 'person_hedvig',
+                    'role' => 'mother',
+                    'display_label' => 'Hedvig Wiśniewska',
+                    'raw_data_json' => '{}',
+                ],
+                [
+                    'id' => null,
+                    'kind' => MentionKind::PERSON,
+                    'local_key' => 'person_valentin',
+                    'role' => 'declarant',
+                    'display_label' => 'Valentin Wiśniewski',
+                    'raw_data_json' => '{"broken":',
+                ],
+            ])
             ->call('save')
-            ->assertHasErrors(['evidenceData.mentions.0.raw_data_json'])
-            ->assertSet('evidenceData.mentions.0.local_key', 'person_valentin')
-            ->assertSet('evidenceData.mentions.0.display_label', 'Valentin Wiśniewski')
+            ->assertHasErrors(['evidenceData.mentions.1.raw_data_json'])
+            ->assertSet('evidenceData.mentions.0.local_key', 'person_hedvig')
+            ->assertSet('evidenceData.mentions.1.local_key', 'person_valentin')
+            ->assertSet('evidenceData.mentions.1.display_label', 'Valentin Wiśniewski')
             ->assertNoRedirect()
             ->assertSee(__('ui.workspace.save_failed'))
+            ->assertSee('Wystąpił błąd składni JSON w Mention nr 2 (person_valentin).')
             ->assertSeeHtml('data-source-workspace-save-errors');
 
         self::assertSame($sourceRevisionCount, DB::table('source_revisions')->count());
