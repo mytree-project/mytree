@@ -25,6 +25,7 @@ RUN apt-get update \
         pcntl \
         pdo_pgsql \
         pdo_sqlite \
+        sockets \
         zip \
     && pecl install redis \
     && docker-php-ext-enable redis \
