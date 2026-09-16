@@ -81,8 +81,8 @@ final class SourceEditor extends SourceWorkspacePage
                 return $workspacePath;
             }
 
-            if (str_starts_with($path, $sourcePath . '.')) {
-                return $workspacePath . substr($path, strlen($sourcePath));
+            if (str_starts_with($path, $sourcePath.'.')) {
+                return $workspacePath.substr($path, strlen($sourcePath));
             }
         }
 
