@@ -6,7 +6,6 @@ namespace App\Providers\Filament;
 
 use App\Filament\Pages\Acquisition\SourceEditor;
 use App\Filament\Pages\Acquisition\Sources;
-use App\Filament\Pages\Acquisition\StructuredFieldsEditor;
 use App\Filament\Pages\Settings;
 use App\Filament\Widgets\SystemStatusWidget;
 use App\Http\Middleware\ApplyApplicationLocale;
@@ -50,7 +49,6 @@ final class AdminPanelProvider extends PanelProvider
                 Dashboard::class,
                 Sources::class,
                 SourceEditor::class,
-                StructuredFieldsEditor::class,
                 Settings::class,
             ])
             ->widgets([

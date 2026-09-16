@@ -44,4 +44,15 @@ final class LaravelSourceAssetStorage implements SourceAssetStorage
             throw new RuntimeException(sprintf('Unable to store Source asset on disk "%s".', $reference->disk));
         }
     }
+
+    public function read(SourceAssetStorageReference $reference): string
+    {
+        $contents = $this->filesystems->disk($reference->disk)->get($reference->path);
+
+        if (! is_string($contents)) {
+            throw new RuntimeException(sprintf('Unable to read Source asset from disk "%s".', $reference->disk));
+        }
+
+        return $contents;
+    }
 }

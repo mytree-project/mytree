@@ -83,7 +83,7 @@ final class M4ConsistencyRegressionTest extends TestCase
                     'transcription_certainty' => 'unspecified',
                     'interpretation_certainty' => 'unspecified',
                 ]],
-            ])
+            ], 'evidenceForm')
             ->call('save')
             ->assertHasNoFormErrors()
             ->assertRedirect();

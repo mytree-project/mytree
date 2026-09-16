@@ -39,7 +39,6 @@ final class SourceNameUxTest extends TestCase
                 'source_type_key' => 'generic',
                 'source_type_schema_version' => 1,
                 'metadata' => [],
-                'texts' => [],
                 'detach_asset_ids' => [],
                 'uploads' => [],
             ])
@@ -99,5 +98,32 @@ final class SourceNameUxTest extends TestCase
             ->assertSee('navigator.clipboard.writeText($el.dataset.copyValue)', false)
             ->assertSee('civil.birth@1')
             ->assertDontSee('Marriage certificate Anna Nowak 1901');
+    }
+
+    public function test_polish_source_list_uses_workspace_edit_and_read_only_details_drawer(): void
+    {
+        app()->setLocale('pl');
+
+        $source = app(CreateSource::class)->handle(
+            type: new SourceType('civil.birth'),
+            metadata: new SourceMetadata(['archive_reference' => 'Zespół 12']),
+            name: 'Akt urodzenia Jana Kowalskiego',
+        );
+
+        Livewire::test(Sources::class)
+            ->assertSee('Edycja')
+            ->assertSee('Szczegóły')
+            ->assertSee('Szczegóły źródła')
+            ->assertSee('data-source-details-panel', false)
+            ->assertDontSee('Pola');
+
+        Livewire::test(SourceEditor::class, ['source' => $source->id->value])
+            ->assertSee('Edycja źródła')
+            ->assertSee('Plik / skan źródła')
+            ->assertSee('Transkrypcja')
+            ->assertSee('Tłumaczenie')
+            ->assertSee('Szczegóły źródła i pliki')
+            ->assertSee('Nazwa źródła')
+            ->assertSee('Zapisz źródło');
     }
 }
