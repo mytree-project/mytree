@@ -97,4 +97,38 @@ final class SourceWorkspaceSaveFailureTest extends TestCase
 
         self::assertSame($sourceRevisionCount, DB::table('source_revisions')->count());
     }
+
+    public function test_claim_domain_failure_targets_claim_instead_of_source_details(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+        app()->setLocale('pl');
+        $source = app(CreateSource::class)->handle(SourceType::generic());
+
+        Livewire::test(SourceEditor::class, ['source' => $source->id->value])
+            ->set('evidenceData.mentions', [[
+                'id' => null,
+                'kind' => MentionKind::PLACE,
+                'local_key' => 'place_sobotka',
+                'role' => null,
+                'display_label' => 'Sobótka',
+                'raw_data_json' => '{}',
+            ]])
+            ->set('evidenceData.fields', [[
+                'claim_id' => null,
+                'presentation_origin' => null,
+                'field_key' => 'person.given_name',
+                'subject_local_key' => 'place_sobotka',
+                'object_local_key' => null,
+                'value_raw' => 'Sobótka',
+                'transcription_certainty' => 'unspecified',
+                'interpretation_certainty' => 'unspecified',
+            ]])
+            ->call('save')
+            ->assertHasErrors(['evidenceData.fields.0.subject_local_key'])
+            ->assertHasNoErrors(['data'])
+            ->assertNoRedirect()
+            ->assertSee('Claim nr 1 zawiera nieprawidłowe dane.')
+            ->assertSee(__('workspace_validation.technical_details'))
+            ->assertSee('Predicate &quot;person.given_name&quot; requires a &quot;person&quot; subject Mention.', escape: false);
+    }
 }
