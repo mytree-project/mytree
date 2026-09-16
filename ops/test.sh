@@ -11,12 +11,12 @@ usage() {
 Usage: ./ops/test.sh [all|install|style|static|tests|browser]
 
 Commands:
-  all      Install locked dependencies and run every quality gate (default)
+  all      Install locked dependencies and run the standard non-browser quality gates (default)
   install  Build the app image and install Composer/Node dependencies from lock files
   style    Verify formatting with Laravel Pint without modifying files
   static   Run Larastan/PHPStan static analysis
   tests    Run the non-browser automated test suite through Pest/PHPUnit
-  browser  Run Pest 4 browser tests through Playwright/Chromium
+  browser  Run Pest 4 browser tests through Playwright/Chromium (manual opt-in only)
 USAGE
 }
 
@@ -116,7 +116,6 @@ case "${command_name}" in
         run_style
         run_static_analysis
         run_tests
-        run_browser_tests
         ;;
     install)
         install_dependencies
