@@ -36,3 +36,6 @@ jobs:
 
       - name: Run automated tests
         run: ./ops/test.sh tests
+
+      - name: Run browser tests
+        run: ./ops/test.sh browser
