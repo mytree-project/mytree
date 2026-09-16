@@ -107,7 +107,18 @@ run_tests() {
 
 run_browser_tests() {
     printf 'Running Pest browser tests with Playwright/Chromium...\n'
-    browser_run vendor/bin/pest tests/Browser
+    printf 'Browser suite watchdog: 120 seconds; execution stops after the first failed test.\n'
+
+    browser_run timeout --signal=TERM --kill-after=10s 120s \
+        vendor/bin/pest tests/Browser --stop-on-failure || {
+        status=$?
+
+        if [[ ${status} -eq 124 || ${status} -eq 137 ]]; then
+            printf 'Error: browser tests exceeded the 120 second watchdog. The suite is expected to finish well below this limit.\n' >&2
+        fi
+
+        return "${status}"
+    }
 }
 
 case "${command_name}" in
