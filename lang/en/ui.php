@@ -125,6 +125,7 @@ return [
         'changed_elsewhere_body' => 'Reload the Source before saving again.',
         'save_failed' => 'Source could not be saved',
         'validation_failed' => 'SourceDraft validation failed.',
+        'unexpected_save_failure' => 'An unexpected error occurred while saving. Your unsaved changes remain on this page; correct the problem or try saving again.',
     ],
     'settings' => [
         'general' => 'General',
