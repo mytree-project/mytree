@@ -71,9 +71,8 @@ final class SourceEditor extends SourceWorkspacePage
         $hasMessage = false;
 
         foreach ($exception->errors() as $path => $messages) {
-            $mappedPath = $this->workspaceValidationPath($path);
-
             foreach ($messages as $message) {
+                $mappedPath = $this->workspaceValidationPath($path, $message);
                 $presentedMessage = $this->addWorkspaceValidationError($mappedPath, $message);
 
                 if (! $hasMessage) {
@@ -101,7 +100,8 @@ final class SourceEditor extends SourceWorkspacePage
 
         foreach ($messages as $path => $pathMessages) {
             foreach ($pathMessages as $message) {
-                $this->addWorkspaceValidationError($path, $message);
+                $mappedPath = $this->workspaceValidationPath($path, $message);
+                $this->addWorkspaceValidationError($mappedPath, $message);
             }
         }
     }
@@ -120,7 +120,7 @@ final class SourceEditor extends SourceWorkspacePage
         return $presentedMessage;
     }
 
-    private function workspaceValidationPath(string $path): string
+    private function workspaceValidationPath(string $path, ?string $message = null): string
     {
         foreach ([
             'data.mentions' => 'evidenceData.mentions',
@@ -136,25 +136,89 @@ final class SourceEditor extends SourceWorkspacePage
             }
         }
 
-        return $path;
+        if ($message === null || ($path !== 'data' && $path !== 'evidenceData')) {
+            return $path;
+        }
+
+        return $this->workspaceValidationPathFromMessage($message) ?? $path;
+    }
+
+    private function workspaceValidationPathFromMessage(string $message): ?string
+    {
+        $diagnosticMessage = $this->validationMessageWithoutCodePrefix($message);
+
+        if (preg_match('/^Mention local key "([^"]+)" is duplicated within the Source\.$/', $diagnosticMessage, $matches) === 1) {
+            $index = $this->duplicateMentionPresentationIndex($matches[1]);
+
+            return $index === null ? 'evidenceData.mentions' : "evidenceData.mentions.$index.local_key";
+        }
+
+        if (preg_match('/^Subject Mention local key "([^"]+)" does not exist in this Source\.$/', $diagnosticMessage, $matches) === 1) {
+            $index = $this->directClaimIndexBy('subject_local_key', $matches[1]);
+
+            return $index === null ? 'evidenceData' : "evidenceData.fields.$index.subject_local_key";
+        }
+
+        if (preg_match('/^Object Mention local key "([^"]+)" does not exist in this Source\.$/', $diagnosticMessage, $matches) === 1) {
+            return $this->claimValidationPathBy('object_local_key', $matches[1], 'object_local_key') ?? 'evidenceData';
+        }
+
+        if (preg_match('/^Supported acquisition field "([^"]+)" requires an object Mention local key\.$/', $diagnosticMessage, $matches) === 1) {
+            return $this->claimValidationPathBy('field_key', $matches[1], 'object_local_key') ?? 'evidenceData';
+        }
+
+        if (preg_match('/^Supported acquisition field "([^"]+)" requires a typed literal value\.$/', $diagnosticMessage, $matches) === 1) {
+            return $this->claimValidationPathBy('field_key', $matches[1]) ?? 'evidenceData';
+        }
+
+        if (preg_match('/^Predicate "([^"]+)" requires a "[^"]+" (subject|object) Mention\.$/', $diagnosticMessage, $matches) === 1) {
+            $field = $matches[2] === 'subject' ? 'subject_local_key' : 'object_local_key';
+
+            return $this->claimValidationPathBy('field_key', $matches[1], $field) ?? 'evidenceData';
+        }
+
+        if ($diagnosticMessage === 'Structured editor state must contain lists.') {
+            return 'evidenceData';
+        }
+
+        if ($diagnosticMessage === 'Mention identity is invalid for this SourceDraft.') {
+            return 'evidenceData.mentions';
+        }
+
+        if ($diagnosticMessage === 'Claim identity is invalid for this SourceDraft.'
+            || $diagnosticMessage === 'Event context Claim subject must be the context event Mention.') {
+            return 'evidenceData';
+        }
+
+        if (str_starts_with($message, '[draft.claim.')) {
+            return 'evidenceData';
+        }
+
+        if (str_starts_with($message, '[draft.mention.')) {
+            return 'evidenceData.mentions';
+        }
+
+        return null;
     }
 
     private function workspaceValidationMessage(string $path, string $message): string
     {
-        if ($message === __('ui.workspace.template_incompatible')) {
-            return $message;
+        $diagnosticMessage = $this->validationMessageWithoutCodePrefix($message);
+
+        if ($diagnosticMessage === __('ui.workspace.template_incompatible')) {
+            return $diagnosticMessage;
         }
 
-        if (str_contains($message, 'SourceDraft base state is stale')) {
+        if (str_contains($diagnosticMessage, 'SourceDraft base state is stale')) {
             return __('ui.workspace.changed_elsewhere_body');
         }
 
         if (preg_match('/^evidenceData\.mentions\.(\d+)(?:\.(.+))?$/', $path, $matches) === 1) {
-            return $this->mentionValidationMessage((int) $matches[1], $matches[2] ?? null, $message);
+            return $this->mentionValidationMessage((int) $matches[1], $matches[2] ?? null, $diagnosticMessage);
         }
 
         if (preg_match('/^evidenceData\.fields\.(\d+)(?:\.(.+))?$/', $path, $matches) === 1) {
-            return $this->claimValidationMessage((int) $matches[1], $matches[2] ?? null, $message);
+            return $this->claimValidationMessage((int) $matches[1], $matches[2] ?? null, $diagnosticMessage);
         }
 
         if (preg_match('/^evidenceData\.event_contexts\.(\d+)\.claims\.(\d+)(?:\.(.+))?$/', $path, $matches) === 1) {
@@ -165,11 +229,11 @@ final class SourceEditor extends SourceWorkspacePage
         }
 
         if (preg_match('/^evidenceData\.event_contexts\.(\d+)(?:\.(.+))?$/', $path, $matches) === 1) {
-            return $this->eventValidationMessage((int) $matches[1], $matches[2] ?? null, $message);
+            return $this->eventValidationMessage((int) $matches[1], $matches[2] ?? null, $diagnosticMessage);
         }
 
         if (preg_match('/^data\.metadata\.(\d+)(?:\.(.+))?$/', $path, $matches) === 1) {
-            return $this->metadataValidationMessage((int) $matches[1], $matches[2] ?? null, $message);
+            return $this->metadataValidationMessage((int) $matches[1], $matches[2] ?? null, $diagnosticMessage);
         }
 
         if (preg_match('/^sourceTexts\.(\d+)/', $path, $matches) === 1) {
@@ -183,7 +247,11 @@ final class SourceEditor extends SourceWorkspacePage
         }
 
         if ($path === 'data') {
-            return $this->workspaceDataValidationMessage($message);
+            return $this->workspaceDataValidationMessage($diagnosticMessage);
+        }
+
+        if ($path === 'evidenceData' || $path === 'evidenceData.mentions') {
+            return __('workspace_validation.workspace_data_invalid');
         }
 
         if (str_starts_with($path, 'data.')) {
@@ -191,6 +259,11 @@ final class SourceEditor extends SourceWorkspacePage
         }
 
         return __('workspace_validation.workspace_data_invalid');
+    }
+
+    private function validationMessageWithoutCodePrefix(string $message): string
+    {
+        return preg_replace('/^\[[^\]]+\]\s*/', '', $message) ?? $message;
     }
 
     private function mentionValidationMessage(int $index, ?string $field, string $message): string
@@ -403,6 +476,52 @@ final class SourceEditor extends SourceWorkspacePage
         foreach (array_values($fields) as $index => $claim) {
             if (is_array($claim) && ($claim[$field] ?? null) === $value) {
                 return $index;
+            }
+        }
+
+        return null;
+    }
+
+    private function claimValidationPathBy(string $field, string $value, ?string $fieldSuffix = null): ?string
+    {
+        $directIndex = $this->directClaimIndexBy($field, $value);
+        if ($directIndex !== null) {
+            return 'evidenceData.fields.'.$directIndex.($fieldSuffix === null ? '' : '.'.$fieldSuffix);
+        }
+
+        $eventClaim = $this->eventClaimIndexBy($field, $value);
+        if ($eventClaim === null) {
+            return null;
+        }
+
+        [$eventIndex, $claimIndex] = $eventClaim;
+
+        return 'evidenceData.event_contexts.'.$eventIndex.'.claims.'.$claimIndex.($fieldSuffix === null ? '' : '.'.$fieldSuffix);
+    }
+
+    /** @return array{0: int, 1: int}|null */
+    private function eventClaimIndexBy(string $field, string $value): ?array
+    {
+        $evidenceData = is_array($this->evidenceData) ? $this->evidenceData : [];
+        $events = $evidenceData['event_contexts'] ?? [];
+        if (! is_array($events)) {
+            return null;
+        }
+
+        foreach (array_values($events) as $eventIndex => $event) {
+            if (! is_array($event)) {
+                continue;
+            }
+
+            $claims = $event['claims'] ?? [];
+            if (! is_array($claims)) {
+                continue;
+            }
+
+            foreach (array_values($claims) as $claimIndex => $claim) {
+                if (is_array($claim) && ($claim[$field] ?? null) === $value) {
+                    return [$eventIndex, $claimIndex];
+                }
             }
         }
 
