@@ -48,10 +48,7 @@ final class SourceEditor extends SourceWorkspacePage
 
         try {
             parent::save();
-            $firstMessage = $this->normalizeReportedWorkspaceErrors();
-            if ($firstMessage !== null) {
-                $this->normalizeLatestErrorNotification($firstMessage);
-            }
+            $this->normalizeReportedWorkspaceErrors();
         } catch (ValidationException $exception) {
             $this->reportValidationFailure($exception);
         } catch (Throwable $exception) {
@@ -93,46 +90,20 @@ final class SourceEditor extends SourceWorkspacePage
             ->send();
     }
 
-    private function normalizeReportedWorkspaceErrors(): ?string
+    private function normalizeReportedWorkspaceErrors(): void
     {
         $messages = $this->getErrorBag()->getMessages();
         if ($messages === []) {
-            return null;
+            return;
         }
 
         $this->resetErrorBag();
-        $firstMessage = null;
 
         foreach ($messages as $path => $pathMessages) {
             foreach ($pathMessages as $message) {
-                $presentedMessage = $this->addWorkspaceValidationError($path, $message);
-                $firstMessage ??= $presentedMessage;
+                $this->addWorkspaceValidationError($path, $message);
             }
         }
-
-        return $firstMessage;
-    }
-
-    private function normalizeLatestErrorNotification(string $message): void
-    {
-        $notifications = session()->get('filament.notifications', []);
-        if (! is_array($notifications) || $notifications === []) {
-            return;
-        }
-
-        $index = array_key_last($notifications);
-        if ($index === null) {
-            return;
-        }
-
-        $notification = $notifications[$index] ?? null;
-        if (! is_array($notification) || ($notification['status'] ?? null) !== 'danger') {
-            return;
-        }
-
-        $notification['body'] = $message;
-        $notifications[$index] = $notification;
-        session()->put('filament.notifications', $notifications);
     }
 
     private function addWorkspaceValidationError(string $path, string $technicalMessage): string
