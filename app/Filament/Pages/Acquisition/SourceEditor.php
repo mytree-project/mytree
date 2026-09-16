@@ -15,7 +15,7 @@ use Filament\Support\Enums\Width;
  */
 final class SourceEditor extends SourceWorkspacePage
 {
-    public function getMaxWidth(): Width
+    public function getMaxContentWidth(): Width
     {
         return Width::Full;
     }
