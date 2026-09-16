@@ -14,8 +14,21 @@
             >
                 <strong>{{ __('ui.workspace.save_failed') }}</strong>
                 <ul>
-                    @foreach ($errors->all() as $message)
-                        <li>{{ $message }}</li>
+                    @foreach ($errors->messages() as $path => $messages)
+                        @foreach ($messages as $messageIndex => $message)
+                            @php
+                                $technicalDetail = $workspaceValidationDetails[$path][$messageIndex] ?? null;
+                            @endphp
+                            <li>
+                                <span>{{ $message }}</span>
+                                @if (is_string($technicalDetail) && trim($technicalDetail) !== '')
+                                    <details class="source-workspace-error-details">
+                                        <summary>{{ __('workspace_validation.technical_details') }}</summary>
+                                        <code>{{ $technicalDetail }}</code>
+                                    </details>
+                                @endif
+                            </li>
+                        @endforeach
                     @endforeach
                 </ul>
             </div>
@@ -120,6 +133,9 @@
             color: rgb(153 27 27);
         }
         .source-workspace-save-errors ul { margin: 0; padding-left: 1.25rem; list-style: disc; }
+        .source-workspace-error-details { margin-top: .25rem; font-size: .78rem; }
+        .source-workspace-error-details summary { cursor: pointer; font-weight: 600; }
+        .source-workspace-error-details code { display: block; margin-top: .25rem; white-space: pre-wrap; overflow-wrap: anywhere; }
         .dark .source-workspace-save-errors { background: rgb(69 10 10); color: rgb(254 202 202); }
         .source-workspace-error-region { outline: 2px solid rgb(220 38 38); outline-offset: 2px; }
         .source-workspace { display: flex; flex-direction: column; gap: .75rem; min-width: 0; }
