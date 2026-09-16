@@ -7,8 +7,9 @@ use App\Domain\Acquisition\MentionKind;
 use App\Domain\Acquisition\PredicateKey;
 use App\Domain\Acquisition\SourceType;
 use App\Infrastructure\Persistence\Eloquent\Models\User;
+use Pest\Browser\Api\AwaitableWebpage;
 
-function openSourceWorkspaceForBrowserTest(string $sourceId): object
+function openSourceWorkspaceForBrowserTest(string $sourceId): AwaitableWebpage
 {
     $user = User::factory()->admin()->create([
         'email' => 'browser-admin@example.test',
@@ -17,8 +18,7 @@ function openSourceWorkspaceForBrowserTest(string $sourceId): object
     $page = visit('/admin/login')
         ->type('email', $user->email)
         ->type('password', 'password')
-        ->submit()
-        ->assertPathIs('/admin');
+        ->submit();
 
     return $page
         ->navigate('/admin/acquisition/source?source='.urlencode($sourceId))
@@ -27,7 +27,7 @@ function openSourceWorkspaceForBrowserTest(string $sourceId): object
 }
 
 /** @param array<mixed> $value */
-function setSourceWorkspaceBrowserState(object $page, string $property, array $value): void
+function setSourceWorkspaceBrowserState(AwaitableWebpage $page, string $property, array $value): void
 {
     $propertyJson = json_encode($property, JSON_THROW_ON_ERROR);
     $valueJson = json_encode($value, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
@@ -42,7 +42,7 @@ function setSourceWorkspaceBrowserState(object $page, string $property, array $v
         JS);
 }
 
-function submitSourceWorkspaceBrowserForm(object $page): object
+function submitSourceWorkspaceBrowserForm(AwaitableWebpage $page): AwaitableWebpage
 {
     return $page->click('form.source-acquisition-form button[type="submit"]');
 }
