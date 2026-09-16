@@ -63,7 +63,7 @@ Normal local development requires only:
 - Docker Compose v2,
 - Bash.
 
-Host PHP, Composer and Node.js are not required. The application image contains the Node/Playwright runtime needed by the browser-test quality gate.
+Host PHP, Composer and Node.js are not required. The application image contains the Node/Playwright runtime needed by the optional local browser-test suite.
 
 The current user must be able to access the Docker daemon. The repository does not invoke `sudo`.
 
@@ -167,20 +167,25 @@ Run `./ops/logs.sh --help` for the complete logging command syntax.
 
 ## Quality gates
 
-Run the complete local quality suite with one Docker-first command:
+Run the standard local quality suite with one Docker-first command:
 
 ```bash
 ./ops/test.sh
 ```
 
-The command:
+The default `all` command:
 
-1. builds the application image, including the Chromium runtime used by Pest browser tests,
+1. builds the application image, including the Chromium runtime available for optional Pest browser tests,
 2. installs exactly the Composer dependencies recorded in `composer.lock` and Node dependencies recorded in `package-lock.json`,
 3. verifies formatting with Laravel Pint in non-mutating `--test` mode,
 4. runs Larastan/PHPStan at level 8 without a generated baseline or blanket ignores,
-5. runs the existing non-browser PHPUnit-compatible suite through Pest,
-6. runs `tests/Browser` with Pest 4 Browser Testing and Playwright/Chromium.
+5. runs the existing non-browser PHPUnit-compatible suite through Pest.
+
+Browser tests are intentionally opt-in. They are not run by `./ops/test.sh`, `./ops/test.sh all`, or GitHub Actions CI. Run them explicitly when browser-level verification is needed:
+
+```bash
+./ops/test.sh browser
+```
 
 No host PHP, Composer or Node.js installation is required.
 
@@ -196,9 +201,9 @@ For debugging an individual stage, use:
 ./ops/test.sh browser
 ```
 
-On a fresh checkout run `./ops/test.sh install` before an individual browser stage so the locked Composer/Node dependencies and browser-enabled image are present.
+On a fresh checkout run `./ops/test.sh install` before the manual browser stage so the locked Composer/Node dependencies and browser-enabled image are present.
 
-The stage-specific commands are also used by GitHub Actions so local and CI gates have the same implementation. CI runs for pull requests and pushes to `main`, installs locked dependencies and requires no repository secrets for the normal quality suite.
+GitHub Actions uses only `install`, `style`, `static` and `tests`. CI runs for pull requests and pushes to `main`; browser tests remain a local manual check and are never part of the automatic CI gate.
 
 ## Direct Compose commands
 
