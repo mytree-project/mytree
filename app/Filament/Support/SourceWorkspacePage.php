@@ -975,8 +975,6 @@ abstract class SourceWorkspacePage extends Page
 
     private function reportDraftValidation(SourceDraftValidationResult $validation): void
     {
-        $firstMessage = __('ui.workspace.validation_failed');
-
         foreach ($validation->issues as $issue) {
             $path = str_starts_with($issue->path, 'changes.detachAssetIds')
                 || str_starts_with($issue->path, 'state.assets')
@@ -985,12 +983,11 @@ abstract class SourceWorkspacePage extends Page
                 : 'data';
             $message = sprintf('[%s] %s', $issue->code, $issue->message);
             $this->addError($path, $message);
-            $firstMessage = $message;
         }
 
         Notification::make()
             ->title(__('ui.workspace.save_failed'))
-            ->body($firstMessage)
+            ->body(__('ui.workspace.validation_failed'))
             ->danger()
             ->send();
     }
