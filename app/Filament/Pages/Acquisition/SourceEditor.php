@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages\Acquisition;
 
 use App\Filament\Support\SourceWorkspacePage;
+use Filament\Support\Enums\Width;
 
 /**
  * Primary Source Acquisition page.
@@ -12,4 +13,10 @@ use App\Filament\Support\SourceWorkspacePage;
  * SourceWorkspacePage keeps Filament behind the application boundaries and
  * persists through SaveSourceDraft / StageSourceAsset rather than Eloquent.
  */
-final class SourceEditor extends SourceWorkspacePage {}
+final class SourceEditor extends SourceWorkspacePage
+{
+    public function getMaxContentWidth(): Width
+    {
+        return Width::Full;
+    }
+}
