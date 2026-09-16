@@ -19,7 +19,7 @@ The current implemented baseline contains:
 - Docker Compose development/runtime infrastructure,
 - Docker-first developer operations scripts under `ops/`,
 - Filament administrator authentication and a baseline system dashboard,
-- containerized PHPUnit, Laravel Pint and Larastan/PHPStan quality gates,
+- containerized Pest 4/PHPUnit, Playwright browser, Laravel Pint and Larastan/PHPStan quality gates,
 - GitHub Actions CI for pull requests and pushes to `main`,
 - explicit repository-local application dependency and persistence boundaries,
 - a versioned application Settings foundation with Application contracts/use cases, Eloquent persistence and a Filament Settings page,
@@ -63,7 +63,7 @@ Normal local development requires only:
 - Docker Compose v2,
 - Bash.
 
-Host PHP, Composer and Node.js are not required.
+Host PHP, Composer and Node.js are not required. The application image contains the Node/Playwright runtime needed by the browser-test quality gate.
 
 The current user must be able to access the Docker daemon. The repository does not invoke `sudo`.
 
@@ -175,15 +175,16 @@ Run the complete local quality suite with one Docker-first command:
 
 The command:
 
-1. builds the application image,
-2. installs exactly the Composer dependencies recorded in `composer.lock`,
+1. builds the application image, including the Chromium runtime used by Pest browser tests,
+2. installs exactly the Composer dependencies recorded in `composer.lock` and Node dependencies recorded in `package-lock.json`,
 3. verifies formatting with Laravel Pint in non-mutating `--test` mode,
 4. runs Larastan/PHPStan at level 8 without a generated baseline or blanket ignores,
-5. runs the PHPUnit suite.
+5. runs the existing non-browser PHPUnit-compatible suite through Pest,
+6. runs `tests/Browser` with Pest 4 Browser Testing and Playwright/Chromium.
 
-No host PHP or Composer installation is required.
+No host PHP, Composer or Node.js installation is required.
 
-The test process overrides application infrastructure with an isolated deterministic test environment: SQLite `:memory:`, array-backed cache/session/mail, synchronous queues and a fixed non-production application key. Normal automated tests must not depend on live genealogy portals or other third-party services.
+The non-browser test process overrides application infrastructure with an isolated deterministic test environment: SQLite `:memory:`, array-backed cache/session/mail, synchronous queues and a fixed non-production application key. Browser tests use the same isolated in-memory database and application boundary while exercising a real Chromium page through Playwright. Normal automated tests must not depend on live genealogy portals or other third-party services.
 
 For debugging an individual stage, use:
 
@@ -192,7 +193,10 @@ For debugging an individual stage, use:
 ./ops/test.sh style
 ./ops/test.sh static
 ./ops/test.sh tests
+./ops/test.sh browser
 ```
+
+On a fresh checkout run `./ops/test.sh install` before an individual browser stage so the locked Composer/Node dependencies and browser-enabled image are present.
 
 The stage-specific commands are also used by GitHub Actions so local and CI gates have the same implementation. CI runs for pull requests and pushes to `main`, installs locked dependencies and requires no repository secrets for the normal quality suite.
 
