@@ -85,7 +85,8 @@ install_dependencies() {
         composer install --no-interaction --prefer-dist --no-progress
 
     printf 'Installing locked Node dependencies for browser tests...\n'
-    compose run --rm --no-deps --user "${HOST_UID}:${HOST_GID}" app \
+    compose run --rm --no-deps --user "${HOST_UID}:${HOST_GID}" \
+        --env NPM_CONFIG_CACHE=/tmp/npm-cache app \
         npm ci --no-audit --no-fund
 }
 
