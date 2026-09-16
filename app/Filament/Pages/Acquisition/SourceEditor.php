@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Filament\Pages\Acquisition;
 
 use App\Filament\Support\SourceWorkspacePage;
+use Filament\Forms\Components\Repeater;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -21,6 +23,19 @@ final class SourceEditor extends SourceWorkspacePage
     public function getMaxContentWidth(): Width
     {
         return Width::Full;
+    }
+
+    public function evidenceForm(Schema $schema): Schema
+    {
+        $schema = parent::evidenceForm($schema);
+
+        foreach ($schema->getComponents(withHidden: true) as $component) {
+            if ($component instanceof Repeater && $component->getName() === 'mentions') {
+                $component->itemNumbers();
+            }
+        }
+
+        return $schema;
     }
 
     public function save(): void
