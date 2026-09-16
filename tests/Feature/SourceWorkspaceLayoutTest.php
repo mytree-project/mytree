@@ -12,6 +12,6 @@ final class SourceWorkspaceLayoutTest extends TestCase
 {
     public function test_source_workspace_uses_full_available_content_width(): void
     {
-        self::assertSame(Width::Full, (new SourceEditor)->getMaxWidth());
+        self::assertSame(Width::Full, (new SourceEditor)->getMaxContentWidth());
     }
 }
