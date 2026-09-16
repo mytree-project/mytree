@@ -125,6 +125,7 @@ return [
         'changed_elsewhere_body' => 'Wczytaj źródło ponownie przed kolejnym zapisem.',
         'save_failed' => 'Nie udało się zapisać źródła',
         'validation_failed' => 'Walidacja SourceDraft nie powiodła się.',
+        'mention_json_syntax' => 'Wystąpił błąd składni JSON w Mention nr :number:key_suffix.',
         'unexpected_save_failure' => 'Podczas zapisu wystąpił nieoczekiwany błąd. Niezapisane zmiany pozostają na tej stronie; popraw problem lub spróbuj zapisać ponownie.',
     ],
     'settings' => [
