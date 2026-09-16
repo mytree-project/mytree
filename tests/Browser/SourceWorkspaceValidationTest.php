@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Application\Acquisition\CreateSource;
+use App\Application\Settings\Application\ApplicationSettings;
+use App\Application\Settings\Application\UpdateApplicationSettings;
 use App\Domain\Acquisition\MentionKind;
 use App\Domain\Acquisition\PredicateKey;
 use App\Domain\Acquisition\SourceType;
@@ -11,6 +13,11 @@ use Pest\Browser\Api\AwaitableWebpage;
 
 function openSourceWorkspaceForBrowserTest(string $sourceId): AwaitableWebpage
 {
+    app(UpdateApplicationSettings::class)->handle(
+        new ApplicationSettings(defaultLocale: 'pl'),
+        changedBy: null,
+    );
+
     $user = User::factory()->admin()->create([
         'email' => 'browser-admin@example.test',
     ]);
@@ -76,6 +83,8 @@ it('routes Mention JSON syntax errors to Mentions and Claims and keeps entered s
             true,
         )
         ->assertScript("document.querySelector('.source-workspace-error-details').open", false)
+        ->click('.source-workspace-error-details summary')
+        ->assertVisible('.source-workspace-error-details code')
         ->assertScript("document.querySelector('.source-workspace-error-details code').textContent.trim()", 'Syntax error')
         ->assertNoJavaScriptErrors();
 });
