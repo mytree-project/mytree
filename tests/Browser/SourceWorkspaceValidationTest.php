@@ -23,9 +23,12 @@ function openSourceWorkspaceForBrowserTest(string $sourceId): Webpage
     ]);
 
     $page = visit('/admin/login')
-        ->type('email', $user->email)
-        ->type('password', 'password')
-        ->submit();
+        ->assertPresent('form')
+        ->assertPresent('input[type="email"]')
+        ->assertPresent('input[type="password"]')
+        ->fill('input[type="email"]', $user->email)
+        ->fill('input[type="password"]', 'password')
+        ->click('button[type="submit"]');
 
     return $page
         ->navigate('/admin/acquisition/source?source='.urlencode($sourceId))
