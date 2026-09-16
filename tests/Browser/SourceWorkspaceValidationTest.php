@@ -10,6 +10,7 @@ use App\Domain\Acquisition\PredicateKey;
 use App\Domain\Acquisition\SourceType;
 use App\Infrastructure\Persistence\Eloquent\Models\User;
 use Pest\Browser\Api\Webpage;
+use Tests\TestCase;
 
 function openSourceWorkspaceForBrowserTest(string $sourceId): Webpage
 {
@@ -22,16 +23,11 @@ function openSourceWorkspaceForBrowserTest(string $sourceId): Webpage
         'email' => 'browser-admin@example.test',
     ]);
 
-    $page = visit('/admin/login')
-        ->assertPresent('form')
-        ->assertPresent('input[type="email"]')
-        ->assertPresent('input[type="password"]')
-        ->fill('input[type="email"]', $user->email)
-        ->fill('input[type="password"]', 'password')
-        ->click('button[type="submit"]');
+    /** @var TestCase $test */
+    $test = test();
+    $test->actingAs($user);
 
-    return $page
-        ->navigate('/admin/acquisition/source?source='.urlencode($sourceId))
+    return visit('/admin/acquisition/source?source='.urlencode($sourceId))
         ->assertPresent('[data-source-workspace]')
         ->assertPresent('[data-mentions-claims-editor]');
 }
