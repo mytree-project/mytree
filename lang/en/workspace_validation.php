@@ -16,6 +16,8 @@ return [
     'claim_value_required' => 'Claim no. :number requires a source value.',
     'claim_effective_time_incomplete' => 'Claim no. :number has an incomplete effective-time expression.',
     'claim_invalid' => 'Claim no. :number contains invalid data.',
+    'event_json_syntax' => 'JSON syntax error in Event no. :number:key_suffix.',
+    'event_json_object' => 'JSON data in Event no. :number:key_suffix must be a JSON object.',
     'event_invalid' => 'Event no. :number:key_suffix contains invalid data.',
     'event_claim_invalid' => 'Claim no. :claim_number in Event no. :event_number contains invalid data.',
     'metadata_invalid' => 'Metadata field no. :number contains invalid data.',
