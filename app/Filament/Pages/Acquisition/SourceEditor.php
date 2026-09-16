@@ -54,6 +54,7 @@ final class SourceEditor extends SourceWorkspacePage
             $mappedPath = $this->workspaceValidationPath($path);
 
             foreach ($messages as $message) {
+                $message = $this->workspaceValidationMessage($path, $message);
                 $this->addError($mappedPath, $message);
 
                 if (! $hasMessage) {
@@ -87,5 +88,45 @@ final class SourceEditor extends SourceWorkspacePage
         }
 
         return $path;
+    }
+
+    private function workspaceValidationMessage(string $path, string $message): string
+    {
+        if (preg_match('/^data\.mentions\.(\d+)\.raw_data_json$/', $path, $matches) !== 1) {
+            return $message;
+        }
+
+        $mentionIndex = (int) $matches[1];
+        $mention = $this->mentionAtPresentationIndex($mentionIndex);
+        if ($mention === null) {
+            return $message;
+        }
+
+        $rawData = $mention['raw_data_json'] ?? null;
+        if (! is_string($rawData) || trim($rawData) === '' || json_validate($rawData)) {
+            return $message;
+        }
+
+        $localKey = $mention['local_key'] ?? null;
+        $localKey = is_string($localKey) && trim($localKey) !== '' ? trim($localKey) : null;
+
+        return __('ui.workspace.mention_json_syntax', [
+            'number' => $mentionIndex + 1,
+            'key_suffix' => $localKey === null ? '' : " ($localKey)",
+        ]);
+    }
+
+    /** @return array<string, mixed>|null */
+    private function mentionAtPresentationIndex(int $index): ?array
+    {
+        $evidenceData = is_array($this->evidenceData) ? $this->evidenceData : [];
+        $mentions = $evidenceData['mentions'] ?? [];
+        if (! is_array($mentions)) {
+            return null;
+        }
+
+        $mention = array_values($mentions)[$index] ?? null;
+
+        return is_array($mention) ? $mention : null;
     }
 }
