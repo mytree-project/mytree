@@ -14,11 +14,10 @@ use App\Domain\Acquisition\SourceMetadata;
 use App\Domain\Acquisition\SourceType;
 use App\Domain\Acquisition\TextClaimValue;
 use App\Infrastructure\Persistence\Eloquent\Models\User;
-use Pest\Browser\Api\AwaitableWebpage;
 use Pest\Browser\Api\Webpage;
 use Tests\TestCase;
 
-function openSourceWorkspaceForBrowserTest(string $sourceId): Webpage|AwaitableWebpage
+function openSourceWorkspaceForBrowserTest(TestCase $test, string $sourceId): Webpage
 {
     app(UpdateApplicationSettings::class)->handle(
         new ApplicationSettings(defaultLocale: 'pl'),
@@ -29,8 +28,6 @@ function openSourceWorkspaceForBrowserTest(string $sourceId): Webpage|AwaitableW
         'email' => 'browser-admin@example.test',
     ]);
 
-    /** @var TestCase $test */
-    $test = test();
     $test->actingAs($user);
 
     return visit('/admin/acquisition/source?source='.urlencode($sourceId))
@@ -39,7 +36,7 @@ function openSourceWorkspaceForBrowserTest(string $sourceId): Webpage|AwaitableW
 }
 
 function sourceWorkspaceBrowserFieldSelectorByLabel(
-    Webpage|AwaitableWebpage $page,
+    Webpage $page,
     string $label,
 ): string {
     $script = strtr(<<<'JS'
@@ -82,7 +79,7 @@ function sourceWorkspaceBrowserFieldSelectorByLabel(
 }
 
 function fillSourceWorkspaceBrowserField(
-    Webpage|AwaitableWebpage $page,
+    Webpage $page,
     string $label,
     string $value,
 ): void {
@@ -93,7 +90,7 @@ function fillSourceWorkspaceBrowserField(
         ->assertValue($selector, $value);
 }
 
-function submitSourceWorkspaceBrowserForm(Webpage|AwaitableWebpage $page): Webpage|AwaitableWebpage
+function submitSourceWorkspaceBrowserForm(Webpage $page): Webpage
 {
     return $page->click('form.source-acquisition-form button[type="submit"]');
 }
@@ -108,7 +105,7 @@ it('routes Mention JSON syntax errors to Mentions and Claims and keeps entered s
         displayLabel: 'Valentin Wiśniewski',
     );
 
-    $page = openSourceWorkspaceForBrowserTest($source->id->value);
+    $page = openSourceWorkspaceForBrowserTest($this, $source->id->value);
 
     fillSourceWorkspaceBrowserField(
         $page,
@@ -161,7 +158,7 @@ it('routes Claim subject errors to Mentions and Claims instead of Source details
         value: new TextClaimValue('rolnik'),
     );
 
-    $page = openSourceWorkspaceForBrowserTest($source->id->value);
+    $page = openSourceWorkspaceForBrowserTest($this, $source->id->value);
 
     fillSourceWorkspaceBrowserField(
         $page,
@@ -197,7 +194,7 @@ it('routes metadata value errors to Source details instead of Mentions and Claim
         SourceType::generic(),
         metadata: new SourceMetadata(['record_number' => 1]),
     );
-    $page = openSourceWorkspaceForBrowserTest($source->id->value);
+    $page = openSourceWorkspaceForBrowserTest($this, $source->id->value);
 
     fillSourceWorkspaceBrowserField(
         $page,
