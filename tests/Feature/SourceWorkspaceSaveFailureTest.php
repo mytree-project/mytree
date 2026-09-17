@@ -131,4 +131,30 @@ final class SourceWorkspaceSaveFailureTest extends TestCase
             ->assertSee(__('workspace_validation.technical_details'))
             ->assertSee('Predicate &quot;person.given_name&quot; requires a &quot;person&quot; subject Mention.', escape: false);
     }
+
+    public function test_missing_claim_subject_uses_specific_message_and_targeted_path(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+        app()->setLocale('pl');
+        $source = app(CreateSource::class)->handle(SourceType::generic());
+
+        Livewire::test(SourceEditor::class, ['source' => $source->id->value])
+            ->set('evidenceData.fields', [[
+                'claim_id' => null,
+                'presentation_origin' => null,
+                'field_key' => 'person.occupation',
+                'subject_local_key' => 'missing-person',
+                'object_local_key' => null,
+                'value_raw' => 'rolnik',
+                'transcription_certainty' => 'unspecified',
+                'interpretation_certainty' => 'unspecified',
+            ]])
+            ->call('save')
+            ->assertHasErrors(['evidenceData.fields.0.subject_local_key'])
+            ->assertHasNoErrors(['data'])
+            ->assertNoRedirect()
+            ->assertSee('Claim nr 1 odwołuje się do nieistniejącego Mention jako podmiotu.')
+            ->assertSee(__('workspace_validation.technical_details'))
+            ->assertSee('Subject Mention local key &quot;missing-person&quot; does not exist in this Source.', escape: false);
+    }
 }
