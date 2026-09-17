@@ -29,12 +29,17 @@ final readonly class EvidenceRepeaterPresentation
                 continue;
             }
 
-            match ($component->getName()) {
-                'mentions' => $this->configureMentions($component),
-                'fields' => $this->configureClaims($component, includeSubject: true),
-                'event_contexts' => $this->configureEvents($component),
-                default => null,
-            };
+            switch ($component->getName()) {
+                case 'mentions':
+                    $this->configureMentions($component);
+                    break;
+                case 'fields':
+                    $this->configureClaims($component, includeSubject: true);
+                    break;
+                case 'event_contexts':
+                    $this->configureEvents($component);
+                    break;
+            }
         }
     }
 
