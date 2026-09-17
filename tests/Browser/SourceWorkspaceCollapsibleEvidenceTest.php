@@ -180,7 +180,9 @@ it('collapses evidence blocks with live summaries and preserves unsaved state', 
     );
 
     authenticateCollapsibleEvidenceBrowserTestUser();
-    $page = openCollapsibleEvidenceWorkspace($source->id->value)
+    $page = openCollapsibleEvidenceWorkspace($source->id->value);
+
+    $page
         ->assertSee('Mention · person_valentin · Valentin Wiśniewski')
         ->assertSee('Given name · person_valentin · Valentin')
         ->assertSee('Event · event_birth · Birth of Peter')
