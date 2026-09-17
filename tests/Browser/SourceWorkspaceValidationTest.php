@@ -42,8 +42,27 @@ function setSourceWorkspaceBrowserState(Webpage|AwaitableWebpage $page, string $
     $page->script(<<<JS
         (async () => {
             const workspace = document.querySelector('[data-source-workspace]');
-            const root = workspace.closest('[wire\\:id]');
+
+            if (! workspace) {
+                throw new Error('Source workspace root was not found.');
+            }
+
+            let root = workspace;
+
+            while (root && ! root.hasAttribute('wire:id')) {
+                root = root.parentElement;
+            }
+
+            if (! root) {
+                throw new Error('Livewire component root for Source workspace was not found.');
+            }
+
             const component = Livewire.find(root.getAttribute('wire:id'));
+
+            if (! component) {
+                throw new Error('Livewire Source workspace component was not found.');
+            }
+
             await component.set({$propertyJson}, {$valueJson});
         })()
         JS);
