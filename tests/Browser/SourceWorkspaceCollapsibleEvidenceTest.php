@@ -135,7 +135,9 @@ function setCollapsibleEvidenceField(AwaitableWebpage $page, string $label, stri
 
 function toggleCollapsibleEvidenceItem(AwaitableWebpage $page, string $itemSelector): void
 {
-    $page->click($itemSelector.' .fi-fo-repeater-item-header-collapsible-actions');
+    $page->click(
+        $itemSelector.' > .fi-fo-repeater-item-header > .fi-fo-repeater-item-header-end-actions > .fi-fo-repeater-item-header-collapsible-actions',
+    );
 }
 
 function assertCollapsibleEvidenceItemState(
