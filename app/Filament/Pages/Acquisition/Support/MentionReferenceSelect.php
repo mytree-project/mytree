@@ -22,6 +22,10 @@ final class MentionReferenceSelect extends Select
     /** @return ?array<string> */
     public function getInValidationRuleValues(): ?array
     {
+        if ($this->isMultiple()) {
+            return parent::getInValidationRuleValues();
+        }
+
         return null;
     }
 }
