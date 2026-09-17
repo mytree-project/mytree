@@ -15,7 +15,7 @@ use App\Domain\Acquisition\SourceType;
 use App\Domain\Acquisition\TextClaimValue;
 use App\Infrastructure\Persistence\Eloquent\Models\User;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
-use Pest\Browser\Api\Webpage;
+use Pest\Browser\Api\AwaitableWebpage;
 
 function authenticateSourceWorkspaceBrowserTestUser(): void
 {
@@ -34,7 +34,7 @@ function authenticateSourceWorkspaceBrowserTestUser(): void
     $auth->shouldUse($guardName);
 }
 
-function openSourceWorkspaceForBrowserTest(string $sourceId): Webpage
+function openSourceWorkspaceForBrowserTest(string $sourceId): AwaitableWebpage
 {
     app(UpdateApplicationSettings::class)->handle(
         new ApplicationSettings(defaultLocale: 'pl'),
@@ -42,18 +42,19 @@ function openSourceWorkspaceForBrowserTest(string $sourceId): Webpage
     );
 
     $pendingPage = visit('/admin/acquisition/source?source='.urlencode($sourceId));
+    $page = $pendingPage->__call('assertPresent', ['[data-source-workspace]']);
 
-    $pendingPage
-        ->assertPresent('[data-source-workspace]')
-        ->assertPresent('[data-mentions-claims-editor]');
+    if (! $page instanceof AwaitableWebpage) {
+        throw new RuntimeException('Browser visit did not resolve to an awaitable webpage.');
+    }
 
-    $browserPage = $pendingPage->page();
+    $page->assertPresent('[data-mentions-claims-editor]');
 
-    return new Webpage($browserPage, $browserPage->url());
+    return $page;
 }
 
 function sourceWorkspaceBrowserFieldSelectorByLabel(
-    Webpage $page,
+    AwaitableWebpage $page,
     string $label,
 ): string {
     $script = strtr(<<<'JS'
@@ -96,20 +97,21 @@ function sourceWorkspaceBrowserFieldSelectorByLabel(
 }
 
 function fillSourceWorkspaceBrowserField(
-    Webpage $page,
+    AwaitableWebpage $page,
     string $label,
     string $value,
 ): void {
     $selector = sourceWorkspaceBrowserFieldSelectorByLabel($page, $label);
 
-    $page
-        ->fill($selector, $value)
-        ->assertValue($selector, $value);
+    $page->fill($selector, $value);
+    $page->assertValue($selector, $value);
 }
 
-function submitSourceWorkspaceBrowserForm(Webpage $page): Webpage
+function submitSourceWorkspaceBrowserForm(AwaitableWebpage $page): AwaitableWebpage
 {
-    return $page->click('form.source-acquisition-form button[type="submit"]');
+    $page->click('form.source-acquisition-form button[type="submit"]');
+
+    return $page;
 }
 
 it('routes Mention JSON syntax errors to Mentions and Claims and keeps entered state', function (): void {
