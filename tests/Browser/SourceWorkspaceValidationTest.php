@@ -9,10 +9,11 @@ use App\Domain\Acquisition\MentionKind;
 use App\Domain\Acquisition\PredicateKey;
 use App\Domain\Acquisition\SourceType;
 use App\Infrastructure\Persistence\Eloquent\Models\User;
+use Pest\Browser\Api\AwaitableWebpage;
 use Pest\Browser\Api\Webpage;
 use Tests\TestCase;
 
-function openSourceWorkspaceForBrowserTest(string $sourceId): Webpage
+function openSourceWorkspaceForBrowserTest(string $sourceId): Webpage|AwaitableWebpage
 {
     app(UpdateApplicationSettings::class)->handle(
         new ApplicationSettings(defaultLocale: 'pl'),
@@ -33,7 +34,7 @@ function openSourceWorkspaceForBrowserTest(string $sourceId): Webpage
 }
 
 /** @param array<mixed> $value */
-function setSourceWorkspaceBrowserState(Webpage $page, string $property, array $value): void
+function setSourceWorkspaceBrowserState(Webpage|AwaitableWebpage $page, string $property, array $value): void
 {
     $propertyJson = json_encode($property, JSON_THROW_ON_ERROR);
     $valueJson = json_encode($value, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
@@ -48,7 +49,7 @@ function setSourceWorkspaceBrowserState(Webpage $page, string $property, array $
         JS);
 }
 
-function submitSourceWorkspaceBrowserForm(Webpage $page): Webpage
+function submitSourceWorkspaceBrowserForm(Webpage|AwaitableWebpage $page): Webpage|AwaitableWebpage
 {
     return $page->click('form.source-acquisition-form button[type="submit"]');
 }
