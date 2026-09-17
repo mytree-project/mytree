@@ -21,15 +21,18 @@ use App\Domain\Acquisition\Mention;
 use App\Domain\Acquisition\MentionId;
 use App\Domain\Acquisition\MentionKind;
 use App\Domain\Acquisition\MentionRawData;
+use App\Filament\Support\SourceWorkspacePage;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Component;
+use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use JsonException;
+use Livewire\Component as LivewireComponent;
 
 /**
  * Filament adapter for the controlled SourceDraft Mention/Claim graph editor.
@@ -60,15 +63,19 @@ final readonly class StructuredAcquisitionFormAdapter
                             MentionKind::PLACE => 'Place',
                             MentionKind::ORGANIZATION => 'Organization',
                             MentionKind::OTHER => 'Other',
-                        ]),
+                        ])
+                        ->live(),
                     TextInput::make('local_key')
                         ->label('Local key')
+                        ->helperText('Claim selectors store this source-local identity. If it is renamed, stale Claim references must be reselected before save.')
                         ->required()
-                        ->maxLength(255),
+                        ->maxLength(255)
+                        ->live(onBlur: true),
                     TextInput::make('role')
                         ->maxLength(120),
                     TextInput::make('display_label')
-                        ->label('Display label'),
+                        ->label('Display label')
+                        ->live(onBlur: true),
                     Textarea::make('raw_data_json')
                         ->label('Raw source-local data (JSON object)')
                         ->rows(4)
@@ -92,12 +99,15 @@ final readonly class StructuredAcquisitionFormAdapter
                     Hidden::make('presentation_origin'),
                     TextInput::make('local_key')
                         ->label('Event local key')
-                        ->maxLength(255),
+                        ->helperText('Event Claims use this source-local identity implicitly as their subject.')
+                        ->maxLength(255)
+                        ->live(onBlur: true),
                     TextInput::make('role')
                         ->label('Event role')
                         ->maxLength(120),
                     TextInput::make('display_label')
-                        ->label('Event label'),
+                        ->label('Event label')
+                        ->live(onBlur: true),
                     Textarea::make('raw_data_json')
                         ->label('Event raw data (JSON object)')
                         ->rows(3)
@@ -122,6 +132,40 @@ final readonly class StructuredAcquisitionFormAdapter
         $options = [];
         foreach ($this->catalog->all() as $descriptor) {
             $options[$descriptor->key] = sprintf('%s · %s', $descriptor->group, $descriptor->label);
+        }
+
+        return $options;
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     * @return array<string, string>
+     */
+    public function mentionPickerOptions(array $state, string $fieldKey, bool $subject): array
+    {
+        $descriptor = $this->catalog->get($fieldKey);
+        if (! $descriptor->isDirectClaim()) {
+            return [];
+        }
+
+        $requiredKind = $subject ? $descriptor->subjectMentionKind : $descriptor->objectMentionKind;
+        if ($requiredKind === null) {
+            return [];
+        }
+
+        $options = [];
+        foreach ($this->rows($state['mentions'] ?? []) as $row) {
+            if (($row['kind'] ?? null) !== $requiredKind) {
+                continue;
+            }
+
+            $this->appendMentionPickerOption($options, $row);
+        }
+
+        if ($requiredKind === MentionKind::EVENT) {
+            foreach ($this->rows($state['event_contexts'] ?? []) as $row) {
+                $this->appendMentionPickerOption($options, $row);
+            }
         }
 
         return $options;
@@ -368,19 +412,33 @@ final readonly class StructuredAcquisitionFormAdapter
             Hidden::make('presentation_origin'),
             Select::make('field_key')
                 ->label('Supported field')
-                ->options($this->fieldOptions($eventOnly)),
+                ->options($this->fieldOptions($eventOnly))
+                ->live(),
         ];
 
         if ($includeSubject) {
-            $schema[] = TextInput::make('subject_local_key')
-                ->label('Subject Mention local key')
-                ->maxLength(255);
+            $schema[] = MentionReferenceSelect::make('subject_local_key')
+                ->label('Subject Mention')
+                ->helperText('Select a Mention from this SourceDraft. Display labels are descriptive; the source-local key remains the reference identity.')
+                ->options(fn (Get $get, LivewireComponent $livewire): array => $this->mentionPickerOptionsFromLivewire(
+                    fieldKey: $get('field_key'),
+                    livewire: $livewire,
+                    subject: true,
+                ))
+                ->searchable()
+                ->preload();
         }
 
-        $schema[] = TextInput::make('object_local_key')
-            ->label('Object Mention local key')
-            ->helperText('Used by relationship/place fields only.')
-            ->maxLength(255);
+        $schema[] = MentionReferenceSelect::make('object_local_key')
+            ->label('Object Mention')
+            ->helperText('Used by relationship/place fields only and filtered by the selected field contract.')
+            ->options(fn (Get $get, LivewireComponent $livewire): array => $this->mentionPickerOptionsFromLivewire(
+                fieldKey: $get('field_key'),
+                livewire: $livewire,
+                subject: false,
+            ))
+            ->searchable()
+            ->preload();
         $schema[] = TextInput::make('value_raw')
             ->label('Raw/source value')
             ->helperText('Used by literal fields and preserved exactly as entered.');
@@ -465,6 +523,39 @@ final readonly class StructuredAcquisitionFormAdapter
         }
 
         return $options;
+    }
+
+    /** @return array<string, string> */
+    private function mentionPickerOptionsFromLivewire(mixed $fieldKey, LivewireComponent $livewire, bool $subject): array
+    {
+        if (! $livewire instanceof SourceWorkspacePage
+            || ! is_string($fieldKey)
+            || ! $this->catalog->has($fieldKey)) {
+            return [];
+        }
+
+        return $this->mentionPickerOptions(
+            state: is_array($livewire->evidenceData) ? $livewire->evidenceData : [],
+            fieldKey: $fieldKey,
+            subject: $subject,
+        );
+    }
+
+    /**
+     * @param  array<string, string>  $options
+     * @param  array<string, mixed>  $row
+     */
+    private function appendMentionPickerOption(array &$options, array $row): void
+    {
+        $localKey = $this->optionalString($row['local_key'] ?? null);
+        if ($localKey === null) {
+            return;
+        }
+
+        $displayLabel = $this->optionalString($row['display_label'] ?? null);
+        $options[$localKey] = $displayLabel === null || $displayLabel === $localKey
+            ? $localKey
+            : sprintf('%s · %s', $displayLabel, $localKey);
     }
 
     private function descriptor(string $fieldKey): SupportedAcquisitionFieldDescriptor

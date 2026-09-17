@@ -165,7 +165,7 @@ it('routes Mention JSON syntax errors to Mentions and Claims and keeps entered s
         ->assertNoJavaScriptErrors();
 });
 
-it('routes Claim subject errors to Mentions and Claims instead of Source details', function (): void {
+it('routes stale Claim subject errors to Mentions and Claims after a Mention key rename', function (): void {
     $source = app(CreateSource::class)->handle(SourceType::generic());
     $person = app(CreateMention::class)->handle(
         sourceId: $source->id,
@@ -185,8 +185,8 @@ it('routes Claim subject errors to Mentions and Claims instead of Source details
 
     fillSourceWorkspaceBrowserField(
         $page,
-        'Subject Mention local key',
-        'missing-person',
+        'Local key',
+        'person_renamed',
     );
 
     $page->assertScript(
@@ -206,7 +206,7 @@ it('routes Claim subject errors to Mentions and Claims instead of Source details
             false,
         )
         ->assertScript(
-            "Array.from(document.querySelectorAll('input')).some((input) => input.value === 'missing-person')",
+            "Array.from(document.querySelectorAll('input')).some((input) => input.value === 'person_renamed')",
             true,
         )
         ->assertNoJavaScriptErrors();
