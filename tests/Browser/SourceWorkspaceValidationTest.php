@@ -16,6 +16,8 @@ use App\Domain\Acquisition\TextClaimValue;
 use App\Infrastructure\Persistence\Eloquent\Models\User;
 use Pest\Browser\Api\Webpage;
 
+use function Pest\Laravel\actingAs;
+
 function openSourceWorkspaceForBrowserTest(string $sourceId): Webpage
 {
     app(UpdateApplicationSettings::class)->handle(
@@ -98,7 +100,7 @@ it('routes Mention JSON syntax errors to Mentions and Claims and keeps entered s
         displayLabel: 'Valentin Wiśniewski',
     );
 
-    $this->actingAs(User::factory()->admin()->create([
+    actingAs(User::factory()->admin()->create([
         'email' => 'browser-admin@example.test',
     ]));
 
@@ -155,7 +157,7 @@ it('routes Claim subject errors to Mentions and Claims instead of Source details
         value: new TextClaimValue('rolnik'),
     );
 
-    $this->actingAs(User::factory()->admin()->create([
+    actingAs(User::factory()->admin()->create([
         'email' => 'browser-admin@example.test',
     ]));
 
@@ -196,7 +198,7 @@ it('routes metadata value errors to Source details instead of Mentions and Claim
         metadata: new SourceMetadata(['record_number' => 1]),
     );
 
-    $this->actingAs(User::factory()->admin()->create([
+    actingAs(User::factory()->admin()->create([
         'email' => 'browser-admin@example.test',
     ]));
 
