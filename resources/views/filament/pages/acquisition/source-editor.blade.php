@@ -1,5 +1,39 @@
 <x-filament-panels::page>
+    @php
+        $sourceDetailsHasErrors = collect(array_keys($errors->messages()))
+            ->contains(fn (string $key): bool => $key === 'data' || str_starts_with($key, 'data.'));
+    @endphp
+
     <form wire:submit="save" class="source-acquisition-form">
+        @if ($errors->any())
+            <div
+                class="source-workspace-save-errors"
+                role="alert"
+                aria-live="assertive"
+                data-source-workspace-save-errors
+            >
+                <strong>{{ __('ui.workspace.save_failed') }}</strong>
+                <ul>
+                    @foreach ($errors->messages() as $path => $messages)
+                        @foreach ($messages as $messageIndex => $message)
+                            @php
+                                $technicalDetail = $workspaceValidationDetails[$path][$messageIndex] ?? null;
+                            @endphp
+                            <li>
+                                <span>{{ $message }}</span>
+                                @if (is_string($technicalDetail) && trim($technicalDetail) !== '')
+                                    <details class="source-workspace-error-details">
+                                        <summary>{{ __('workspace_validation.technical_details') }}</summary>
+                                        <code>{{ $technicalDetail }}</code>
+                                    </details>
+                                @endif
+                            </li>
+                        @endforeach
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         <div
             x-data="{ split: 50, dragging: false }"
             x-ref="workspace"
@@ -47,7 +81,13 @@
             </div>
         </div>
 
-        <details class="source-workspace-details" open>
+        <details
+            @class([
+                'source-workspace-details',
+                'source-workspace-error-region' => $sourceDetailsHasErrors,
+            ])
+            open
+        >
             <summary>{{ __('ui.workspace.source_details_assets') }}</summary>
             <div class="source-workspace-details-content">
                 {{ $this->form }}
@@ -83,6 +123,21 @@
 
     <style>
         .source-acquisition-form { display: grid; gap: 1rem; }
+        .source-workspace-save-errors {
+            display: grid;
+            gap: .45rem;
+            border: 1px solid rgb(220 38 38);
+            border-radius: .75rem;
+            padding: .85rem 1rem;
+            background: rgb(254 242 242);
+            color: rgb(153 27 27);
+        }
+        .source-workspace-save-errors ul { margin: 0; padding-left: 1.25rem; list-style: disc; }
+        .source-workspace-error-details { margin-top: .25rem; font-size: .78rem; }
+        .source-workspace-error-details summary { cursor: pointer; font-weight: 600; }
+        .source-workspace-error-details code { display: block; margin-top: .25rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .dark .source-workspace-save-errors { background: rgb(69 10 10); color: rgb(254 202 202); }
+        .source-workspace-error-region { outline: 2px solid rgb(220 38 38); outline-offset: 2px; }
         .source-workspace { display: flex; flex-direction: column; gap: .75rem; min-width: 0; }
         .source-workspace-side { min-width: 0; }
         .source-workspace-panel {

@@ -125,6 +125,8 @@ return [
         'changed_elsewhere_body' => 'Reload the Source before saving again.',
         'save_failed' => 'Source could not be saved',
         'validation_failed' => 'SourceDraft validation failed.',
+        'mention_json_syntax' => 'JSON syntax error in Mention no. :number:key_suffix.',
+        'unexpected_save_failure' => 'An unexpected error occurred while saving. Your unsaved changes remain on this page; correct the problem or try saving again.',
     ],
     'settings' => [
         'general' => 'General',

@@ -278,7 +278,8 @@ final class BasicSourceAcquisitionFlowTest extends TestCase
                 ]],
             ], 'evidenceForm')
             ->call('save')
-            ->assertHasErrors(['data']);
+            ->assertHasErrors(['evidenceData.fields.0.subject_local_key'])
+            ->assertHasNoErrors(['data']);
 
         $this->assertDatabaseCount('sources', 0);
         $this->assertDatabaseCount('mentions', 0);

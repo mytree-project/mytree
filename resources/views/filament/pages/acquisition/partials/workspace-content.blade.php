@@ -16,7 +16,14 @@
         @break
 
     @case('evidence')
-        <div data-mentions-claims-editor>
+        @php
+            $evidenceHasErrors = collect(array_keys($errors->messages()))
+                ->contains(fn (string $key): bool => $key === 'evidenceData' || str_starts_with($key, 'evidenceData.'));
+        @endphp
+        <div
+            @class(['source-workspace-error-region' => $evidenceHasErrors])
+            data-mentions-claims-editor
+        >
             {{ $this->evidenceForm }}
         </div>
         @break

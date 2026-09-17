@@ -14,6 +14,8 @@ RUN apt-get update \
         libpq-dev \
         libsqlite3-dev \
         libzip-dev \
+        nodejs \
+        npm \
         unzip \
     && docker-php-ext-install -j"$(nproc)" \
         bcmath \
@@ -23,6 +25,7 @@ RUN apt-get update \
         pcntl \
         pdo_pgsql \
         pdo_sqlite \
+        sockets \
         zip \
     && pecl install redis \
     && docker-php-ext-enable redis \
@@ -31,6 +34,15 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer /usr/bin/composer /usr/bin/composer
+COPY package.json package-lock.json /tmp/mytree-browser-deps/
+RUN cd /tmp/mytree-browser-deps \
+    && npm ci --no-audit --no-fund \
+    && PLAYWRIGHT_BROWSERS_PATH=/ms-playwright npx playwright install --with-deps chromium \
+    && chmod -R a+rX /ms-playwright \
+    && rm -rf /tmp/mytree-browser-deps
+
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
 COPY docker/php/php.ini /usr/local/etc/php/conf.d/99-mytree.ini
 COPY docker/php/zz-mytree.conf /usr/local/etc/php-fpm.d/zz-mytree.conf
 

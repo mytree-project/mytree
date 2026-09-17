@@ -8,14 +8,15 @@ source "${SCRIPT_DIR}/_common.sh"
 
 usage() {
     cat <<'USAGE'
-Usage: ./ops/test.sh [all|install|style|static|tests]
+Usage: ./ops/test.sh [all|install|style|static|tests|browser]
 
 Commands:
-  all      Install locked dependencies and run every quality gate (default)
-  install  Build the app image and install Composer dependencies from composer.lock
+  all      Install locked dependencies and run the standard non-browser quality gates (default)
+  install  Build the app image and install Composer/Node dependencies from lock files
   style    Verify formatting with Laravel Pint without modifying files
   static   Run Larastan/PHPStan static analysis
-  tests    Run the PHPUnit test suite
+  tests    Run the non-browser automated test suite through Pest/PHPUnit
+  browser  Run Pest 4 browser tests through Playwright/Chromium (manual opt-in only)
 USAGE
 }
 
@@ -27,7 +28,7 @@ fi
 command_name="${1:-all}"
 
 case "${command_name}" in
-    all|install|style|static|tests)
+    all|install|style|static|tests|browser)
         ;;
     -h|--help)
         usage
@@ -59,6 +60,21 @@ quality_run() {
         app "$@"
 }
 
+browser_run() {
+    compose run --rm --no-deps --user "${HOST_UID}:${HOST_GID}" \
+        --env APP_ENV=testing \
+        --env APP_DEBUG=false \
+        --env APP_KEY="${TEST_APP_KEY}" \
+        --env APP_LOCALE=pl \
+        --env CACHE_STORE=array \
+        --env DB_CONNECTION=sqlite \
+        --env DB_DATABASE=:memory: \
+        --env MAIL_MAILER=array \
+        --env QUEUE_CONNECTION=sync \
+        --env SESSION_DRIVER=cookie \
+        app "$@"
+}
+
 install_dependencies() {
     printf 'Building the application image...\n'
     compose build app
@@ -67,6 +83,11 @@ install_dependencies() {
     compose run --rm --no-deps --user "${HOST_UID}:${HOST_GID}" \
         --env COMPOSER_HOME=/tmp/composer app \
         composer install --no-interaction --prefer-dist --no-progress
+
+    printf 'Installing locked Node dependencies for browser tests...\n'
+    compose run --rm --no-deps --user "${HOST_UID}:${HOST_GID}" \
+        --env NPM_CONFIG_CACHE=/tmp/npm-cache app \
+        npm ci --no-audit --no-fund
 }
 
 run_style() {
@@ -80,8 +101,24 @@ run_static_analysis() {
 }
 
 run_tests() {
-    printf 'Running PHPUnit...\n'
-    quality_run php artisan test
+    printf 'Running non-browser Pest/PHPUnit tests...\n'
+    quality_run php artisan test tests/Architecture tests/Feature tests/Unit
+}
+
+run_browser_tests() {
+    printf 'Running Pest browser tests with Playwright/Chromium...\n'
+    printf 'Browser suite watchdog: 120 seconds; execution stops after the first failed test.\n'
+
+    browser_run timeout --signal=TERM --kill-after=10s 120s \
+        vendor/bin/pest tests/Browser --stop-on-failure || {
+        status=$?
+
+        if [[ ${status} -eq 124 || ${status} -eq 137 ]]; then
+            printf 'Error: browser tests exceeded the 120 second watchdog. The suite is expected to finish well below this limit.\n' >&2
+        fi
+
+        return "${status}"
+    }
 }
 
 case "${command_name}" in
@@ -102,5 +139,8 @@ case "${command_name}" in
         ;;
     tests)
         run_tests
+        ;;
+    browser)
+        run_browser_tests
         ;;
 esac
