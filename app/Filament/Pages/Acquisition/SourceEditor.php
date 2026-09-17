@@ -307,6 +307,21 @@ final class SourceEditor extends SourceWorkspacePage
             return __('workspace_validation.claim_subject_required', ['number' => $index + 1]);
         }
 
+        if ($field === 'subject_local_key'
+            && preg_match('/^Subject Mention local key "[^"]+" does not exist in this Source\.$/', $message) === 1) {
+            return __('workspace_validation.claim_subject_missing', ['number' => $index + 1]);
+        }
+
+        if ($field === 'object_local_key'
+            && preg_match('/^Object Mention local key "[^"]+" does not exist in this Source\.$/', $message) === 1) {
+            return __('workspace_validation.claim_object_missing', ['number' => $index + 1]);
+        }
+
+        if ($field === 'object_local_key'
+            && preg_match('/^Supported acquisition field "[^"]+" requires an object Mention local key\.$/', $message) === 1) {
+            return __('workspace_validation.claim_object_required', ['number' => $index + 1]);
+        }
+
         if ($field === 'value_raw' && $message === 'Literal fields require the raw/source value.') {
             return __('workspace_validation.claim_value_required', ['number' => $index + 1]);
         }
