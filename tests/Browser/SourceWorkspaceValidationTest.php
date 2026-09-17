@@ -15,20 +15,13 @@ use App\Domain\Acquisition\SourceType;
 use App\Domain\Acquisition\TextClaimValue;
 use App\Infrastructure\Persistence\Eloquent\Models\User;
 use Pest\Browser\Api\Webpage;
-use Tests\TestCase;
 
-function openSourceWorkspaceForBrowserTest(TestCase $test, string $sourceId): Webpage
+function openSourceWorkspaceForBrowserTest(string $sourceId): Webpage
 {
     app(UpdateApplicationSettings::class)->handle(
         new ApplicationSettings(defaultLocale: 'pl'),
         changedBy: null,
     );
-
-    $user = User::factory()->admin()->create([
-        'email' => 'browser-admin@example.test',
-    ]);
-
-    $test->actingAs($user);
 
     return visit('/admin/acquisition/source?source='.urlencode($sourceId))
         ->assertPresent('[data-source-workspace]')
@@ -105,7 +98,11 @@ it('routes Mention JSON syntax errors to Mentions and Claims and keeps entered s
         displayLabel: 'Valentin Wiśniewski',
     );
 
-    $page = openSourceWorkspaceForBrowserTest($this, $source->id->value);
+    $this->actingAs(User::factory()->admin()->create([
+        'email' => 'browser-admin@example.test',
+    ]));
+
+    $page = openSourceWorkspaceForBrowserTest($source->id->value);
 
     fillSourceWorkspaceBrowserField(
         $page,
@@ -158,7 +155,11 @@ it('routes Claim subject errors to Mentions and Claims instead of Source details
         value: new TextClaimValue('rolnik'),
     );
 
-    $page = openSourceWorkspaceForBrowserTest($this, $source->id->value);
+    $this->actingAs(User::factory()->admin()->create([
+        'email' => 'browser-admin@example.test',
+    ]));
+
+    $page = openSourceWorkspaceForBrowserTest($source->id->value);
 
     fillSourceWorkspaceBrowserField(
         $page,
@@ -194,7 +195,12 @@ it('routes metadata value errors to Source details instead of Mentions and Claim
         SourceType::generic(),
         metadata: new SourceMetadata(['record_number' => 1]),
     );
-    $page = openSourceWorkspaceForBrowserTest($this, $source->id->value);
+
+    $this->actingAs(User::factory()->admin()->create([
+        'email' => 'browser-admin@example.test',
+    ]));
+
+    $page = openSourceWorkspaceForBrowserTest($source->id->value);
 
     fillSourceWorkspaceBrowserField(
         $page,
