@@ -195,8 +195,7 @@ it('collapses persisted evidence by default with live numbered summaries and pre
         ->assertSee('Add event')
         ->assertSee('Mention 1 · Valentin Wiśniewski · person_valentin')
         ->assertSee('Claim 1 · Given name · person_valentin · Valentin')
-        ->assertSee('Event 1 · Birth of Peter · event_birth')
-        ->assertSee('Claim 1 · Event date · 1904-06-29');
+        ->assertSee('Event 1 · Birth of Peter · event_birth');
 
     $mentionSelector = collapsibleEvidenceItemSelectorBySummary($page, 'Mention 1 · Valentin Wiśniewski · person_valentin');
     $claimSelector = collapsibleEvidenceItemSelectorBySummary($page, 'Claim 1 · Given name · person_valentin · Valentin');
@@ -228,6 +227,7 @@ it('collapses persisted evidence by default with live numbered summaries and pre
 
     toggleCollapsibleEvidenceItem($page, $eventSelector);
     assertCollapsibleEvidenceItemState($page, $eventSelector, false);
+    $page->assertSee('Claim 1 · Event date · 1904-06-29');
     assertCollapsibleEvidenceItemState($page, $eventFieldSelector, true);
 
     toggleCollapsibleEvidenceItem($page, $eventFieldSelector);
@@ -310,7 +310,14 @@ it('localizes evidence collection labels and numbered summaries in Polish', func
         ->assertSee('Dodaj zdarzenie')
         ->assertSee('Wzmianka 1 · Jan Kowalski · person_jan')
         ->assertSee('Twierdzenie 1 · Given name · person_jan · Jan')
-        ->assertSee('Zdarzenie 1 · Urodzenie Jana · event_birth')
+        ->assertSee('Zdarzenie 1 · Urodzenie Jana · event_birth');
+
+    $eventSelector = collapsibleEvidenceItemSelectorBySummary($page, 'Zdarzenie 1 · Urodzenie Jana · event_birth');
+    assertCollapsibleEvidenceItemState($page, $eventSelector, true);
+    toggleCollapsibleEvidenceItem($page, $eventSelector);
+    assertCollapsibleEvidenceItemState($page, $eventSelector, false);
+
+    $page
         ->assertSee('Twierdzenie 1 · Event date · 1904-06-29')
         ->assertNoJavaScriptErrors();
 });
