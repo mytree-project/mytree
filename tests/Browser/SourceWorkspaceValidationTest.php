@@ -2,14 +2,17 @@
 
 declare(strict_types=1);
 
+use App\Application\Acquisition\CreateClaim;
 use App\Application\Acquisition\CreateMention;
 use App\Application\Acquisition\CreateSource;
 use App\Application\Settings\Application\ApplicationSettings;
 use App\Application\Settings\Application\UpdateApplicationSettings;
 use App\Domain\Acquisition\MentionKind;
 use App\Domain\Acquisition\PredicateKey;
+use App\Domain\Acquisition\PredicateVocabulary;
 use App\Domain\Acquisition\SourceMetadata;
 use App\Domain\Acquisition\SourceType;
+use App\Domain\Acquisition\TextClaimValue;
 use App\Infrastructure\Persistence\Eloquent\Models\User;
 use Pest\Browser\Api\AwaitableWebpage;
 use Pest\Browser\Api\Webpage;
@@ -103,48 +106,6 @@ function setSourceWorkspaceBrowserRowFields(
     $page->script($script);
 }
 
-/** @param list<mixed> $arguments */
-function callSourceWorkspaceBrowserMethod(
-    Webpage|AwaitableWebpage $page,
-    string $method,
-    array $arguments = [],
-): void {
-    $script = strtr(<<<'JS'
-        (async () => {
-            const workspace = document.querySelector('[data-source-workspace]');
-
-            if (! workspace) {
-                throw new Error('Source workspace root was not found.');
-            }
-
-            let root = workspace;
-
-            while (root && ! root.hasAttribute('wire:id')) {
-                root = root.parentElement;
-            }
-
-            if (! root) {
-                throw new Error('Livewire component root for Source workspace was not found.');
-            }
-
-            const wire = Livewire.find(root.getAttribute('wire:id'));
-            const method = __METHOD__;
-            const args = __ARGS__;
-
-            if (! wire || typeof wire[method] !== 'function') {
-                throw new Error(`Livewire Source workspace method ${method} is unavailable.`);
-            }
-
-            await wire[method](...args);
-        })()
-        JS, [
-        '__METHOD__' => json_encode($method, JSON_THROW_ON_ERROR),
-        '__ARGS__' => json_encode($arguments, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
-    ]);
-
-    $page->script($script);
-}
-
 function submitSourceWorkspaceBrowserForm(Webpage|AwaitableWebpage $page): Webpage|AwaitableWebpage
 {
     return $page->click('form.source-acquisition-form button[type="submit"]');
@@ -204,29 +165,37 @@ it('routes Mention JSON syntax errors to Mentions and Claims and keeps entered s
 
 it('routes Claim subject errors to Mentions and Claims instead of Source details', function (): void {
     $source = app(CreateSource::class)->handle(SourceType::generic());
-    $page = openSourceWorkspaceForBrowserTest($source->id->value);
-
-    callSourceWorkspaceBrowserMethod(
-        $page,
-        'supportedFieldSelected',
-        [PredicateKey::PersonOccupation->value],
+    $person = app(CreateMention::class)->handle(
+        sourceId: $source->id,
+        kind: MentionKind::person(),
+        localKey: 'person_subject',
     );
+    app(CreateClaim::class)->handle(
+        sourceId: $source->id,
+        subjectMentionId: $person->id,
+        predicate: PredicateVocabulary::get(PredicateKey::PersonOccupation),
+        value: new TextClaimValue('rolnik'),
+    );
+
+    $page = openSourceWorkspaceForBrowserTest($source->id->value);
 
     setSourceWorkspaceBrowserRowFields(
         $page,
         collectionPath: 'evidenceData.fields',
         matchField: 'field_key',
         matchValue: PredicateKey::PersonOccupation->value,
-        fields: [
-            'subject_local_key' => 'missing-person',
-            'value_raw' => 'rolnik',
-        ],
+        fields: ['subject_local_key' => 'missing-person'],
     );
 
-    $page->assertScript(
-        "Array.from(document.querySelectorAll('input')).some((input) => input.value === 'missing-person')",
-        true,
-    );
+    $page
+        ->assertScript(
+            "Array.from(document.querySelectorAll('input')).some((input) => input.value === 'missing-person')",
+            true,
+        )
+        ->assertScript(
+            "Array.from(document.querySelectorAll('input')).some((input) => input.value === 'rolnik')",
+            true,
+        );
 
     submitSourceWorkspaceBrowserForm($page)
         ->assertSee('Claim nr 1 odwołuje się do nieistniejącego Mention jako podmiotu.')
