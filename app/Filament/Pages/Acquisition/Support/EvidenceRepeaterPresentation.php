@@ -8,6 +8,7 @@ use App\Application\Acquisition\SupportedAcquisitionFieldCatalog;
 use Filament\Forms\Components\Field;
 use Filament\Forms\Components\Repeater;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Str;
 
 /**
  * Presentation-only configuration for the Source Workspace evidence repeaters.
@@ -17,6 +18,8 @@ use Filament\Schemas\Schema;
  */
 final readonly class EvidenceRepeaterPresentation
 {
+    private const SUMMARY_LIMIT = 80;
+
     public function __construct(private SupportedAcquisitionFieldCatalog $catalog) {}
 
     public function configure(Schema $schema): void
@@ -66,7 +69,12 @@ final readonly class EvidenceRepeaterPresentation
             ->collapsible()
             ->itemLabel(fn (array $state): string => $this->eventSummary($state));
 
-        foreach ($repeater->getChildSchema()->getComponents(withHidden: true) as $component) {
+        $childSchema = $repeater->getChildSchema();
+        if ($childSchema === null) {
+            return;
+        }
+
+        foreach ($childSchema->getComponents(withHidden: true) as $component) {
             if ($component instanceof Repeater && $component->getName() === 'claims') {
                 $this->configureClaims($component, includeSubject: false);
             }
@@ -78,7 +86,12 @@ final readonly class EvidenceRepeaterPresentation
      */
     private function makeSummaryFieldsLive(Repeater $repeater, array $fieldNames): void
     {
-        foreach ($repeater->getChildSchema()->getComponents(withHidden: true) as $component) {
+        $childSchema = $repeater->getChildSchema();
+        if ($childSchema === null) {
+            return;
+        }
+
+        foreach ($childSchema->getComponents(withHidden: true) as $component) {
             if (! $component instanceof Field || ! in_array($component->getName(), $fieldNames, true)) {
                 continue;
             }
@@ -171,6 +184,6 @@ final readonly class EvidenceRepeaterPresentation
 
         $value = trim((string) $value);
 
-        return $value === '' ? null : $value;
+        return $value === '' ? null : Str::limit($value, self::SUMMARY_LIMIT);
     }
 }
