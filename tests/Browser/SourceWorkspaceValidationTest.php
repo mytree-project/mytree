@@ -43,11 +43,10 @@ function sourceWorkspaceBrowserFieldSelectorByLabel(
     Webpage|AwaitableWebpage $page,
     string $label,
 ): string {
-    $labelJson = json_encode($label, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
-    $selector = $page->script(<<<JS
+    $script = strtr(<<<'JS'
         (() => {
-            const expectedLabel = {$labelJson};
-            const normalize = (value) => value.replace(/\\s+/g, ' ').trim();
+            const expectedLabel = __LABEL__;
+            const normalize = (value) => value.replace(/\s+/g, ' ').trim();
             const label = Array.from(document.querySelectorAll('label')).find(
                 (candidate) => normalize(candidate.textContent ?? '').startsWith(expectedLabel),
             );
@@ -70,7 +69,11 @@ function sourceWorkspaceBrowserFieldSelectorByLabel(
 
             return `#${CSS.escape(control.id)}`;
         })()
-        JS);
+        JS, [
+        '__LABEL__' => json_encode($label, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+    ]);
+
+    $selector = $page->script($script);
 
     if (! is_string($selector) || $selector === '') {
         throw new RuntimeException("Could not resolve browser field selector for label [$label].");
