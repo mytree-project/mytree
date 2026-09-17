@@ -417,7 +417,7 @@ final readonly class StructuredAcquisitionFormAdapter
         ];
 
         if ($includeSubject) {
-            $schema[] = Select::make('subject_local_key')
+            $schema[] = MentionReferenceSelect::make('subject_local_key')
                 ->label('Subject Mention')
                 ->helperText('Select a Mention from this SourceDraft. Display labels are descriptive; the source-local key remains the reference identity.')
                 ->options(fn (Get $get, LivewireComponent $livewire): array => $this->mentionPickerOptionsFromLivewire(
@@ -429,7 +429,7 @@ final readonly class StructuredAcquisitionFormAdapter
                 ->preload();
         }
 
-        $schema[] = Select::make('object_local_key')
+        $schema[] = MentionReferenceSelect::make('object_local_key')
             ->label('Object Mention')
             ->helperText('Used by relationship/place fields only and filtered by the selected field contract.')
             ->options(fn (Get $get, LivewireComponent $livewire): array => $this->mentionPickerOptionsFromLivewire(
