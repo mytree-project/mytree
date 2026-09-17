@@ -16,7 +16,6 @@ use App\Domain\Acquisition\TextClaimValue;
 use App\Infrastructure\Persistence\Eloquent\Models\User;
 use Pest\Browser\Api\AwaitableWebpage;
 use Pest\Browser\Api\Webpage;
-use RuntimeException;
 use Tests\TestCase;
 
 function openSourceWorkspaceForBrowserTest(string $sourceId): Webpage|AwaitableWebpage
