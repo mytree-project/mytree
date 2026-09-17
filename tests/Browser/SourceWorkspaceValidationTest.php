@@ -96,6 +96,44 @@ function sourceWorkspaceBrowserFieldSelectorByLabel(
     return $selector;
 }
 
+function expandSourceWorkspaceEvidenceItem(
+    AwaitableWebpage $page,
+    string $summaryFragment,
+): void {
+    $script = strtr(<<<'JS'
+        (() => {
+            const expectedSummary = __SUMMARY__;
+            const normalize = (value) => value.replace(/\s+/g, ' ').trim();
+            const item = Array.from(document.querySelectorAll('.fi-fo-repeater-item')).find((candidate) => {
+                const label = candidate.querySelector(':scope > .fi-fo-repeater-item-header .fi-fo-repeater-item-header-label');
+
+                return label && normalize(label.textContent ?? '').includes(expectedSummary);
+            });
+
+            if (! item) {
+                throw new Error(`Repeater item ${expectedSummary} was not found.`);
+            }
+
+            if (! item.classList.contains('fi-collapsed')) {
+                return true;
+            }
+
+            const toggle = item.querySelector(':scope > .fi-fo-repeater-item-header > .fi-fo-repeater-item-header-end-actions > .fi-fo-repeater-item-header-collapsible-actions');
+            if (! toggle) {
+                throw new Error(`Collapse toggle for ${expectedSummary} was not found.`);
+            }
+
+            toggle.click();
+
+            return ! item.classList.contains('fi-collapsed');
+        })()
+        JS, [
+        '__SUMMARY__' => json_encode($summaryFragment, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+    ]);
+
+    $page->assertScript($script, true);
+}
+
 function fillSourceWorkspaceBrowserField(
     AwaitableWebpage $page,
     string $label,
@@ -127,6 +165,7 @@ it('routes Mention JSON syntax errors to Mentions and Claims and keeps entered s
     authenticateSourceWorkspaceBrowserTestUser();
 
     $page = openSourceWorkspaceForBrowserTest($source->id->value);
+    expandSourceWorkspaceEvidenceItem($page, 'person_valentin');
 
     fillSourceWorkspaceBrowserField(
         $page,
@@ -182,6 +221,7 @@ it('routes stale Claim subject errors to Mentions and Claims after a Mention key
     authenticateSourceWorkspaceBrowserTestUser();
 
     $page = openSourceWorkspaceForBrowserTest($source->id->value);
+    expandSourceWorkspaceEvidenceItem($page, 'person_subject');
 
     fillSourceWorkspaceBrowserField(
         $page,
