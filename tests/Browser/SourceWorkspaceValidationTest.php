@@ -41,9 +41,15 @@ function openSourceWorkspaceForBrowserTest(string $sourceId): Webpage
         changedBy: null,
     );
 
-    return visit('/admin/acquisition/source?source='.urlencode($sourceId))
+    $pendingPage = visit('/admin/acquisition/source?source='.urlencode($sourceId));
+
+    $pendingPage
         ->assertPresent('[data-source-workspace]')
         ->assertPresent('[data-mentions-claims-editor]');
+
+    $browserPage = $pendingPage->page();
+
+    return new Webpage($browserPage, $browserPage->url());
 }
 
 function sourceWorkspaceBrowserFieldSelectorByLabel(
