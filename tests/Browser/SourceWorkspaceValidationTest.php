@@ -14,9 +14,25 @@ use App\Domain\Acquisition\SourceMetadata;
 use App\Domain\Acquisition\SourceType;
 use App\Domain\Acquisition\TextClaimValue;
 use App\Infrastructure\Persistence\Eloquent\Models\User;
+use Illuminate\Contracts\Auth\Factory as AuthFactory;
 use Pest\Browser\Api\Webpage;
 
-use function Pest\Laravel\actingAs;
+function authenticateSourceWorkspaceBrowserTestUser(): void
+{
+    $guardName = config('auth.defaults.guard');
+
+    if (! is_string($guardName) || $guardName === '') {
+        throw new RuntimeException('Default authentication guard is not configured.');
+    }
+
+    $auth = app(AuthFactory::class);
+    $user = User::factory()->admin()->create([
+        'email' => 'browser-admin@example.test',
+    ]);
+
+    $auth->guard($guardName)->setUser($user);
+    $auth->shouldUse($guardName);
+}
 
 function openSourceWorkspaceForBrowserTest(string $sourceId): Webpage
 {
@@ -100,9 +116,7 @@ it('routes Mention JSON syntax errors to Mentions and Claims and keeps entered s
         displayLabel: 'Valentin Wiśniewski',
     );
 
-    actingAs(User::factory()->admin()->create([
-        'email' => 'browser-admin@example.test',
-    ]));
+    authenticateSourceWorkspaceBrowserTestUser();
 
     $page = openSourceWorkspaceForBrowserTest($source->id->value);
 
@@ -157,9 +171,7 @@ it('routes Claim subject errors to Mentions and Claims instead of Source details
         value: new TextClaimValue('rolnik'),
     );
 
-    actingAs(User::factory()->admin()->create([
-        'email' => 'browser-admin@example.test',
-    ]));
+    authenticateSourceWorkspaceBrowserTestUser();
 
     $page = openSourceWorkspaceForBrowserTest($source->id->value);
 
@@ -198,9 +210,7 @@ it('routes metadata value errors to Source details instead of Mentions and Claim
         metadata: new SourceMetadata(['record_number' => 1]),
     );
 
-    actingAs(User::factory()->admin()->create([
-        'email' => 'browser-admin@example.test',
-    ]));
+    authenticateSourceWorkspaceBrowserTestUser();
 
     $page = openSourceWorkspaceForBrowserTest($source->id->value);
 
