@@ -23,6 +23,13 @@
         <div
             @class(['source-workspace-error-region' => $evidenceHasErrors])
             data-mentions-claims-editor
+            @if ($evidenceHasErrors)
+                x-init="$nextTick(() => {
+                    $el.querySelectorAll('.fi-fo-repeater-item.fi-collapsed').forEach((item) => {
+                        item.querySelector(':scope > .fi-fo-repeater-item-header > .fi-fo-repeater-item-header-end-actions > .fi-fo-repeater-item-header-collapsible-actions')?.click();
+                    });
+                })"
+            @endif
         >
             {{ $this->evidenceForm }}
         </div>
