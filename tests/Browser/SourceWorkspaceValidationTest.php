@@ -94,6 +94,25 @@ function setSourceWorkspaceBrowserRowFields(
 
             for (const [field, value] of Object.entries(fields)) {
                 await wire['$set'](`${collectionPath}.${rowKey}.${field}`, value);
+
+                // Filament form controls also keep Alpine-side state. A direct Livewire $set
+                // updates the public property and DOM, but a later form submit can dehydrate
+                // the stale Alpine value back over it. Dispatch the same browser events a
+                // real edit would emit so both sides agree before save().
+                const expectedValue = value === null ? '' : String(value);
+                const controls = Array.from(document.querySelectorAll('input:not([type="hidden"]), textarea, select'));
+                const matchingControls = controls.filter((control) => control.value === expectedValue);
+
+                if (matchingControls.length === 0) {
+                    throw new Error(`No rendered form control reflected ${collectionPath}.${rowKey}.${field}.`);
+                }
+
+                for (const control of matchingControls) {
+                    control.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+                    control.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+                }
+
+                await new Promise((resolve) => requestAnimationFrame(resolve));
             }
         })()
         JS, [
