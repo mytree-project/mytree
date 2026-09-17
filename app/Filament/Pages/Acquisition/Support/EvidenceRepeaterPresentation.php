@@ -34,7 +34,7 @@ final readonly class EvidenceRepeaterPresentation
                     $this->configureMentions($component);
                     break;
                 case 'fields':
-                    $this->configureClaims($component, includeSubject: true);
+                    $this->configureClaims($component, includeSubject: true, configureCollectionPresentation: true);
                     break;
                 case 'event_contexts':
                     $this->configureEvents($component);
@@ -46,16 +46,37 @@ final readonly class EvidenceRepeaterPresentation
     private function configureMentions(Repeater $repeater): void
     {
         $repeater
+            ->label(__('evidence.mentions'))
+            ->helperText(__('evidence.mentions_help'))
+            ->addActionLabel(__('evidence.add_mention'))
             ->collapsible()
-            ->itemNumbers()
-            ->itemLabel(fn (array $state): string => $this->mentionSummary($state));
+            ->collapsed()
+            ->itemLabel(fn (array $state, Repeater $component): string => $this->mentionSummary(
+                $state,
+                $this->itemNumber($component, $state),
+            ));
     }
 
-    private function configureClaims(Repeater $repeater, bool $includeSubject): void
-    {
+    private function configureClaims(
+        Repeater $repeater,
+        bool $includeSubject,
+        bool $configureCollectionPresentation = false,
+    ): void {
+        if ($configureCollectionPresentation) {
+            $repeater
+                ->label(__('evidence.claims'))
+                ->helperText(__('evidence.claims_help'))
+                ->addActionLabel(__('evidence.add_claim'));
+        }
+
         $repeater
             ->collapsible()
-            ->itemLabel(fn (array $state): string => $this->claimSummary($state, $includeSubject));
+            ->collapsed()
+            ->itemLabel(fn (array $state, Repeater $component): string => $this->claimSummary(
+                $state,
+                $includeSubject,
+                $this->itemNumber($component, $state),
+            ));
 
         $this->makeSummaryFieldsLive($repeater, [
             'field_key',
@@ -71,8 +92,15 @@ final readonly class EvidenceRepeaterPresentation
     private function configureEvents(Repeater $repeater): void
     {
         $repeater
+            ->label(__('evidence.events'))
+            ->helperText(__('evidence.events_help'))
+            ->addActionLabel(__('evidence.add_event'))
             ->collapsible()
-            ->itemLabel(fn (array $state): string => $this->eventSummary($state));
+            ->collapsed()
+            ->itemLabel(fn (array $state, Repeater $component): string => $this->eventSummary(
+                $state,
+                $this->itemNumber($component, $state),
+            ));
 
         $childSchema = $repeater->getChildSchema();
         if ($childSchema === null) {
@@ -105,30 +133,51 @@ final readonly class EvidenceRepeaterPresentation
         }
     }
 
+    /** @param array<string, mixed> $state */
+    private function itemNumber(Repeater $repeater, array $state): int
+    {
+        $repeaterState = $repeater->getState();
+        if (! is_array($repeaterState)) {
+            return 1;
+        }
+
+        $key = array_search($state, $repeaterState, true);
+        if ($key === false) {
+            return 1;
+        }
+
+        $index = array_search($key, array_keys($repeaterState), true);
+
+        return $index === false ? 1 : $index + 1;
+    }
+
     /** @param  array<string, mixed>  $state */
-    private function mentionSummary(array $state): string
+    private function mentionSummary(array $state, int $number): string
     {
         return $this->joinSummary([
-            'Mention',
-            $this->summaryString($state['local_key'] ?? null),
+            sprintf('%s %d', __('evidence.mention'), $number),
             $this->summaryString($state['display_label'] ?? null),
+            $this->summaryString($state['local_key'] ?? null),
         ]);
     }
 
     /** @param  array<string, mixed>  $state */
-    private function eventSummary(array $state): string
+    private function eventSummary(array $state, int $number): string
     {
         return $this->joinSummary([
-            'Event',
-            $this->summaryString($state['local_key'] ?? null),
+            sprintf('%s %d', __('evidence.event'), $number),
             $this->summaryString($state['display_label'] ?? null),
+            $this->summaryString($state['local_key'] ?? null),
         ]);
     }
 
     /** @param  array<string, mixed>  $state */
-    private function claimSummary(array $state, bool $includeSubject): string
+    private function claimSummary(array $state, bool $includeSubject, int $number): string
     {
-        $parts = [$this->fieldLabel($state['field_key'] ?? null)];
+        $parts = [
+            sprintf('%s %d', __('evidence.claim'), $number),
+            $this->fieldLabel($state['field_key'] ?? null),
+        ];
 
         if ($includeSubject) {
             $parts[] = $this->summaryString($state['subject_local_key'] ?? null);
@@ -143,7 +192,7 @@ final readonly class EvidenceRepeaterPresentation
     {
         $fieldKey = $this->summaryString($fieldKey);
         if ($fieldKey === null) {
-            return 'Structured field';
+            return __('evidence.structured_field');
         }
 
         return $this->catalog->has($fieldKey)
