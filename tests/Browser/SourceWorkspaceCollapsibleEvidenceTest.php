@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Application\Acquisition\CreateClaim;
 use App\Application\Acquisition\CreateMention;
 use App\Application\Acquisition\CreateSource;
+use App\Application\Settings\Application\ApplicationSettings;
+use App\Application\Settings\Application\UpdateApplicationSettings;
 use App\Domain\Acquisition\DateClaimValue;
 use App\Domain\Acquisition\HistoricalDate;
 use App\Domain\Acquisition\MentionKind;
@@ -151,7 +153,7 @@ function assertCollapsibleEvidenceItemState(
     );
 }
 
-it('collapses evidence blocks with live summaries and preserves unsaved state', function (): void {
+it('collapses persisted evidence by default with live numbered summaries and preserves unsaved state', function (): void {
     $source = app(CreateSource::class)->handle(SourceType::generic());
     $person = app(CreateMention::class)->handle(
         sourceId: $source->id,
@@ -185,16 +187,33 @@ it('collapses evidence blocks with live summaries and preserves unsaved state', 
     $page = openCollapsibleEvidenceWorkspace($source->id->value);
 
     $page
-        ->assertSee('Mention · person_valentin · Valentin Wiśniewski')
-        ->assertSee('Given name · person_valentin · Valentin')
-        ->assertSee('Event · event_birth · Birth of Peter')
-        ->assertSee('Event date · 1904-06-29');
+        ->assertSee('Mentions')
+        ->assertSee('Add mention')
+        ->assertSee('Claims')
+        ->assertSee('Add claim')
+        ->assertSee('Events')
+        ->assertSee('Add event')
+        ->assertSee('Mention 1 · Valentin Wiśniewski · person_valentin')
+        ->assertSee('Claim 1 · Given name · person_valentin · Valentin')
+        ->assertSee('Event 1 · Birth of Peter · event_birth')
+        ->assertSee('Claim 1 · Event date · 1904-06-29');
+
+    $mentionSelector = collapsibleEvidenceItemSelectorBySummary($page, 'Mention 1 · Valentin Wiśniewski · person_valentin');
+    $claimSelector = collapsibleEvidenceItemSelectorBySummary($page, 'Claim 1 · Given name · person_valentin · Valentin');
+    $eventSelector = collapsibleEvidenceItemSelectorBySummary($page, 'Event 1 · Birth of Peter · event_birth');
+    $eventFieldSelector = collapsibleEvidenceItemSelectorBySummary($page, 'Claim 1 · Event date · 1904-06-29');
+
+    assertCollapsibleEvidenceItemState($page, $mentionSelector, true);
+    assertCollapsibleEvidenceItemState($page, $claimSelector, true);
+    assertCollapsibleEvidenceItemState($page, $eventSelector, true);
+    assertCollapsibleEvidenceItemState($page, $eventFieldSelector, true);
+
+    toggleCollapsibleEvidenceItem($page, $mentionSelector);
+    assertCollapsibleEvidenceItemState($page, $mentionSelector, false);
 
     $displayLabelSelector = setCollapsibleEvidenceField($page, 'Display label', 'Valentin Updated');
+    $page->assertSee('Mention 1 · Valentin Updated · person_valentin');
 
-    $page->assertSee('Mention · person_valentin · Valentin Updated');
-
-    $mentionSelector = collapsibleEvidenceItemSelectorBySummary($page, 'person_valentin');
     toggleCollapsibleEvidenceItem($page, $mentionSelector);
     assertCollapsibleEvidenceItemState($page, $mentionSelector, true);
 
@@ -202,29 +221,23 @@ it('collapses evidence blocks with live summaries and preserves unsaved state', 
     assertCollapsibleEvidenceItemState($page, $mentionSelector, false);
     $page->assertValue($displayLabelSelector, 'Valentin Updated');
 
-    $claimSelector = collapsibleEvidenceItemSelectorBySummary($page, 'Given name · person_valentin · Valentin');
+    toggleCollapsibleEvidenceItem($page, $claimSelector);
+    assertCollapsibleEvidenceItemState($page, $claimSelector, false);
     toggleCollapsibleEvidenceItem($page, $claimSelector);
     assertCollapsibleEvidenceItemState($page, $claimSelector, true);
 
-    toggleCollapsibleEvidenceItem($page, $claimSelector);
-    assertCollapsibleEvidenceItemState($page, $claimSelector, false);
-
-    $eventSelector = collapsibleEvidenceItemSelectorBySummary($page, 'event_birth');
-    toggleCollapsibleEvidenceItem($page, $eventSelector);
-    assertCollapsibleEvidenceItemState($page, $eventSelector, true);
-
     toggleCollapsibleEvidenceItem($page, $eventSelector);
     assertCollapsibleEvidenceItemState($page, $eventSelector, false);
-
-    $eventFieldSelector = collapsibleEvidenceItemSelectorBySummary($page, 'Event date · 1904-06-29');
-    toggleCollapsibleEvidenceItem($page, $eventFieldSelector);
     assertCollapsibleEvidenceItemState($page, $eventFieldSelector, true);
+
+    toggleCollapsibleEvidenceItem($page, $eventFieldSelector);
+    assertCollapsibleEvidenceItemState($page, $eventFieldSelector, false);
     assertCollapsibleEvidenceItemState($page, $eventSelector, false);
 
     $page->assertNoJavaScriptErrors();
 });
 
-it('expands a collapsed evidence item when save validation reports an error inside it', function (): void {
+it('expands collapsed evidence when save validation reports an error inside it', function (): void {
     $source = app(CreateSource::class)->handle(SourceType::generic());
     app(CreateMention::class)->handle(
         sourceId: $source->id,
@@ -236,15 +249,68 @@ it('expands a collapsed evidence item when save validation reports an error insi
     authenticateCollapsibleEvidenceBrowserTestUser();
     $page = openCollapsibleEvidenceWorkspace($source->id->value);
 
-    setCollapsibleEvidenceField($page, 'Raw source-local data (JSON object)', '{"broken":');
+    $mentionSelector = collapsibleEvidenceItemSelectorBySummary($page, 'Mention 1 · Invalid JSON example · person_invalid');
+    assertCollapsibleEvidenceItemState($page, $mentionSelector, true);
 
-    $mentionSelector = collapsibleEvidenceItemSelectorBySummary($page, 'person_invalid');
+    toggleCollapsibleEvidenceItem($page, $mentionSelector);
+    assertCollapsibleEvidenceItemState($page, $mentionSelector, false);
+    setCollapsibleEvidenceField($page, 'Raw source-local data (JSON object)', '{"broken":');
     toggleCollapsibleEvidenceItem($page, $mentionSelector);
     assertCollapsibleEvidenceItemState($page, $mentionSelector, true);
 
     $page->click('form.source-acquisition-form button[type="submit"]')
-        ->assertPresent('[data-validation-error]');
+        ->assertPresent('[data-source-workspace-save-errors]');
 
     assertCollapsibleEvidenceItemState($page, $mentionSelector, false);
     $page->assertNoJavaScriptErrors();
+});
+
+it('localizes evidence collection labels and numbered summaries in Polish', function (): void {
+    app(UpdateApplicationSettings::class)->handle(
+        new ApplicationSettings(defaultLocale: 'pl'),
+        changedBy: null,
+    );
+
+    $source = app(CreateSource::class)->handle(SourceType::generic());
+    $person = app(CreateMention::class)->handle(
+        sourceId: $source->id,
+        kind: MentionKind::person(),
+        localKey: 'person_jan',
+        displayLabel: 'Jan Kowalski',
+    );
+    $event = app(CreateMention::class)->handle(
+        sourceId: $source->id,
+        kind: MentionKind::event(),
+        localKey: 'event_birth',
+        displayLabel: 'Urodzenie Jana',
+    );
+
+    app(CreateClaim::class)->handle(
+        sourceId: $source->id,
+        subjectMentionId: $person->id,
+        predicate: PredicateVocabulary::get(PredicateKey::PersonGivenName),
+        value: new TextClaimValue('Jan'),
+    );
+    app(CreateClaim::class)->handle(
+        sourceId: $source->id,
+        subjectMentionId: $event->id,
+        predicate: PredicateVocabulary::get(PredicateKey::EventDate),
+        value: DateClaimValue::exact('1904-06-29', HistoricalDate::day(1904, 6, 29)),
+    );
+
+    authenticateCollapsibleEvidenceBrowserTestUser();
+    $page = openCollapsibleEvidenceWorkspace($source->id->value);
+
+    $page
+        ->assertSee('Wzmianki')
+        ->assertSee('Dodaj wzmiankę')
+        ->assertSee('Twierdzenia')
+        ->assertSee('Dodaj twierdzenie')
+        ->assertSee('Zdarzenia')
+        ->assertSee('Dodaj zdarzenie')
+        ->assertSee('Wzmianka 1 · Jan Kowalski · person_jan')
+        ->assertSee('Twierdzenie 1 · Given name · person_jan · Jan')
+        ->assertSee('Zdarzenie 1 · Urodzenie Jana · event_birth')
+        ->assertSee('Twierdzenie 1 · Event date · 1904-06-29')
+        ->assertNoJavaScriptErrors();
 });
