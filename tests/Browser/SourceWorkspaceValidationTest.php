@@ -96,6 +96,61 @@ function sourceWorkspaceBrowserFieldSelectorByLabel(
     return $selector;
 }
 
+function expandSourceWorkspaceEvidenceItem(
+    AwaitableWebpage $page,
+    string $summaryFragment,
+): void {
+    $script = strtr(<<<'JS'
+        (() => {
+            const expectedSummary = __SUMMARY__;
+            const normalize = (value) => value.replace(/\s+/g, ' ').trim();
+            const item = Array.from(document.querySelectorAll('.fi-fo-repeater-item')).find((candidate) => {
+                const label = candidate.querySelector(':scope > .fi-fo-repeater-item-header .fi-fo-repeater-item-header-label');
+
+                return label && normalize(label.textContent ?? '').includes(expectedSummary);
+            });
+
+            if (! item) {
+                throw new Error(`Repeater item ${expectedSummary} was not found.`);
+            }
+
+            if (! item.id) {
+                item.id = `source-workspace-validation-item-${Math.random().toString(36).slice(2)}`;
+            }
+
+            return `#${CSS.escape(item.id)}`;
+        })()
+        JS, [
+        '__SUMMARY__' => json_encode($summaryFragment, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+    ]);
+
+    $itemSelector = $page->script($script);
+
+    if (! is_string($itemSelector) || $itemSelector === '') {
+        throw new RuntimeException("Could not resolve evidence item selector for [$summaryFragment].");
+    }
+
+    $isCollapsed = $page->script(sprintf(
+        'document.querySelector(%s)?.classList.contains("fi-collapsed") ?? false',
+        json_encode($itemSelector, JSON_THROW_ON_ERROR),
+    ));
+
+    if ($isCollapsed !== true) {
+        return;
+    }
+
+    $page->click(
+        $itemSelector.' > .fi-fo-repeater-item-header > .fi-fo-repeater-item-header-end-actions > .fi-fo-repeater-item-header-collapsible-actions',
+    );
+    $page->assertScript(
+        sprintf(
+            '!document.querySelector(%s).classList.contains("fi-collapsed")',
+            json_encode($itemSelector, JSON_THROW_ON_ERROR),
+        ),
+        true,
+    );
+}
+
 function fillSourceWorkspaceBrowserField(
     AwaitableWebpage $page,
     string $label,
@@ -127,6 +182,7 @@ it('routes Mention JSON syntax errors to Mentions and Claims and keeps entered s
     authenticateSourceWorkspaceBrowserTestUser();
 
     $page = openSourceWorkspaceForBrowserTest($source->id->value);
+    expandSourceWorkspaceEvidenceItem($page, 'person_valentin');
 
     fillSourceWorkspaceBrowserField(
         $page,
@@ -182,6 +238,7 @@ it('routes stale Claim subject errors to Mentions and Claims after a Mention key
     authenticateSourceWorkspaceBrowserTestUser();
 
     $page = openSourceWorkspaceForBrowserTest($source->id->value);
+    expandSourceWorkspaceEvidenceItem($page, 'person_subject');
 
     fillSourceWorkspaceBrowserField(
         $page,

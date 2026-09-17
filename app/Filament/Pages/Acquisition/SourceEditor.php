@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages\Acquisition;
 
+use App\Filament\Pages\Acquisition\Support\EvidenceRepeaterPresentation;
 use App\Filament\Support\SourceWorkspacePage;
-use Filament\Forms\Components\Repeater;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
@@ -31,12 +31,7 @@ final class SourceEditor extends SourceWorkspacePage
     public function evidenceForm(Schema $schema): Schema
     {
         $schema = parent::evidenceForm($schema);
-
-        foreach ($schema->getComponents(withHidden: true) as $component) {
-            if ($component instanceof Repeater && $component->getName() === 'mentions') {
-                $component->itemNumbers();
-            }
-        }
+        app(EvidenceRepeaterPresentation::class)->configure($schema);
 
         return $schema;
     }
