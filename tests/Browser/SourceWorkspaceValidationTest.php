@@ -114,24 +114,41 @@ function expandSourceWorkspaceEvidenceItem(
                 throw new Error(`Repeater item ${expectedSummary} was not found.`);
             }
 
-            if (! item.classList.contains('fi-collapsed')) {
-                return true;
+            if (! item.id) {
+                item.id = `source-workspace-validation-item-${Math.random().toString(36).slice(2)}`;
             }
 
-            const toggle = item.querySelector(':scope > .fi-fo-repeater-item-header > .fi-fo-repeater-item-header-end-actions > .fi-fo-repeater-item-header-collapsible-actions');
-            if (! toggle) {
-                throw new Error(`Collapse toggle for ${expectedSummary} was not found.`);
-            }
-
-            toggle.click();
-
-            return ! item.classList.contains('fi-collapsed');
+            return `#${CSS.escape(item.id)}`;
         })()
         JS, [
         '__SUMMARY__' => json_encode($summaryFragment, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
     ]);
 
-    $page->assertScript($script, true);
+    $itemSelector = $page->script($script);
+
+    if (! is_string($itemSelector) || $itemSelector === '') {
+        throw new RuntimeException("Could not resolve evidence item selector for [$summaryFragment].");
+    }
+
+    $isCollapsed = $page->script(sprintf(
+        'document.querySelector(%s)?.classList.contains("fi-collapsed") ?? false',
+        json_encode($itemSelector, JSON_THROW_ON_ERROR),
+    ));
+
+    if ($isCollapsed !== true) {
+        return;
+    }
+
+    $page->click(
+        $itemSelector.' > .fi-fo-repeater-item-header > .fi-fo-repeater-item-header-end-actions > .fi-fo-repeater-item-header-collapsible-actions',
+    );
+    $page->assertScript(
+        sprintf(
+            '!document.querySelector(%s).classList.contains("fi-collapsed")',
+            json_encode($itemSelector, JSON_THROW_ON_ERROR),
+        ),
+        true,
+    );
 }
 
 function fillSourceWorkspaceBrowserField(
