@@ -57,13 +57,17 @@ function setSourceWorkspaceBrowserState(Webpage|AwaitableWebpage $page, string $
                 throw new Error('Livewire component root for Source workspace was not found.');
             }
 
-            const component = Livewire.find(root.getAttribute('wire:id'));
+            const wire = Livewire.find(root.getAttribute('wire:id'));
 
-            if (! component) {
+            if (! wire) {
                 throw new Error('Livewire Source workspace component was not found.');
             }
 
-            await component.set({$propertyJson}, {$valueJson});
+            if (typeof wire.$set !== 'function') {
+                throw new Error('Livewire Source workspace $wire.$set API is unavailable.');
+            }
+
+            await wire.$set({$propertyJson}, {$valueJson});
         })()
         JS);
 }
@@ -85,6 +89,11 @@ it('routes Mention JSON syntax errors to Mentions and Claims and keeps entered s
         'display_label' => 'Valentin Wiśniewski',
         'raw_data_json' => '{"broken":',
     ]]);
+
+    $page->assertScript(
+        "Array.from(document.querySelectorAll('input')).some((input) => input.value === 'person_valentin')",
+        true,
+    );
 
     submitSourceWorkspaceBrowserForm($page)
         ->assertSee('Błąd składni JSON w Mention nr 1 (person_valentin).')
@@ -123,6 +132,11 @@ it('routes Claim subject errors to Mentions and Claims instead of Source details
         'interpretation_certainty' => 'unspecified',
     ]]);
 
+    $page->assertScript(
+        "Array.from(document.querySelectorAll('input')).some((input) => input.value === 'missing-person')",
+        true,
+    );
+
     submitSourceWorkspaceBrowserForm($page)
         ->assertSee('Claim nr 1 odwołuje się do nieistniejącego Mention jako podmiotu.')
         ->assertVisible('[data-source-workspace-save-errors]')
@@ -150,6 +164,11 @@ it('routes metadata value errors to Source details instead of Mentions and Claim
         'type' => 'integer',
         'value' => 'abc',
     ]]);
+
+    $page->assertScript(
+        "Array.from(document.querySelectorAll('input')).some((input) => input.value === 'abc')",
+        true,
+    );
 
     submitSourceWorkspaceBrowserForm($page)
         ->assertSee('Pole metadanych nr 1 wymaga prawidłowej liczby całkowitej.')
