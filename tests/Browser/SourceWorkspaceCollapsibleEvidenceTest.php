@@ -42,7 +42,9 @@ function openCollapsibleEvidenceWorkspace(string $sourceId): AwaitableWebpage
         throw new RuntimeException('Browser visit did not resolve to an awaitable webpage.');
     }
 
-    return $page->assertPresent('[data-mentions-claims-editor]');
+    $page->assertPresent('[data-mentions-claims-editor]');
+
+    return $page;
 }
 
 function collapsibleEvidenceFieldSelectorByLabel(AwaitableWebpage $page, string $label): string
@@ -136,6 +138,17 @@ function toggleCollapsibleEvidenceItem(AwaitableWebpage $page, string $itemSelec
     $page->click($itemSelector.' .fi-fo-repeater-item-header-collapsible-actions');
 }
 
+function assertCollapsibleEvidenceItemState(
+    AwaitableWebpage $page,
+    string $itemSelector,
+    bool $collapsed,
+): void {
+    $page->assertScript(
+        sprintf('document.querySelector(%s).classList.contains("fi-collapsed")', json_encode($itemSelector, JSON_THROW_ON_ERROR)),
+        $collapsed,
+    );
+}
+
 it('collapses evidence blocks with live summaries and preserves unsaved state', function (): void {
     $source = app(CreateSource::class)->handle(SourceType::generic());
     $person = app(CreateMention::class)->handle(
@@ -179,30 +192,32 @@ it('collapses evidence blocks with live summaries and preserves unsaved state', 
 
     $mentionSelector = collapsibleEvidenceItemSelectorBySummary($page, 'person_valentin');
     toggleCollapsibleEvidenceItem($page, $mentionSelector);
-
-    $page->assertScript(
-        sprintf('document.querySelector(%s).classList.contains("fi-collapsed")', json_encode($mentionSelector, JSON_THROW_ON_ERROR)),
-        true,
-    );
+    assertCollapsibleEvidenceItemState($page, $mentionSelector, true);
 
     toggleCollapsibleEvidenceItem($page, $mentionSelector);
+    assertCollapsibleEvidenceItemState($page, $mentionSelector, false);
+    $page->assertValue($displayLabelSelector, 'Valentin Updated');
 
-    $page->assertScript(
-        sprintf('document.querySelector(%s).classList.contains("fi-collapsed")', json_encode($mentionSelector, JSON_THROW_ON_ERROR)),
-        false,
-    )->assertValue($displayLabelSelector, 'Valentin Updated');
+    $claimSelector = collapsibleEvidenceItemSelectorBySummary($page, 'Given name · person_valentin · Valentin');
+    toggleCollapsibleEvidenceItem($page, $claimSelector);
+    assertCollapsibleEvidenceItemState($page, $claimSelector, true);
+
+    toggleCollapsibleEvidenceItem($page, $claimSelector);
+    assertCollapsibleEvidenceItemState($page, $claimSelector, false);
 
     $eventSelector = collapsibleEvidenceItemSelectorBySummary($page, 'event_birth');
+    toggleCollapsibleEvidenceItem($page, $eventSelector);
+    assertCollapsibleEvidenceItemState($page, $eventSelector, true);
+
+    toggleCollapsibleEvidenceItem($page, $eventSelector);
+    assertCollapsibleEvidenceItemState($page, $eventSelector, false);
+
     $eventFieldSelector = collapsibleEvidenceItemSelectorBySummary($page, 'Event date · 1904-06-29');
     toggleCollapsibleEvidenceItem($page, $eventFieldSelector);
+    assertCollapsibleEvidenceItemState($page, $eventFieldSelector, true);
+    assertCollapsibleEvidenceItemState($page, $eventSelector, false);
 
-    $page->assertScript(
-        sprintf('document.querySelector(%s).classList.contains("fi-collapsed")', json_encode($eventFieldSelector, JSON_THROW_ON_ERROR)),
-        true,
-    )->assertScript(
-        sprintf('document.querySelector(%s).classList.contains("fi-collapsed")', json_encode($eventSelector, JSON_THROW_ON_ERROR)),
-        false,
-    )->assertNoJavaScriptErrors();
+    $page->assertNoJavaScriptErrors();
 });
 
 it('expands a collapsed evidence item when save validation reports an error inside it', function (): void {
@@ -221,17 +236,11 @@ it('expands a collapsed evidence item when save validation reports an error insi
 
     $mentionSelector = collapsibleEvidenceItemSelectorBySummary($page, 'person_invalid');
     toggleCollapsibleEvidenceItem($page, $mentionSelector);
-
-    $page->assertScript(
-        sprintf('document.querySelector(%s).classList.contains("fi-collapsed")', json_encode($mentionSelector, JSON_THROW_ON_ERROR)),
-        true,
-    );
+    assertCollapsibleEvidenceItemState($page, $mentionSelector, true);
 
     $page->click('form.source-acquisition-form button[type="submit"]')
-        ->assertPresent('[data-validation-error]')
-        ->assertScript(
-            sprintf('document.querySelector(%s).classList.contains("fi-collapsed")', json_encode($mentionSelector, JSON_THROW_ON_ERROR)),
-            false,
-        )
-        ->assertNoJavaScriptErrors();
+        ->assertPresent('[data-validation-error]');
+
+    assertCollapsibleEvidenceItemState($page, $mentionSelector, false);
+    $page->assertNoJavaScriptErrors();
 });
