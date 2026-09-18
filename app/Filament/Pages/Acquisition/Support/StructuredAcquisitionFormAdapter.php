@@ -560,7 +560,12 @@ final readonly class StructuredAcquisitionFormAdapter
 
     private function isTemporalValueEditor(mixed $fieldKey): bool
     {
-        return in_array($this->editorKind($fieldKey), [
+        return $this->isTemporalEditorKind($this->editorKind($fieldKey));
+    }
+
+    private function isTemporalEditorKind(?SupportedAcquisitionFieldEditorKind $kind): bool
+    {
+        return in_array($kind, [
             SupportedAcquisitionFieldEditorKind::Date,
             SupportedAcquisitionFieldEditorKind::Age,
         ], true);
@@ -686,13 +691,15 @@ final readonly class StructuredAcquisitionFormAdapter
         $claimId = $row['claim_id'] ?? null;
         $value = $descriptor->editorKind === SupportedAcquisitionFieldEditorKind::MentionReference
             ? null
-            : $this->literalInput($row, $path);
+            : $this->literalInput($descriptor, $row, $path);
 
         return new SupportedAcquisitionClaimInput(
             id: is_string($claimId) && $claimId !== '' ? new ClaimId($claimId) : null,
             fieldKey: $fieldKey,
             subjectLocalKey: trim($subjectLocalKey),
-            objectLocalKey: $this->optionalString($row['object_local_key'] ?? null),
+            objectLocalKey: $descriptor->editorKind === SupportedAcquisitionFieldEditorKind::MentionReference
+                ? $this->optionalString($row['object_local_key'] ?? null)
+                : null,
             value: $value,
             effectiveTime: $this->effectiveTimeInput($row, $path),
             rawText: $this->optionalString($row['raw_text'] ?? null),
@@ -702,22 +709,40 @@ final readonly class StructuredAcquisitionFormAdapter
     }
 
     /** @param  array<string, mixed>  $row */
-    private function literalInput(array $row, string $path): SupportedAcquisitionFieldValueInput
-    {
+    private function literalInput(
+        SupportedAcquisitionFieldDescriptor $descriptor,
+        array $row,
+        string $path,
+    ): SupportedAcquisitionFieldValueInput {
         $raw = $row['value_raw'] ?? null;
         if (! is_string($raw) || trim($raw) === '') {
             throw ValidationException::withMessages(["$path.value_raw" => 'Literal fields require the raw/source value.']);
         }
 
+        $kind = $descriptor->editorKind;
+        $expressionKind = $this->isTemporalEditorKind($kind)
+            ? $this->optionalString($row['expression_kind'] ?? null)
+            : null;
+
         return new SupportedAcquisitionFieldValueInput(
             rawValue: $raw,
-            expressionKind: $this->optionalString($row['expression_kind'] ?? null),
-            from: $this->stringOrInt($row['value_from'] ?? null),
-            to: $this->stringOrInt($row['value_to'] ?? null),
-            ageUnit: $this->optionalString($row['age_unit'] ?? null),
-            integerValue: $this->integerOrNull($row['integer_value'] ?? null),
-            booleanValue: $this->booleanOrNull($row['boolean_value'] ?? null),
-            enumKey: $this->optionalString($row['enum_key'] ?? null),
+            expressionKind: $expressionKind,
+            from: $this->isTemporalEditorKind($kind) ? $this->stringOrInt($row['value_from'] ?? null) : null,
+            to: $this->isTemporalEditorKind($kind) && $expressionKind === 'range'
+                ? $this->stringOrInt($row['value_to'] ?? null)
+                : null,
+            ageUnit: $kind === SupportedAcquisitionFieldEditorKind::Age
+                ? $this->optionalString($row['age_unit'] ?? null)
+                : null,
+            integerValue: $kind === SupportedAcquisitionFieldEditorKind::Integer
+                ? $this->integerOrNull($row['integer_value'] ?? null)
+                : null,
+            booleanValue: $kind === SupportedAcquisitionFieldEditorKind::Boolean
+                ? $this->booleanOrNull($row['boolean_value'] ?? null)
+                : null,
+            enumKey: $kind === SupportedAcquisitionFieldEditorKind::Enum
+                ? $this->optionalString($row['enum_key'] ?? null)
+                : null,
         );
     }
 
