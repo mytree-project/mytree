@@ -137,7 +137,8 @@
         .source-workspace-error-details summary { cursor: pointer; font-weight: 600; }
         .source-workspace-error-details code { display: block; margin-top: .25rem; white-space: pre-wrap; overflow-wrap: anywhere; }
         .dark .source-workspace-save-errors { background: rgb(69 10 10); color: rgb(254 202 202); }
-        .source-workspace-error-region { outline: 2px solid rgb(220 38 38); outline-offset: 2px; }
+        .source-workspace-error-region,
+        .source-workspace-error-item { outline: 2px solid rgb(220 38 38); outline-offset: 2px; }
         .source-workspace { display: flex; flex-direction: column; gap: .75rem; min-width: 0; }
         .source-workspace-side { min-width: 0; }
         .source-workspace-panel {
