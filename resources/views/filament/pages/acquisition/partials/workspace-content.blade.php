@@ -36,22 +36,12 @@
 
                     return directItems(repeater)[index] ?? null;
                 };
-                const markAndExpand = (item) => {
-                    if (! item) {
-                        return;
-                    }
-
-                    item.classList.add('source-workspace-error-item');
-
-                    if (item.classList.contains('fi-collapsed')) {
+                const expand = (item) => {
+                    if (item?.classList.contains('fi-collapsed')) {
                         item.dispatchEvent(new CustomEvent('expand'));
                     }
                 };
-                const applyValidationTargets = () => {
-                    $el.querySelectorAll('.source-workspace-error-item').forEach((item) => {
-                        item.classList.remove('source-workspace-error-item');
-                    });
-
+                const expandValidationTargets = () => {
                     let targets = [];
 
                     try {
@@ -62,32 +52,30 @@
 
                     targets.forEach((target) => {
                         if (target.type === 'mention') {
-                            markAndExpand(itemAt($el, 'mentions', target.index));
+                            expand(itemAt($el, 'mentions', target.index));
 
                             return;
                         }
 
                         if (target.type === 'claim') {
-                            markAndExpand(itemAt($el, 'claims', target.index));
+                            expand(itemAt($el, 'claims', target.index));
 
                             return;
                         }
 
                         const eventItem = itemAt($el, 'events', target.event_index ?? target.index);
-                        markAndExpand(eventItem);
+                        expand(eventItem);
 
-                        if (target.type !== 'event_claim' || ! eventItem) {
-                            return;
+                        if (target.type === 'event_claim' && eventItem) {
+                            expand(itemAt(eventItem, 'event-claims', target.claim_index));
                         }
-
-                        markAndExpand(itemAt(eventItem, 'event-claims', target.claim_index));
                     });
                 };
 
-                applyValidationTargets();
+                $nextTick(expandValidationTargets);
 
                 const validationTargetObserver = new MutationObserver(() => {
-                    $nextTick(applyValidationTargets);
+                    $nextTick(expandValidationTargets);
                 });
                 validationTargetObserver.observe($el, {
                     attributes: true,
@@ -95,6 +83,51 @@
                 });
             "
         >
+            @if ($workspaceValidationTargets !== [])
+                <style data-evidence-validation-styles>
+                    @foreach ($workspaceValidationTargets as $target)
+                        @if ($target['type'] === 'mention')
+                            [data-mentions-claims-editor]
+                            [data-evidence-repeater="mentions"] > .fi-fo-repeater-items
+                            > .fi-fo-repeater-item:nth-of-type({{ $target['index'] + 1 }}) {
+                                outline: 2px solid rgb(220 38 38);
+                                outline-offset: 2px;
+                            }
+                        @elseif ($target['type'] === 'claim')
+                            [data-mentions-claims-editor]
+                            [data-evidence-repeater="claims"] > .fi-fo-repeater-items
+                            > .fi-fo-repeater-item:nth-of-type({{ $target['index'] + 1 }}) {
+                                outline: 2px solid rgb(220 38 38);
+                                outline-offset: 2px;
+                            }
+                        @elseif ($target['type'] === 'event')
+                            [data-mentions-claims-editor]
+                            [data-evidence-repeater="events"] > .fi-fo-repeater-items
+                            > .fi-fo-repeater-item:nth-of-type({{ $target['index'] + 1 }}) {
+                                outline: 2px solid rgb(220 38 38);
+                                outline-offset: 2px;
+                            }
+                        @else
+                            [data-mentions-claims-editor]
+                            [data-evidence-repeater="events"] > .fi-fo-repeater-items
+                            > .fi-fo-repeater-item:nth-of-type({{ $target['event_index'] + 1 }}) {
+                                outline: 2px solid rgb(220 38 38);
+                                outline-offset: 2px;
+                            }
+
+                            [data-mentions-claims-editor]
+                            [data-evidence-repeater="events"] > .fi-fo-repeater-items
+                            > .fi-fo-repeater-item:nth-of-type({{ $target['event_index'] + 1 }})
+                            [data-evidence-repeater="event-claims"] > .fi-fo-repeater-items
+                            > .fi-fo-repeater-item:nth-of-type({{ $target['claim_index'] + 1 }}) {
+                                outline: 2px solid rgb(220 38 38);
+                                outline-offset: 2px;
+                            }
+                        @endif
+                    @endforeach
+                </style>
+            @endif
+
             {{ $this->evidenceForm }}
         </div>
         @break
