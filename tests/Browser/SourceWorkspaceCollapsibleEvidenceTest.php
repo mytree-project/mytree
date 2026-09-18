@@ -153,7 +153,6 @@ function assertCollapsibleEvidenceItemState(
     );
 }
 
-
 function setCollapsibleEvidenceSelectByLabel(
     AwaitableWebpage $page,
     string $label,
@@ -328,6 +327,10 @@ it('preserves unrelated details state when a Claim predicate reacts', function (
         $page,
         'Claim 1 · Given name · person_jan · Jan',
     );
+
+    $page
+        ->assertPresent($sourceDetails)
+        ->assertPresent($otherTexts);
 
     assertSourceWorkspaceDetailsOpen($page, $sourceDetails, true);
     assertSourceWorkspaceDetailsOpen($page, $otherTexts, false);
