@@ -151,6 +151,12 @@
                                                     {{ __('supported_fields.picker.event_context') }}
                                                 </span>
                                             @endif
+
+                                            @if ($fieldOption['repeatable'])
+                                                <span class="supported-field-palette-badge">
+                                                    {{ __('supported_fields.picker.repeatable') }}
+                                                </span>
+                                            @endif
                                         </span>
 
                                         <code>{{ $fieldOption['key'] }}</code>
