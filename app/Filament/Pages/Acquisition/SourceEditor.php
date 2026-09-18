@@ -23,6 +23,18 @@ final class SourceEditor extends SourceWorkspacePage
     /** @var array<string, list<string|null>> */
     public array $workspaceValidationDetails = [];
 
+    /**
+     * @var list<array{
+     *     type: 'mention'|'claim'|'event'|'event_claim',
+     *     index?: int,
+     *     event_index?: int,
+     *     claim_index?: int
+     * }>
+     */
+    public array $workspaceValidationTargets = [];
+
+    public bool $workspaceHasUntargetedEvidenceValidationError = false;
+
     public function getMaxContentWidth(): Width
     {
         return Width::Full;
@@ -40,6 +52,8 @@ final class SourceEditor extends SourceWorkspacePage
     {
         $this->resetErrorBag();
         $this->workspaceValidationDetails = [];
+        $this->workspaceValidationTargets = [];
+        $this->workspaceHasUntargetedEvidenceValidationError = false;
 
         try {
             parent::save();
@@ -110,9 +124,68 @@ final class SourceEditor extends SourceWorkspacePage
             ? null
             : $technicalMessage;
 
+        $this->recordWorkspaceValidationTarget($path);
         $this->addError($path, $presentedMessage);
 
         return $presentedMessage;
+    }
+
+    private function recordWorkspaceValidationTarget(string $path): void
+    {
+        $target = $this->workspaceValidationTarget($path);
+        if ($target !== null) {
+            if (! in_array($target, $this->workspaceValidationTargets, true)) {
+                $this->workspaceValidationTargets[] = $target;
+            }
+
+            return;
+        }
+
+        if ($path === 'evidenceData' || str_starts_with($path, 'evidenceData.')) {
+            $this->workspaceHasUntargetedEvidenceValidationError = true;
+        }
+    }
+
+    /**
+     * @return array{
+     *     type: 'mention'|'claim'|'event'|'event_claim',
+     *     index?: int,
+     *     event_index?: int,
+     *     claim_index?: int
+     * }|null
+     */
+    private function workspaceValidationTarget(string $path): ?array
+    {
+        if (preg_match('/^evidenceData\.event_contexts\.(\d+)\.claims\.(\d+)(?:\.|$)/', $path, $matches) === 1) {
+            return [
+                'type' => 'event_claim',
+                'event_index' => (int) $matches[1],
+                'claim_index' => (int) $matches[2],
+            ];
+        }
+
+        if (preg_match('/^evidenceData\.event_contexts\.(\d+)(?:\.|$)/', $path, $matches) === 1) {
+            return [
+                'type' => 'event',
+                'index' => (int) $matches[1],
+            ];
+        }
+
+        if (preg_match('/^evidenceData\.mentions\.(\d+)(?:\.|$)/', $path, $matches) === 1) {
+            return [
+                'type' => 'mention',
+                'index' => (int) $matches[1],
+            ];
+        }
+
+        if (preg_match('/^evidenceData\.fields\.(\d+)(?:\.|$)/', $path, $matches) === 1) {
+            return [
+                'type' => 'claim',
+                'index' => (int) $matches[1],
+            ];
+        }
+
+        return null;
     }
 
     private function workspaceValidationPath(string $path, ?string $message = null): string
