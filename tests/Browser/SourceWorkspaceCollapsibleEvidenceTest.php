@@ -153,6 +153,72 @@ function assertCollapsibleEvidenceItemState(
     );
 }
 
+
+function setCollapsibleEvidenceSelectByLabel(
+    AwaitableWebpage $page,
+    string $label,
+    string $value,
+): void {
+    $selector = collapsibleEvidenceFieldSelectorByLabel($page, $label);
+    $script = strtr(<<<'JS'
+        (() => {
+            const control = document.querySelector(__SELECTOR__);
+            const value = __VALUE__;
+
+            if (! (control instanceof HTMLSelectElement)) {
+                throw new Error('Expected a native select control.');
+            }
+
+            control.value = value;
+            control.dispatchEvent(new Event('input', { bubbles: true }));
+            control.dispatchEvent(new Event('change', { bubbles: true }));
+
+            return control.value;
+        })()
+        JS, [
+        '__SELECTOR__' => json_encode($selector, JSON_THROW_ON_ERROR),
+        '__VALUE__' => json_encode($value, JSON_THROW_ON_ERROR),
+    ]);
+
+    $selected = $page->script($script);
+
+    if ($selected !== $value) {
+        throw new RuntimeException("Could not select value [$value] for field [$label].");
+    }
+}
+
+function assertSourceWorkspaceDetailsOpen(
+    AwaitableWebpage $page,
+    string $selector,
+    bool $open,
+): void {
+    $page->assertScript(
+        sprintf('document.querySelector(%s)?.open === true', json_encode($selector, JSON_THROW_ON_ERROR)),
+        $open,
+    );
+}
+
+function assertCollapsibleEvidenceLabelPresent(
+    AwaitableWebpage $page,
+    string $label,
+    bool $present,
+): void {
+    $script = strtr(<<<'JS'
+        (() => {
+            const expectedLabel = __LABEL__;
+            const normalize = (value) => value.replace(/\s+/g, ' ').trim();
+
+            return Array.from(document.querySelectorAll('label')).some(
+                (candidate) => normalize(candidate.textContent ?? '').startsWith(expectedLabel),
+            );
+        })()
+        JS, [
+        '__LABEL__' => json_encode($label, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+    ]);
+
+    $page->assertScript($script, $present);
+}
+
 it('collapses persisted evidence by default with live numbered summaries and preserves unsaved state', function (): void {
     $source = app(CreateSource::class)->handle(SourceType::generic());
     $person = app(CreateMention::class)->handle(
@@ -233,6 +299,63 @@ it('collapses persisted evidence by default with live numbered summaries and pre
     toggleCollapsibleEvidenceItem($page, $eventFieldSelector);
     assertCollapsibleEvidenceItemState($page, $eventFieldSelector, false);
     assertCollapsibleEvidenceItemState($page, $eventSelector, false);
+
+    $page->assertNoJavaScriptErrors();
+});
+
+it('preserves unrelated details state when a Claim predicate reacts', function (): void {
+    $source = app(CreateSource::class)->handle(SourceType::generic());
+    $person = app(CreateMention::class)->handle(
+        sourceId: $source->id,
+        kind: MentionKind::person(),
+        localKey: 'person_jan',
+        displayLabel: 'Jan Kowalski',
+    );
+
+    app(CreateClaim::class)->handle(
+        sourceId: $source->id,
+        subjectMentionId: $person->id,
+        predicate: PredicateVocabulary::get(PredicateKey::PersonGivenName),
+        value: new TextClaimValue('Jan'),
+    );
+
+    authenticateCollapsibleEvidenceBrowserTestUser();
+    $page = openCollapsibleEvidenceWorkspace($source->id->value);
+
+    $sourceDetails = '[data-source-workspace-source-details]';
+    $otherTexts = '[data-source-workspace-other-texts]';
+    $claimSelector = collapsibleEvidenceItemSelectorBySummary(
+        $page,
+        'Claim 1 · Given name · person_jan · Jan',
+    );
+
+    assertSourceWorkspaceDetailsOpen($page, $sourceDetails, true);
+    assertSourceWorkspaceDetailsOpen($page, $otherTexts, false);
+
+    toggleCollapsibleEvidenceItem($page, $claimSelector);
+    assertCollapsibleEvidenceItemState($page, $claimSelector, false);
+
+    $page->click($sourceDetails.' > summary');
+    $page->click($otherTexts.' > summary');
+    assertSourceWorkspaceDetailsOpen($page, $sourceDetails, false);
+    assertSourceWorkspaceDetailsOpen($page, $otherTexts, true);
+
+    setCollapsibleEvidenceSelectByLabel($page, 'Supported field', PredicateKey::PersonBirthDate->value);
+    $page->assertSee('Birth date');
+    assertCollapsibleEvidenceLabelPresent($page, 'Expression', true);
+    assertSourceWorkspaceDetailsOpen($page, $sourceDetails, false);
+    assertSourceWorkspaceDetailsOpen($page, $otherTexts, true);
+
+    $page->click($sourceDetails.' > summary');
+    $page->click($otherTexts.' > summary');
+    assertSourceWorkspaceDetailsOpen($page, $sourceDetails, true);
+    assertSourceWorkspaceDetailsOpen($page, $otherTexts, false);
+
+    setCollapsibleEvidenceSelectByLabel($page, 'Supported field', PredicateKey::PersonGivenName->value);
+    $page->assertSee('Given name');
+    assertCollapsibleEvidenceLabelPresent($page, 'Expression', false);
+    assertSourceWorkspaceDetailsOpen($page, $sourceDetails, true);
+    assertSourceWorkspaceDetailsOpen($page, $otherTexts, false);
 
     $page->assertNoJavaScriptErrors();
 });
