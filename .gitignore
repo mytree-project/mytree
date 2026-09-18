@@ -13,6 +13,7 @@
 /storage/*.key
 /storage/pail
 /tests/Browser/Screenshots
+/tests/Browser/Videos
 /vendor
 .env
 .env.backup
