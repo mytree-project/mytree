@@ -10,6 +10,7 @@ return [
         'search_label' => 'Search supported fields',
         'search_placeholder' => 'Search by label or canonical key…',
         'add' => 'Add',
+        'add_field' => 'Add :label',
         'repeatable' => 'Repeatable',
         'event_context' => 'Event group',
         'canonical_key' => 'Canonical key: :key',
