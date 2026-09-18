@@ -410,7 +410,7 @@ it('scopes Mention JSON validation styling and moves it when the failing Mention
     submitSourceWorkspaceBrowserForm($page);
     sourceWorkspaceBrowserDebugCheckpoint('first-validation:assert-message:before');
     $page->assertSee(sprintf(
-        'Błąd składni JSON w Mention nr %d (person_valentin).',
+        'Wzmianka nr %d (person_valentin) zawiera błąd składni JSON.',
         $valentinMention['number'],
     ));
     sourceWorkspaceBrowserDebugCheckpoint('first-validation:assert-message:after');
@@ -451,7 +451,7 @@ it('scopes Mention JSON validation styling and moves it when the failing Mention
     submitSourceWorkspaceBrowserForm($page);
     sourceWorkspaceBrowserDebugCheckpoint('second-validation:assert-message:before');
     $page->assertSee(sprintf(
-        'Błąd składni JSON w Mention nr %d (person_anna).',
+        'Wzmianka nr %d (person_anna) zawiera błąd składni JSON.',
         $annaMention['number'],
     ));
     sourceWorkspaceBrowserDebugCheckpoint('second-validation:assert-message:after');
@@ -516,7 +516,7 @@ it('routes stale Claim subject errors to only the failing Claim after a Mention 
 
     submitSourceWorkspaceBrowserForm($page)
         ->assertSee(sprintf(
-            'Claim nr %d odwołuje się do nieistniejącego Mention jako podmiotu.',
+            'Twierdzenie nr %d odwołuje się do nieistniejącej Wzmianki jako podmiotu.',
             $failingClaim['number'],
         ))
         ->assertVisible('[data-source-workspace-save-errors]')
@@ -579,7 +579,7 @@ it('marks the failing Event Claim and its enclosing Event without marking siblin
     );
 
     submitSourceWorkspaceBrowserForm($page)
-        ->assertSee('Claim nr 1 w Event nr 1 zawiera nieprawidłowe dane.')
+        ->assertSee('Twierdzenie nr 1 w Zdarzeniu nr 1 zawiera nieprawidłowe dane.')
         ->assertVisible('[data-source-workspace-save-errors]')
         ->assertScript(
             "document.querySelector('[data-mentions-claims-editor]').classList.contains('source-workspace-error-region')",
