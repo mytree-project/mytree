@@ -175,6 +175,71 @@ function sourceWorkspaceEvidenceItemSelector(
     return $selector;
 }
 
+/**
+ * @return array{selector: string, number: int}
+ */
+function sourceWorkspaceEvidenceItemBySummary(
+    AwaitableWebpage $page,
+    string $repeaterName,
+    string $summaryFragment,
+    ?string $scopeSelector = null,
+): array {
+    $scopeSelector ??= '[data-mentions-claims-editor]';
+
+    $script = strtr(<<<'JS'
+        (() => {
+            const scopeSelector = __SCOPE__;
+            const repeaterName = __REPEATER__;
+            const expectedSummary = __SUMMARY__;
+            const scope = document.querySelector(scopeSelector);
+
+            if (! scope) {
+                throw new Error(`Evidence scope ${scopeSelector} was not found.`);
+            }
+
+            const repeater = scope.querySelector(`[data-evidence-repeater="${repeaterName}"]`);
+            const list = repeater?.querySelector(':scope > .fi-fo-repeater-items');
+            const items = list
+                ? Array.from(list.children).filter((child) => child.classList.contains('fi-fo-repeater-item'))
+                : [];
+            const normalize = (value) => value.replace(/\s+/g, ' ').trim();
+            const index = items.findIndex((item) => {
+                const label = item.querySelector(':scope > .fi-fo-repeater-item-header .fi-fo-repeater-item-header-label');
+
+                return label && normalize(label.textContent ?? '').includes(expectedSummary);
+            });
+
+            if (index < 0) {
+                throw new Error(`Evidence item ${repeaterName} containing ${expectedSummary} was not found.`);
+            }
+
+            return index;
+        })()
+        JS, [
+        '__SCOPE__' => json_encode($scopeSelector, JSON_THROW_ON_ERROR),
+        '__REPEATER__' => json_encode($repeaterName, JSON_THROW_ON_ERROR),
+        '__SUMMARY__' => json_encode($summaryFragment, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+    ]);
+
+    sourceWorkspaceBrowserDebugCheckpoint("summary-selector:$repeaterName:$summaryFragment:before");
+    $index = $page->script($script);
+    sourceWorkspaceBrowserDebugCheckpoint("summary-selector:$repeaterName:$summaryFragment:after");
+
+    if (! is_int($index) || $index < 0) {
+        throw new RuntimeException("Could not resolve evidence item [$repeaterName] containing [$summaryFragment].");
+    }
+
+    return [
+        'selector' => sprintf(
+            '%s [data-evidence-repeater="%s"] > .fi-fo-repeater-items > .fi-fo-repeater-item:nth-of-type(%d)',
+            $scopeSelector,
+            $repeaterName,
+            $index + 1,
+        ),
+        'number' => $index + 1,
+    ];
+}
+
 function assertSourceWorkspaceEvidenceItemValidationState(
     AwaitableWebpage $page,
     string $itemSelector,
@@ -292,41 +357,10 @@ function fillSourceWorkspaceBrowserField(
     $selector = sourceWorkspaceBrowserFieldSelectorByLabel($page, $label, $scopeSelector);
     sourceWorkspaceBrowserDebugCheckpoint("fill:$label:resolve-selector:after");
 
-    $selectorJson = json_encode($selector, JSON_THROW_ON_ERROR);
-    $valueJson = json_encode($value, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
-
-    sourceWorkspaceBrowserDebugCheckpoint("fill:$label:dom-input:before");
-    $filled = $page->script(<<<JS
-        (() => {
-            const control = document.querySelector($selectorJson);
-
-            if (! (control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement || control instanceof HTMLSelectElement)) {
-                return false;
-            }
-
-            const prototype = control instanceof HTMLTextAreaElement
-                ? HTMLTextAreaElement.prototype
-                : control instanceof HTMLSelectElement
-                    ? HTMLSelectElement.prototype
-                    : HTMLInputElement.prototype;
-            const descriptor = Object.getOwnPropertyDescriptor(prototype, 'value');
-
-            if (! descriptor?.set) {
-                return false;
-            }
-
-            descriptor.set.call(control, $valueJson);
-            control.dispatchEvent(new Event('input', { bubbles: true }));
-            control.dispatchEvent(new Event('change', { bubbles: true }));
-            control.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
-
-            return control.value === $valueJson;
-        })()
-        JS);
-    sourceWorkspaceBrowserDebugCheckpoint("fill:$label:dom-input:after");
-
-    expect($filled)->toBeTrue();
-    expect($page->value($selector))->toBe($value);
+    sourceWorkspaceBrowserDebugCheckpoint("fill:$label:fill:before");
+    $page->fill($selector, $value);
+    sourceWorkspaceBrowserDebugCheckpoint("fill:$label:fill:after");
+    $page->assertValue($selector, $value);
     sourceWorkspaceBrowserDebugCheckpoint("fill:$label:value-confirmed");
 }
 
@@ -361,20 +395,24 @@ it('scopes Mention JSON validation styling and moves it when the failing Mention
     authenticateSourceWorkspaceBrowserTestUser();
 
     $page = openSourceWorkspaceForBrowserTest($source->id->value);
-    $firstMention = sourceWorkspaceEvidenceItemSelector($page, 'mentions', 0);
-    $secondMention = sourceWorkspaceEvidenceItemSelector($page, 'mentions', 1);
+    $valentinMention = sourceWorkspaceEvidenceItemBySummary($page, 'mentions', 'person_valentin');
+    $annaMention = sourceWorkspaceEvidenceItemBySummary($page, 'mentions', 'person_anna');
 
-    expandSourceWorkspaceEvidenceItem($page, 'person_valentin');
+    toggleSourceWorkspaceEvidenceItem($page, $valentinMention['selector']);
+    assertSourceWorkspaceEvidenceItemValidationState($page, $valentinMention['selector'], hasError: false, collapsed: false);
     fillSourceWorkspaceBrowserField(
         $page,
         'Raw source-local data (JSON object)',
         '{"broken":',
-        $firstMention,
+        $valentinMention['selector'],
     );
 
     submitSourceWorkspaceBrowserForm($page);
     sourceWorkspaceBrowserDebugCheckpoint('first-validation:assert-message:before');
-    $page->assertSee('Błąd składni JSON w Mention nr 1 (person_valentin).');
+    $page->assertSee(sprintf(
+        'Błąd składni JSON w Mention nr %d (person_valentin).',
+        $valentinMention['number'],
+    ));
     sourceWorkspaceBrowserDebugCheckpoint('first-validation:assert-message:after');
     $page->assertVisible('[data-source-workspace-save-errors]');
     sourceWorkspaceBrowserDebugCheckpoint('first-validation:errors-visible');
@@ -390,35 +428,39 @@ it('scopes Mention JSON validation styling and moves it when the failing Mention
     sourceWorkspaceBrowserDebugCheckpoint('first-validation:source-details-unmarked');
     sourceWorkspaceBrowserDebugScreenshot($page, '02-first-validation');
 
-    assertSourceWorkspaceEvidenceItemValidationState($page, $firstMention, hasError: true, collapsed: false);
-    assertSourceWorkspaceEvidenceItemValidationState($page, $secondMention, hasError: false, collapsed: true);
+    assertSourceWorkspaceEvidenceItemValidationState($page, $valentinMention['selector'], hasError: true, collapsed: false);
+    assertSourceWorkspaceEvidenceItemValidationState($page, $annaMention['selector'], hasError: false, collapsed: true);
 
     fillSourceWorkspaceBrowserField(
         $page,
         'Raw source-local data (JSON object)',
         '{}',
-        $firstMention,
+        $valentinMention['selector'],
     );
-    expandSourceWorkspaceEvidenceItem($page, 'person_anna');
+    toggleSourceWorkspaceEvidenceItem($page, $annaMention['selector']);
+    assertSourceWorkspaceEvidenceItemValidationState($page, $annaMention['selector'], hasError: false, collapsed: false);
     fillSourceWorkspaceBrowserField(
         $page,
         'Raw source-local data (JSON object)',
         '{"also-broken":',
-        $secondMention,
+        $annaMention['selector'],
     );
-    toggleSourceWorkspaceEvidenceItem($page, $secondMention);
-    assertSourceWorkspaceEvidenceItemValidationState($page, $secondMention, hasError: false, collapsed: true);
+    toggleSourceWorkspaceEvidenceItem($page, $annaMention['selector']);
+    assertSourceWorkspaceEvidenceItemValidationState($page, $annaMention['selector'], hasError: false, collapsed: true);
 
     submitSourceWorkspaceBrowserForm($page);
     sourceWorkspaceBrowserDebugCheckpoint('second-validation:assert-message:before');
-    $page->assertSee('Błąd składni JSON w Mention nr 2 (person_anna).');
+    $page->assertSee(sprintf(
+        'Błąd składni JSON w Mention nr %d (person_anna).',
+        $annaMention['number'],
+    ));
     sourceWorkspaceBrowserDebugCheckpoint('second-validation:assert-message:after');
     $page->assertVisible('[data-source-workspace-save-errors]');
     sourceWorkspaceBrowserDebugCheckpoint('second-validation:errors-visible');
     sourceWorkspaceBrowserDebugScreenshot($page, '03-second-validation');
 
-    assertSourceWorkspaceEvidenceItemValidationState($page, $firstMention, hasError: false);
-    assertSourceWorkspaceEvidenceItemValidationState($page, $secondMention, hasError: true, collapsed: false);
+    assertSourceWorkspaceEvidenceItemValidationState($page, $valentinMention['selector'], hasError: false);
+    assertSourceWorkspaceEvidenceItemValidationState($page, $annaMention['selector'], hasError: true, collapsed: false);
 
     $page
         ->assertScript(
@@ -458,21 +500,25 @@ it('routes stale Claim subject errors to only the failing Claim after a Mention 
     authenticateSourceWorkspaceBrowserTestUser();
 
     $page = openSourceWorkspaceForBrowserTest($source->id->value);
-    $renamedMention = sourceWorkspaceEvidenceItemSelector($page, 'mentions', 0);
-    $otherMention = sourceWorkspaceEvidenceItemSelector($page, 'mentions', 1);
-    $failingClaim = sourceWorkspaceEvidenceItemSelector($page, 'claims', 0);
-    $validClaim = sourceWorkspaceEvidenceItemSelector($page, 'claims', 1);
+    $renamedMention = sourceWorkspaceEvidenceItemBySummary($page, 'mentions', 'person_subject');
+    $otherMention = sourceWorkspaceEvidenceItemBySummary($page, 'mentions', 'person_other');
+    $failingClaim = sourceWorkspaceEvidenceItemBySummary($page, 'claims', 'person_subject');
+    $validClaim = sourceWorkspaceEvidenceItemBySummary($page, 'claims', 'person_other');
 
-    expandSourceWorkspaceEvidenceItem($page, 'person_subject');
+    toggleSourceWorkspaceEvidenceItem($page, $renamedMention['selector']);
+    assertSourceWorkspaceEvidenceItemValidationState($page, $renamedMention['selector'], hasError: false, collapsed: false);
     fillSourceWorkspaceBrowserField(
         $page,
         'Local key',
         'person_renamed',
-        $renamedMention,
+        $renamedMention['selector'],
     );
 
     submitSourceWorkspaceBrowserForm($page)
-        ->assertSee('Claim nr 1 odwołuje się do nieistniejącego Mention jako podmiotu.')
+        ->assertSee(sprintf(
+            'Claim nr %d odwołuje się do nieistniejącego Mention jako podmiotu.',
+            $failingClaim['number'],
+        ))
         ->assertVisible('[data-source-workspace-save-errors]')
         ->assertScript(
             "document.querySelector('[data-mentions-claims-editor]').classList.contains('source-workspace-error-region')",
@@ -483,10 +529,10 @@ it('routes stale Claim subject errors to only the failing Claim after a Mention 
             false,
         );
 
-    assertSourceWorkspaceEvidenceItemValidationState($page, $renamedMention, hasError: false);
-    assertSourceWorkspaceEvidenceItemValidationState($page, $otherMention, hasError: false);
-    assertSourceWorkspaceEvidenceItemValidationState($page, $failingClaim, hasError: true, collapsed: false);
-    assertSourceWorkspaceEvidenceItemValidationState($page, $validClaim, hasError: false, collapsed: true);
+    assertSourceWorkspaceEvidenceItemValidationState($page, $renamedMention['selector'], hasError: false);
+    assertSourceWorkspaceEvidenceItemValidationState($page, $otherMention['selector'], hasError: false);
+    assertSourceWorkspaceEvidenceItemValidationState($page, $failingClaim['selector'], hasError: true, collapsed: false);
+    assertSourceWorkspaceEvidenceItemValidationState($page, $validClaim['selector'], hasError: false, collapsed: true);
 
     $page
         ->assertScript(
