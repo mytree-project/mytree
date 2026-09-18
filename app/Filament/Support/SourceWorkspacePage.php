@@ -34,6 +34,7 @@ use App\Domain\Acquisition\SourceTextId;
 use App\Domain\Acquisition\SourceTextKind;
 use App\Domain\Acquisition\SourceType;
 use App\Filament\Pages\Acquisition\Support\StructuredAcquisitionFormAdapter;
+use App\Filament\Pages\Acquisition\Support\SupportedFieldPickerPresentation;
 use DateTimeImmutable;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\FileUpload;
@@ -228,19 +229,26 @@ abstract class SourceWorkspacePage extends Page
     public function evidenceForm(Schema $schema): Schema
     {
         return $schema
-            ->components([
-                Select::make('add_supported_field')
-                    ->label(__('ui.workspace.evidence.add_field'))
-                    ->helperText(__('ui.workspace.evidence.add_field_help'))
-                    ->placeholder(__('ui.workspace.evidence.choose_field'))
-                    ->options(fn (): array => app(StructuredAcquisitionFormAdapter::class)->pickerOptions())
-                    ->live()
-                    ->afterStateUpdated(function (?string $state): void {
-                        $this->supportedFieldSelected($state);
-                    }),
-                ...app(StructuredAcquisitionFormAdapter::class)->components(),
-            ])
+            ->components(app(StructuredAcquisitionFormAdapter::class)->components())
             ->statePath('evidenceData');
+    }
+
+    /**
+     * @return list<array{
+     *     key: string,
+     *     label: string,
+     *     fields: list<array{
+     *         key: string,
+     *         label: string,
+     *         help: ?string,
+     *         repeatable: bool,
+     *         event_context: bool
+     *     }>
+     * }>
+     */
+    public function supportedFieldPickerGroups(): array
+    {
+        return app(SupportedFieldPickerPresentation::class)->groups();
     }
 
     public function sourceTypeChanged(): void
@@ -288,7 +296,6 @@ abstract class SourceWorkspacePage extends Page
             $evidenceState,
             $template?->definition->defaultFieldKeys ?? [],
         );
-        $evidenceState['add_supported_field'] = null;
         $this->evidenceData = $evidenceState;
         $this->evidenceForm->fill($evidenceState);
     }
@@ -302,7 +309,6 @@ abstract class SourceWorkspacePage extends Page
 
         $state = is_array($this->evidenceData) ? $this->evidenceData : [];
         $state = app(StructuredAcquisitionFormAdapter::class)->addSupportedField($state, $fieldKey);
-        $state['add_supported_field'] = null;
         $this->evidenceData = $state;
         $this->evidenceForm->fill($state);
     }
