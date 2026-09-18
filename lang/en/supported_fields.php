@@ -5,6 +5,7 @@ declare(strict_types=1);
 return [
     'picker' => [
         'open' => 'Add supported structured field',
+        'field_label' => 'Supported field',
         'title' => 'Choose a supported field',
         'choose' => 'Choose from the palette',
         'description' => 'Fields come from the controlled acquisition catalog. Choose one occurrence to add; repeatable fields remain available for additional occurrences.',
