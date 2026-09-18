@@ -5,6 +5,7 @@ declare(strict_types=1);
 return [
     'picker' => [
         'open' => 'Dodaj obsługiwane pole strukturalne',
+        'field_label' => 'Obsługiwane pole',
         'title' => 'Wybierz obsługiwane pole',
         'choose' => 'Wybierz z palety',
         'description' => 'Pola pochodzą z kontrolowanego katalogu akwizycji. Wybór dodaje jedno wystąpienie; pola powtarzalne pozostają dostępne do ponownego dodania.',
