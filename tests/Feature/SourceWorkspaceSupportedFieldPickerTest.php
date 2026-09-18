@@ -32,11 +32,21 @@ final class SourceWorkspaceSupportedFieldPickerTest extends TestCase
     {
         app()->setLocale('pl');
 
-        $groups = app(SupportedFieldPickerPresentation::class)->groups();
+        $presentation = app(SupportedFieldPickerPresentation::class);
+        $groups = $presentation->addGroups();
         $catalog = app(SupportedAcquisitionFieldCatalog::class);
 
         self::assertSame(
-            ['person_facts', 'event_contexts', 'event_facts', 'place_facts'],
+            [
+                'person_general',
+                'person_relationships',
+                'person_places',
+                'person_status',
+                'event_contexts',
+                'event_general',
+                'event_roles',
+                'place_general',
+            ],
             array_column($groups, 'key'),
         );
         self::assertSame(
@@ -47,10 +57,23 @@ final class SourceWorkspaceSupportedFieldPickerTest extends TestCase
             )),
         );
 
-        $personGroup = $this->group($groups, 'person_facts');
-        self::assertSame('Fakty o osobie', $personGroup['label']);
+        self::assertSame(
+            'Osoba · Informacje podstawowe',
+            $this->group($groups, 'person_general')['label'],
+        );
+        self::assertSame(
+            'Osoba · Relacje',
+            $this->group($groups, 'person_relationships')['label'],
+        );
+        self::assertSame(
+            'Osoba · Miejsca',
+            $this->group($groups, 'person_places')['label'],
+        );
 
-        $occupation = $this->field($personGroup['fields'], PredicateKey::PersonOccupation->value);
+        $personStatusGroup = $this->group($groups, 'person_status');
+        self::assertSame('Osoba · Zawód, status i tytuły', $personStatusGroup['label']);
+
+        $occupation = $this->field($personStatusGroup['fields'], PredicateKey::PersonOccupation->value);
         self::assertSame('Zawód', $occupation['label']);
         self::assertStringContainsString('Praca lub zawód faktycznie wykonywany', (string) $occupation['help']);
         self::assertTrue($occupation['repeatable']);
@@ -65,13 +88,25 @@ final class SourceWorkspaceSupportedFieldPickerTest extends TestCase
         self::assertTrue($eventContext['repeatable']);
         self::assertTrue($eventContext['event_context']);
 
+        self::assertSame(
+            ['person_general', 'person_relationships', 'person_places', 'person_status', 'place_general'],
+            array_column($presentation->claimGroups(eventOnly: false), 'key'),
+        );
+        self::assertSame(
+            ['event_general', 'event_roles'],
+            array_column($presentation->claimGroups(eventOnly: true), 'key'),
+        );
+
         app()->setLocale('en');
-        $englishGroups = app(SupportedFieldPickerPresentation::class)->groups();
-        self::assertSame('Person facts', $this->group($englishGroups, 'person_facts')['label']);
+        $englishGroups = $presentation->addGroups();
+        self::assertSame(
+            'Person · Basic information',
+            $this->group($englishGroups, 'person_general')['label'],
+        );
         self::assertSame(
             'Occupation',
             $this->field(
-                $this->group($englishGroups, 'person_facts')['fields'],
+                $this->group($englishGroups, 'person_status')['fields'],
                 PredicateKey::PersonOccupation->value,
             )['label'],
         );
@@ -83,6 +118,7 @@ final class SourceWorkspaceSupportedFieldPickerTest extends TestCase
 
         $component = Livewire::test(SourceEditor::class, ['source' => $source->id->value])
             ->call('supportedFieldSelected', PredicateKey::PersonOccupation->value)
+            ->assertSet('evidenceData.add_supported_field', null)
             ->assertSet('evidenceData.fields.0.field_key', PredicateKey::PersonOccupation->value);
 
         $component
