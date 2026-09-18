@@ -6,6 +6,7 @@ return [
     'picker' => [
         'open' => 'Add supported structured field',
         'title' => 'Choose a supported field',
+        'choose' => 'Choose from the palette',
         'description' => 'Fields come from the controlled acquisition catalog. Choose one occurrence to add; repeatable fields remain available for additional occurrences.',
         'search_label' => 'Search supported fields',
         'search_placeholder' => 'Search by label or canonical key…',
@@ -17,11 +18,15 @@ return [
         'empty' => 'No supported fields match this search.',
     ],
     'groups' => [
-        'person_facts' => 'Person facts',
+        'person_general' => 'Person · Basic information',
+        'person_relationships' => 'Person · Relationships',
+        'person_places' => 'Person · Places',
+        'person_status' => 'Person · Occupation, status & titles',
         'event_contexts' => 'Event contexts',
-        'event_facts' => 'Event facts',
-        'place_facts' => 'Place facts',
-        'source_facts' => 'Source facts',
+        'event_general' => 'Event · General facts',
+        'event_roles' => 'Event · Participants & roles',
+        'place_general' => 'Place',
+        'source_general' => 'Source',
     ],
     'fields' => [
         'person' => [
