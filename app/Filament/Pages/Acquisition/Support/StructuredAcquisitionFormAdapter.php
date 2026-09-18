@@ -28,6 +28,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Component;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
@@ -431,80 +432,155 @@ final readonly class StructuredAcquisitionFormAdapter
 
         $schema[] = MentionReferenceSelect::make('object_local_key')
             ->label('Object Mention')
-            ->helperText('Used by relationship/place fields only and filtered by the selected field contract.')
+            ->helperText('Select the Mention referenced by this field.')
             ->options(fn (Get $get, LivewireComponent $livewire): array => $this->mentionPickerOptionsFromLivewire(
                 fieldKey: $get('field_key'),
                 livewire: $livewire,
                 subject: false,
             ))
             ->searchable()
-            ->preload();
+            ->preload()
+            ->visible(fn (Get $get): bool => $this->editorKind($get('field_key')) === SupportedAcquisitionFieldEditorKind::MentionReference);
+
         $schema[] = TextInput::make('value_raw')
             ->label('Raw/source value')
-            ->helperText('Used by literal fields and preserved exactly as entered.');
+            ->helperText('Preserved exactly as entered.')
+            ->visible(fn (Get $get): bool => $this->isLiteralEditor($get('field_key')));
+
         $schema[] = Select::make('expression_kind')
-            ->label('Date / age expression')
+            ->label('Expression')
             ->options([
                 'exact' => 'Exact',
                 'approximate' => 'Approximate',
                 'range' => 'Range',
                 'uncertain' => 'Uncertain',
-            ]);
+            ])
+            ->live()
+            ->visible(fn (Get $get): bool => $this->isTemporalValueEditor($get('field_key')));
+
         $schema[] = TextInput::make('value_from')
-            ->label('Date/age from')
-            ->helperText('Date: YYYY, YYYY-MM or YYYY-MM-DD. Age: non-negative integer.');
+            ->label(fn (Get $get): string => $this->temporalValueLabel($get('field_key'), $get('expression_kind')))
+            ->helperText(fn (Get $get): string => $this->editorKind($get('field_key')) === SupportedAcquisitionFieldEditorKind::Age
+                ? 'Non-negative integer.'
+                : 'YYYY, YYYY-MM or YYYY-MM-DD.')
+            ->visible(fn (Get $get): bool => $this->isTemporalValueEditor($get('field_key')));
+
         $schema[] = TextInput::make('value_to')
-            ->label('Date/age to')
-            ->helperText('Required only for a range.');
+            ->label('To')
+            ->helperText('Required only for a range.')
+            ->visible(fn (Get $get): bool => $this->isTemporalValueEditor($get('field_key'))
+                && $get('expression_kind') === 'range');
+
         $schema[] = Select::make('age_unit')
             ->label('Age unit')
             ->options([
                 'years' => 'Years',
                 'months' => 'Months',
                 'days' => 'Days',
-            ]);
+            ])
+            ->visible(fn (Get $get): bool => $this->editorKind($get('field_key')) === SupportedAcquisitionFieldEditorKind::Age);
+
         $schema[] = TextInput::make('integer_value')
             ->label('Parsed integer')
             ->numeric()
-            ->integer();
+            ->integer()
+            ->visible(fn (Get $get): bool => $this->editorKind($get('field_key')) === SupportedAcquisitionFieldEditorKind::Integer);
+
         $schema[] = Select::make('boolean_value')
             ->label('Parsed boolean')
             ->options([
                 '1' => 'True',
                 '0' => 'False',
-            ]);
+            ])
+            ->visible(fn (Get $get): bool => $this->editorKind($get('field_key')) === SupportedAcquisitionFieldEditorKind::Boolean);
+
         $schema[] = TextInput::make('enum_key')
-            ->label('Controlled enum key');
-        $schema[] = TextInput::make('effective_time_raw')
-            ->label('Effective time raw/source value')
-            ->helperText('Optional explicit Claim effective time/period; blank means no temporal qualifier.');
-        $schema[] = Select::make('effective_time_kind')
-            ->label('Effective time expression')
-            ->options([
-                'exact' => 'Exact',
-                'approximate' => 'Approximate',
-                'range' => 'Range',
-                'uncertain' => 'Uncertain',
-            ]);
-        $schema[] = TextInput::make('effective_time_from')
-            ->label('Effective time from')
-            ->helperText('YYYY, YYYY-MM or YYYY-MM-DD.');
-        $schema[] = TextInput::make('effective_time_to')
-            ->label('Effective time to');
-        $schema[] = Textarea::make('raw_text')
-            ->label('Supporting raw text')
-            ->rows(2)
+            ->label('Controlled enum key')
+            ->visible(fn (Get $get): bool => $this->editorKind($get('field_key')) === SupportedAcquisitionFieldEditorKind::Enum);
+
+        $schema[] = Section::make('Context & provenance')
+            ->description('Optional source context and certainty metadata.')
+            ->schema([
+                TextInput::make('effective_time_raw')
+                    ->label('Effective time raw/source value')
+                    ->helperText('Optional explicit Claim effective time/period; blank means no temporal qualifier.'),
+                Select::make('effective_time_kind')
+                    ->label('Effective time expression')
+                    ->options([
+                        'exact' => 'Exact',
+                        'approximate' => 'Approximate',
+                        'range' => 'Range',
+                        'uncertain' => 'Uncertain',
+                    ])
+                    ->live(),
+                TextInput::make('effective_time_from')
+                    ->label('Effective time value')
+                    ->helperText('YYYY, YYYY-MM or YYYY-MM-DD.'),
+                TextInput::make('effective_time_to')
+                    ->label('Effective time to')
+                    ->visible(fn (Get $get): bool => $get('effective_time_kind') === 'range'),
+                Textarea::make('raw_text')
+                    ->label('Supporting raw text')
+                    ->rows(2)
+                    ->columnSpanFull(),
+                TextInput::make('transcription_certainty')
+                    ->label('Transcription certainty')
+                    ->helperText('Stable lowercase code, e.g. unspecified, certain, uncertain.')
+                    ->default('unspecified'),
+                TextInput::make('interpretation_certainty')
+                    ->label('Interpretation certainty')
+                    ->helperText('Stable lowercase code; independent from transcription certainty.')
+                    ->default('unspecified'),
+            ])
+            ->columns(2)
+            ->collapsed()
+            ->collapsible()
             ->columnSpanFull();
-        $schema[] = TextInput::make('transcription_certainty')
-            ->label('Transcription certainty')
-            ->helperText('Stable lowercase code, e.g. unspecified, certain, uncertain.')
-            ->default('unspecified');
-        $schema[] = TextInput::make('interpretation_certainty')
-            ->label('Interpretation certainty')
-            ->helperText('Stable lowercase code; independent from transcription certainty.')
-            ->default('unspecified');
 
         return $schema;
+    }
+
+    private function editorKind(mixed $fieldKey): ?SupportedAcquisitionFieldEditorKind
+    {
+        if (! is_string($fieldKey) || ! $this->catalog->has($fieldKey)) {
+            return null;
+        }
+
+        return $this->catalog->get($fieldKey)->editorKind;
+    }
+
+    private function isLiteralEditor(mixed $fieldKey): bool
+    {
+        $kind = $this->editorKind($fieldKey);
+
+        return $kind !== null
+            && $kind !== SupportedAcquisitionFieldEditorKind::MentionReference
+            && $kind !== SupportedAcquisitionFieldEditorKind::EventContext;
+    }
+
+    private function isTemporalValueEditor(mixed $fieldKey): bool
+    {
+        return $this->isTemporalEditorKind($this->editorKind($fieldKey));
+    }
+
+    private function isTemporalEditorKind(?SupportedAcquisitionFieldEditorKind $kind): bool
+    {
+        return in_array($kind, [
+            SupportedAcquisitionFieldEditorKind::Date,
+            SupportedAcquisitionFieldEditorKind::Age,
+        ], true);
+    }
+
+    private function temporalValueLabel(mixed $fieldKey, mixed $expressionKind): string
+    {
+        $value = $this->editorKind($fieldKey) === SupportedAcquisitionFieldEditorKind::Age ? 'Age' : 'Date';
+
+        return match ($expressionKind) {
+            'approximate' => "Approximate {$value}",
+            'uncertain' => "Uncertain {$value}",
+            'range' => 'From',
+            default => $value,
+        };
     }
 
     /** @return array<string, string> */
@@ -615,13 +691,15 @@ final readonly class StructuredAcquisitionFormAdapter
         $claimId = $row['claim_id'] ?? null;
         $value = $descriptor->editorKind === SupportedAcquisitionFieldEditorKind::MentionReference
             ? null
-            : $this->literalInput($row, $path);
+            : $this->literalInput($descriptor, $row, $path);
 
         return new SupportedAcquisitionClaimInput(
             id: is_string($claimId) && $claimId !== '' ? new ClaimId($claimId) : null,
             fieldKey: $fieldKey,
             subjectLocalKey: trim($subjectLocalKey),
-            objectLocalKey: $this->optionalString($row['object_local_key'] ?? null),
+            objectLocalKey: $descriptor->editorKind === SupportedAcquisitionFieldEditorKind::MentionReference
+                ? $this->optionalString($row['object_local_key'] ?? null)
+                : null,
             value: $value,
             effectiveTime: $this->effectiveTimeInput($row, $path),
             rawText: $this->optionalString($row['raw_text'] ?? null),
@@ -631,22 +709,40 @@ final readonly class StructuredAcquisitionFormAdapter
     }
 
     /** @param  array<string, mixed>  $row */
-    private function literalInput(array $row, string $path): SupportedAcquisitionFieldValueInput
-    {
+    private function literalInput(
+        SupportedAcquisitionFieldDescriptor $descriptor,
+        array $row,
+        string $path,
+    ): SupportedAcquisitionFieldValueInput {
         $raw = $row['value_raw'] ?? null;
         if (! is_string($raw) || trim($raw) === '') {
             throw ValidationException::withMessages(["$path.value_raw" => 'Literal fields require the raw/source value.']);
         }
 
+        $kind = $descriptor->editorKind;
+        $expressionKind = $this->isTemporalEditorKind($kind)
+            ? $this->optionalString($row['expression_kind'] ?? null)
+            : null;
+
         return new SupportedAcquisitionFieldValueInput(
             rawValue: $raw,
-            expressionKind: $this->optionalString($row['expression_kind'] ?? null),
-            from: $this->stringOrInt($row['value_from'] ?? null),
-            to: $this->stringOrInt($row['value_to'] ?? null),
-            ageUnit: $this->optionalString($row['age_unit'] ?? null),
-            integerValue: $this->integerOrNull($row['integer_value'] ?? null),
-            booleanValue: $this->booleanOrNull($row['boolean_value'] ?? null),
-            enumKey: $this->optionalString($row['enum_key'] ?? null),
+            expressionKind: $expressionKind,
+            from: $this->isTemporalEditorKind($kind) ? $this->stringOrInt($row['value_from'] ?? null) : null,
+            to: $this->isTemporalEditorKind($kind) && $expressionKind === 'range'
+                ? $this->stringOrInt($row['value_to'] ?? null)
+                : null,
+            ageUnit: $kind === SupportedAcquisitionFieldEditorKind::Age
+                ? $this->optionalString($row['age_unit'] ?? null)
+                : null,
+            integerValue: $kind === SupportedAcquisitionFieldEditorKind::Integer
+                ? $this->integerOrNull($row['integer_value'] ?? null)
+                : null,
+            booleanValue: $kind === SupportedAcquisitionFieldEditorKind::Boolean
+                ? $this->booleanOrNull($row['boolean_value'] ?? null)
+                : null,
+            enumKey: $kind === SupportedAcquisitionFieldEditorKind::Enum
+                ? $this->optionalString($row['enum_key'] ?? null)
+                : null,
         );
     }
 

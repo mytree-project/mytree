@@ -75,6 +75,77 @@ final class StructuredAcquisitionFormAdapterTest extends TestCase
         );
     }
 
+    public function test_text_field_ignores_stale_controls_from_other_value_types(): void
+    {
+        $adapter = new StructuredAcquisitionFormAdapter(new SupportedAcquisitionFieldCatalog);
+        $state = $this->state();
+        $state['fields'] = [[
+            'field_key' => PredicateKey::PersonGivenName->value,
+            'subject_local_key' => 'person.child',
+            'object_local_key' => 'place.birth',
+            'value_raw' => 'Jan',
+            'expression_kind' => 'range',
+            'value_from' => '1890',
+            'value_to' => '1891',
+            'age_unit' => 'years',
+            'integer_value' => 42,
+            'boolean_value' => '1',
+            'enum_key' => 'stale',
+        ]];
+
+        $claim = $adapter->editInput($state)->fields[0];
+
+        self::assertNull($claim->objectLocalKey);
+        self::assertNotNull($claim->value);
+        self::assertSame('Jan', $claim->value->rawValue);
+        self::assertNull($claim->value->expressionKind);
+        self::assertNull($claim->value->from);
+        self::assertNull($claim->value->to);
+        self::assertNull($claim->value->ageUnit);
+        self::assertNull($claim->value->integerValue);
+        self::assertNull($claim->value->booleanValue);
+        self::assertNull($claim->value->enumKey);
+    }
+
+    public function test_exact_date_does_not_submit_stale_range_end(): void
+    {
+        $adapter = new StructuredAcquisitionFormAdapter(new SupportedAcquisitionFieldCatalog);
+        $state = $this->state();
+        $state['fields'] = [[
+            'field_key' => PredicateKey::PersonBirthDate->value,
+            'subject_local_key' => 'person.child',
+            'value_raw' => '3 II 1891',
+            'expression_kind' => 'exact',
+            'value_from' => '1891-02-03',
+            'value_to' => '1891-02-04',
+        ]];
+
+        $value = $adapter->editInput($state)->fields[0]->value;
+
+        self::assertNotNull($value);
+        self::assertSame('exact', $value->expressionKind);
+        self::assertSame('1891-02-03', $value->from);
+        self::assertNull($value->to);
+    }
+
+    public function test_mention_reference_does_not_submit_stale_literal_value(): void
+    {
+        $adapter = new StructuredAcquisitionFormAdapter(new SupportedAcquisitionFieldCatalog);
+        $state = $this->state();
+        $state['fields'] = [[
+            'field_key' => PredicateKey::PersonResidence->value,
+            'subject_local_key' => 'person.child',
+            'object_local_key' => 'place.birth',
+            'value_raw' => 'stale literal',
+            'integer_value' => 42,
+        ]];
+
+        $claim = $adapter->editInput($state)->fields[0];
+
+        self::assertSame('place.birth', $claim->objectLocalKey);
+        self::assertNull($claim->value);
+    }
+
     /** @return array<string, mixed> */
     private function state(): array
     {
