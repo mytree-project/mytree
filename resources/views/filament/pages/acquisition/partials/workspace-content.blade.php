@@ -128,8 +128,6 @@
                 </style>
             @endif
 
-            @include('filament.pages.acquisition.partials.supported-field-picker')
-
             {{ $this->evidenceForm }}
         </div>
         @break
