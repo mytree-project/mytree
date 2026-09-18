@@ -584,24 +584,6 @@ final readonly class StructuredAcquisitionFormAdapter
     }
 
     /** @return array<string, string> */
-    private function fieldOptions(bool $eventOnly): array
-    {
-        $options = [];
-        foreach ($this->catalog->all() as $descriptor) {
-            if (! $descriptor->isDirectClaim()) {
-                continue;
-            }
-            if ($eventOnly !== ($descriptor->subjectMentionKind === MentionKind::EVENT)) {
-                continue;
-            }
-
-            $options[$descriptor->key] = sprintf('%s · %s', $descriptor->group, $descriptor->label);
-        }
-
-        return $options;
-    }
-
-    /** @return array<string, string> */
     private function mentionPickerOptionsFromLivewire(mixed $fieldKey, LivewireComponent $livewire, bool $subject): array
     {
         if (! $livewire instanceof SourceWorkspacePage
