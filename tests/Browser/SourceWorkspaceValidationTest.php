@@ -223,6 +223,8 @@ function expandSourceWorkspaceEvidenceItem(
     AwaitableWebpage $page,
     string $summaryFragment,
 ): void {
+    sourceWorkspaceBrowserDebugCheckpoint("expand:$summaryFragment:resolve-item:before");
+
     $script = strtr(<<<'JS'
         (() => {
             const expectedSummary = __SUMMARY__;
@@ -248,21 +250,28 @@ function expandSourceWorkspaceEvidenceItem(
     ]);
 
     $itemSelector = $page->script($script);
+    sourceWorkspaceBrowserDebugCheckpoint("expand:$summaryFragment:resolve-item:after");
 
     if (! is_string($itemSelector) || $itemSelector === '') {
         throw new RuntimeException("Could not resolve evidence item selector for [$summaryFragment].");
     }
 
+    sourceWorkspaceBrowserDebugCheckpoint("expand:$summaryFragment:collapsed-check:before");
     $isCollapsed = $page->script(sprintf(
         'document.querySelector(%s)?.classList.contains("fi-collapsed") ?? false',
         json_encode($itemSelector, JSON_THROW_ON_ERROR),
     ));
+    sourceWorkspaceBrowserDebugCheckpoint("expand:$summaryFragment:collapsed-check:after");
 
     if ($isCollapsed !== true) {
+        sourceWorkspaceBrowserDebugCheckpoint("expand:$summaryFragment:already-expanded");
+
         return;
     }
 
+    sourceWorkspaceBrowserDebugCheckpoint("expand:$summaryFragment:toggle:before");
     toggleSourceWorkspaceEvidenceItem($page, $itemSelector);
+    sourceWorkspaceBrowserDebugCheckpoint("expand:$summaryFragment:toggle:after");
     $page->assertScript(
         sprintf(
             '!document.querySelector(%s).classList.contains("fi-collapsed")',
@@ -270,6 +279,7 @@ function expandSourceWorkspaceEvidenceItem(
         ),
         true,
     );
+    sourceWorkspaceBrowserDebugCheckpoint("expand:$summaryFragment:expanded");
 }
 
 function fillSourceWorkspaceBrowserField(
