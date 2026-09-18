@@ -177,6 +177,7 @@
         .dark .source-text-card textarea { border-color: rgb(75 85 99); }
         .source-workspace-panel-scroll { flex: 1; min-height: 0; overflow: auto; padding: 1rem; }
         .source-workspace-resizer { display: none; }
+        .source-workspace-details-region { border-radius: .75rem; }
         .source-workspace-details {
             border: 1px solid rgb(229 231 235);
             border-radius: .75rem;
