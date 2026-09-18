@@ -6,6 +6,7 @@ return [
     'picker' => [
         'open' => 'Dodaj obsługiwane pole strukturalne',
         'title' => 'Wybierz obsługiwane pole',
+        'choose' => 'Wybierz z palety',
         'description' => 'Pola pochodzą z kontrolowanego katalogu akwizycji. Wybór dodaje jedno wystąpienie; pola powtarzalne pozostają dostępne do ponownego dodania.',
         'search_label' => 'Szukaj obsługiwanych pól',
         'search_placeholder' => 'Szukaj po nazwie lub kanonicznym kluczu…',
@@ -17,11 +18,15 @@ return [
         'empty' => 'Brak obsługiwanych pól pasujących do wyszukiwania.',
     ],
     'groups' => [
-        'person_facts' => 'Fakty o osobie',
+        'person_general' => 'Osoba · Informacje podstawowe',
+        'person_relationships' => 'Osoba · Relacje',
+        'person_places' => 'Osoba · Miejsca',
+        'person_status' => 'Osoba · Zawód, status i tytuły',
         'event_contexts' => 'Konteksty zdarzeń',
-        'event_facts' => 'Fakty o zdarzeniu',
-        'place_facts' => 'Fakty o miejscu',
-        'source_facts' => 'Fakty o źródle',
+        'event_general' => 'Zdarzenie · Informacje ogólne',
+        'event_roles' => 'Zdarzenie · Uczestnicy i role',
+        'place_general' => 'Miejsce',
+        'source_general' => 'Źródło',
     ],
     'fields' => [
         'person' => [
