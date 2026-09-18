@@ -10,6 +10,7 @@ return [
         'search_label' => 'Szukaj obsługiwanych pól',
         'search_placeholder' => 'Szukaj po nazwie lub kanonicznym kluczu…',
         'add' => 'Dodaj',
+        'add_field' => 'Dodaj: :label',
         'repeatable' => 'Powtarzalne',
         'event_context' => 'Grupa zdarzenia',
         'canonical_key' => 'Klucz kanoniczny: :key',
