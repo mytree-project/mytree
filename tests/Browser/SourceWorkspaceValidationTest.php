@@ -438,7 +438,7 @@ it('marks the failing Event Claim and its enclosing Event without marking siblin
     );
 
     submitSourceWorkspaceBrowserForm($page)
-        ->assertSee('Twierdzenie nr 1 w zdarzeniu nr 1 zawiera nieprawidłowe dane.')
+        ->assertSee('Claim nr 1 w Event nr 1 zawiera nieprawidłowe dane.')
         ->assertVisible('[data-source-workspace-save-errors]')
         ->assertScript(
             "document.querySelector('[data-mentions-claims-editor]').classList.contains('source-workspace-error-region')",
