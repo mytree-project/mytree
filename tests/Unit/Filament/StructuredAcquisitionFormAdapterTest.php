@@ -120,7 +120,7 @@ final class StructuredAcquisitionFormAdapterTest extends TestCase
             'value_to' => '1891-02-04',
         ]];
 
-        $value = $adapter->editInput($state)->claims[0]->value;
+        $value = $adapter->editInput($state)->fields[0]->value;
 
         self::assertNotNull($value);
         self::assertSame('exact', $value->expressionKind);
@@ -140,7 +140,7 @@ final class StructuredAcquisitionFormAdapterTest extends TestCase
             'integer_value' => 42,
         ]];
 
-        $claim = $adapter->editInput($state)->claims[0];
+        $claim = $adapter->editInput($state)->fields[0];
 
         self::assertSame('place.birth', $claim->objectLocalKey);
         self::assertNull($claim->value);
