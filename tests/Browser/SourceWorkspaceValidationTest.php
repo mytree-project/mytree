@@ -111,47 +111,15 @@ function sourceWorkspaceEvidenceItemSelector(
     int $index,
     ?string $scopeSelector = null,
 ): string {
-    $script = strtr(<<<'JS'
-        (() => {
-            const repeaterName = __REPEATER__;
-            const itemIndex = __INDEX__;
-            const scopeSelector = __SCOPE__;
-            const scope = scopeSelector === null
-                ? document.querySelector('[data-mentions-claims-editor]')
-                : document.querySelector(scopeSelector);
+    $scopeSelector ??= '[data-mentions-claims-editor]';
+    $selector = sprintf(
+        '%s [data-evidence-repeater="%s"] > .fi-fo-repeater-items > .fi-fo-repeater-item:nth-of-type(%d)',
+        $scopeSelector,
+        $repeaterName,
+        $index + 1,
+    );
 
-            if (! scope) {
-                throw new Error(`Evidence scope ${scopeSelector ?? 'root'} was not found.`);
-            }
-
-            const repeater = scope.querySelector(`[data-evidence-repeater="${repeaterName}"]`);
-            const list = repeater?.querySelector(':scope > .fi-fo-repeater-items');
-            const items = list
-                ? Array.from(list.children).filter((child) => child.classList.contains('fi-fo-repeater-item'))
-                : [];
-            const item = items[itemIndex] ?? null;
-
-            if (! item) {
-                throw new Error(`Evidence item ${repeaterName}[${itemIndex}] was not found.`);
-            }
-
-            if (! item.id) {
-                item.id = `source-workspace-validation-item-${Math.random().toString(36).slice(2)}`;
-            }
-
-            return `#${CSS.escape(item.id)}`;
-        })()
-        JS, [
-        '__REPEATER__' => json_encode($repeaterName, JSON_THROW_ON_ERROR),
-        '__INDEX__' => (string) $index,
-        '__SCOPE__' => json_encode($scopeSelector, JSON_THROW_ON_ERROR),
-    ]);
-
-    $selector = $page->script($script);
-
-    if (! is_string($selector) || $selector === '') {
-        throw new RuntimeException("Could not resolve evidence item selector for [$repeaterName][$index].");
-    }
+    $page->assertPresent($selector);
 
     return $selector;
 }
