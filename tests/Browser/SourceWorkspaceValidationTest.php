@@ -292,10 +292,41 @@ function fillSourceWorkspaceBrowserField(
     $selector = sourceWorkspaceBrowserFieldSelectorByLabel($page, $label, $scopeSelector);
     sourceWorkspaceBrowserDebugCheckpoint("fill:$label:resolve-selector:after");
 
-    sourceWorkspaceBrowserDebugCheckpoint("fill:$label:fill:before");
-    $page->fill($selector, $value);
-    sourceWorkspaceBrowserDebugCheckpoint("fill:$label:fill:after");
-    $page->assertValue($selector, $value);
+    $selectorJson = json_encode($selector, JSON_THROW_ON_ERROR);
+    $valueJson = json_encode($value, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+
+    sourceWorkspaceBrowserDebugCheckpoint("fill:$label:dom-input:before");
+    $filled = $page->script(<<<JS
+        (() => {
+            const control = document.querySelector($selectorJson);
+
+            if (! (control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement || control instanceof HTMLSelectElement)) {
+                return false;
+            }
+
+            const prototype = control instanceof HTMLTextAreaElement
+                ? HTMLTextAreaElement.prototype
+                : control instanceof HTMLSelectElement
+                    ? HTMLSelectElement.prototype
+                    : HTMLInputElement.prototype;
+            const descriptor = Object.getOwnPropertyDescriptor(prototype, 'value');
+
+            if (! descriptor?.set) {
+                return false;
+            }
+
+            descriptor.set.call(control, $valueJson);
+            control.dispatchEvent(new Event('input', { bubbles: true }));
+            control.dispatchEvent(new Event('change', { bubbles: true }));
+            control.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+
+            return control.value === $valueJson;
+        })()
+        JS);
+    sourceWorkspaceBrowserDebugCheckpoint("fill:$label:dom-input:after");
+
+    expect($filled)->toBeTrue();
+    expect($page->value($selector))->toBe($value);
     sourceWorkspaceBrowserDebugCheckpoint("fill:$label:value-confirmed");
 }
 
