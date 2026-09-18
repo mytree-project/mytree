@@ -46,6 +46,7 @@ final readonly class EvidenceRepeaterPresentation
     private function configureMentions(Repeater $repeater): void
     {
         $repeater
+            ->extraAttributes(['data-evidence-repeater' => 'mentions'], merge: true)
             ->label(__('evidence.mentions'))
             ->helperText(__('evidence.mentions_help'))
             ->addActionLabel(__('evidence.add_mention'))
@@ -70,6 +71,9 @@ final readonly class EvidenceRepeaterPresentation
         }
 
         $repeater
+            ->extraAttributes([
+                'data-evidence-repeater' => $includeSubject ? 'claims' : 'event-claims',
+            ], merge: true)
             ->collapsible()
             ->collapsed()
             ->itemLabel(fn (array $state, Repeater $component): string => $this->claimSummary(
@@ -92,6 +96,7 @@ final readonly class EvidenceRepeaterPresentation
     private function configureEvents(Repeater $repeater): void
     {
         $repeater
+            ->extraAttributes(['data-evidence-repeater' => 'events'], merge: true)
             ->label(__('evidence.events'))
             ->helperText(__('evidence.events_help'))
             ->addActionLabel(__('evidence.add_event'))

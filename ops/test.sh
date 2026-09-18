@@ -8,7 +8,7 @@ source "${SCRIPT_DIR}/_common.sh"
 
 usage() {
     cat <<'USAGE'
-Usage: ./ops/test.sh [all|install|style|static|tests|browser]
+Usage: ./ops/test.sh [all|install|style|static|tests|browser|browser-debug]
 
 Commands:
   all      Install locked dependencies and run the standard non-browser quality gates (default)
@@ -16,7 +16,8 @@ Commands:
   style    Verify formatting with Laravel Pint without modifying files
   static   Run Larastan/PHPStan static analysis
   tests    Run the non-browser automated test suite through Pest/PHPUnit
-  browser  Run Pest 4 browser tests through Playwright/Chromium (manual opt-in only)
+  browser       Run Pest 4 browser tests through Playwright/Chromium (manual opt-in only)
+  browser-debug Record and checkpoint the first Source Workspace validation browser test
 USAGE
 }
 
@@ -27,8 +28,39 @@ fi
 
 command_name="${1:-all}"
 
+run_browser_debug() {
+    local video_dir="tests/Browser/Videos"
+    local screenshot_dir="tests/Browser/Screenshots"
+
+    mkdir -p "${video_dir}" "${screenshot_dir}"
+    find "${video_dir}" -maxdepth 1 -type f -delete
+    find "${screenshot_dir}" -maxdepth 1 -type f -name 'debug-*.png' -delete
+
+    printf 'Running the first Source Workspace validation browser test in diagnostic mode...\n'
+    printf 'Playwright video directory: %s\n' "${video_dir}"
+    printf 'Checkpoint screenshot directory: %s\n' "${screenshot_dir}"
+    printf 'Diagnostic watchdog: 120 seconds. Checkpoint output is written to stderr as each step completes.\n'
+
+    browser_debug_run timeout --signal=INT --kill-after=15s 120s \
+        vendor/bin/pest tests/Browser/SourceWorkspaceValidationTest.php \
+        --filter='scopes Mention JSON validation styling' \
+        --stop-on-failure || {
+        status=$?
+
+        if [[ ${status} -eq 124 || ${status} -eq 137 ]]; then
+            printf 'Error: diagnostic browser test exceeded the 120 second watchdog.\n' >&2
+        fi
+
+        printf 'Diagnostic artifacts, if finalized, are under %s and %s.\n' "${video_dir}" "${screenshot_dir}" >&2
+
+        return "${status}"
+    }
+
+    printf 'Diagnostic artifacts are under %s and %s.\n' "${video_dir}" "${screenshot_dir}"
+}
+
 case "${command_name}" in
-    all|install|style|static|tests|browser)
+    all|install|style|static|tests|browser|browser-debug)
         ;;
     -h|--help)
         usage
@@ -72,6 +104,22 @@ browser_run() {
         --env MAIL_MAILER=array \
         --env QUEUE_CONNECTION=sync \
         --env SESSION_DRIVER=cookie \
+        app "$@"
+}
+
+browser_debug_run() {
+    compose run --rm --no-deps --user "${HOST_UID}:${HOST_GID}" \
+        --env APP_ENV=testing \
+        --env APP_DEBUG=false \
+        --env APP_KEY="${TEST_APP_KEY}" \
+        --env APP_LOCALE=pl \
+        --env CACHE_STORE=array \
+        --env DB_CONNECTION=sqlite \
+        --env DB_DATABASE=:memory: \
+        --env MAIL_MAILER=array \
+        --env QUEUE_CONNECTION=sync \
+        --env SESSION_DRIVER=cookie \
+        --env MYTREE_BROWSER_DEBUG=1 \
         app "$@"
 }
 
@@ -142,5 +190,8 @@ case "${command_name}" in
         ;;
     browser)
         run_browser_tests
+        ;;
+    browser-debug)
+        run_browser_debug
         ;;
 esac
