@@ -99,7 +99,7 @@
                     type="search"
                     data-supported-field-picker-search
                     x-ref="search"
-                    x-model.debounce.100ms="query"
+                    x-model="query"
                     placeholder="{{ __('supported_fields.picker.search_placeholder') }}"
                     autocomplete="off"
                 >
