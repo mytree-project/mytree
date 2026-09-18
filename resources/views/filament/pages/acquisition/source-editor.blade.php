@@ -81,20 +81,31 @@
             </div>
         </div>
 
-        <details
+        <div
             @class([
-                'source-workspace-details',
+                'source-workspace-details-region',
                 'source-workspace-error-region' => $sourceDetailsHasErrors,
             ])
-            open
+            data-source-workspace-source-details-region
         >
-            <summary>{{ __('ui.workspace.source_details_assets') }}</summary>
-            <div class="source-workspace-details-content">
-                {{ $this->form }}
-            </div>
-        </details>
+            <details
+                class="source-workspace-details"
+                open
+                wire:ignore.self
+                data-source-workspace-source-details
+            >
+                <summary>{{ __('ui.workspace.source_details_assets') }}</summary>
+                <div class="source-workspace-details-content">
+                    {{ $this->form }}
+                </div>
+            </details>
+        </div>
 
-        <details class="source-workspace-details">
+        <details
+            class="source-workspace-details"
+            wire:ignore.self
+            data-source-workspace-other-texts
+        >
             <summary>{{ __('ui.workspace.other_texts') }}</summary>
             <div class="source-workspace-details-content source-workspace-other-texts">
                 @include('filament.pages.acquisition.partials.source-text-editor', [
@@ -177,6 +188,7 @@
         .dark .source-text-card textarea { border-color: rgb(75 85 99); }
         .source-workspace-panel-scroll { flex: 1; min-height: 0; overflow: auto; padding: 1rem; }
         .source-workspace-resizer { display: none; }
+        .source-workspace-details-region { border-radius: .75rem; }
         .source-workspace-details {
             border: 1px solid rgb(229 231 235);
             border-radius: .75rem;

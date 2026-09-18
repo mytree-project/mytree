@@ -422,7 +422,7 @@ it('scopes Mention JSON validation styling and moves it when the failing Mention
     );
     sourceWorkspaceBrowserDebugCheckpoint('first-validation:evidence-root-unmarked');
     $page->assertScript(
-        "document.querySelectorAll('details.source-workspace-details')[0].classList.contains('source-workspace-error-region')",
+        "document.querySelector('[data-source-workspace-source-details-region]').classList.contains('source-workspace-error-region')",
         false,
     );
     sourceWorkspaceBrowserDebugCheckpoint('first-validation:source-details-unmarked');
@@ -525,7 +525,7 @@ it('routes stale Claim subject errors to only the failing Claim after a Mention 
             false,
         )
         ->assertScript(
-            "document.querySelectorAll('details.source-workspace-details')[0].classList.contains('source-workspace-error-region')",
+            "document.querySelector('[data-source-workspace-source-details-region]').classList.contains('source-workspace-error-region')",
             false,
         );
 
@@ -613,7 +613,7 @@ it('routes metadata value errors to Source details instead of Mentions and Claim
         ->assertSee('Pole metadanych nr 1 wymaga prawidłowej liczby całkowitej.')
         ->assertVisible('[data-source-workspace-save-errors]')
         ->assertScript(
-            "document.querySelectorAll('details.source-workspace-details')[0].classList.contains('source-workspace-error-region')",
+            "document.querySelector('[data-source-workspace-source-details-region]').classList.contains('source-workspace-error-region')",
             true,
         )
         ->assertScript(
