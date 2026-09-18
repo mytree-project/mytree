@@ -7,30 +7,30 @@ namespace App\Filament\Pages\Acquisition\Support;
 use App\Application\Acquisition\SupportedAcquisitionFieldCatalog;
 use App\Application\Acquisition\SupportedAcquisitionFieldDescriptor;
 use App\Application\Acquisition\SupportedAcquisitionFieldEditorKind;
+use App\Domain\Acquisition\MentionKind;
+use App\Domain\Acquisition\PredicateKey;
 use Illuminate\Support\Facades\Lang;
-use Illuminate\Support\Str;
 
-/**
- * Localized presentation data for the supported-field picker.
- *
- * Field membership, grouping, repeatability and editor semantics all come from
- * SupportedAcquisitionFieldCatalog. This class only chooses localized copy and
- * a stable UI order for those catalog-provided groups.
- */
 final readonly class SupportedFieldPickerPresentation
 {
     /** @var list<string> */
     private const GROUP_ORDER = [
-        'person_facts',
+        'person_general',
+        'person_relationships',
+        'person_places',
+        'person_status',
         'event_contexts',
-        'event_facts',
-        'place_facts',
-        'source_facts',
+        'event_general',
+        'event_roles',
+        'place_general',
+        'source_general',
     ];
 
     public function __construct(private SupportedAcquisitionFieldCatalog $catalog) {}
 
     /**
+     * Picker used for adding a new supported occurrence to the workspace.
+     *
      * @return list<array{
      *     key: string,
      *     label: string,
@@ -43,7 +43,52 @@ final readonly class SupportedFieldPickerPresentation
      *     }>
      * }>
      */
-    public function groups(): array
+    public function addGroups(): array
+    {
+        return $this->groups($this->catalog->all());
+    }
+
+    /**
+     * Picker used for choosing the Predicate of an existing Claim row.
+     *
+     * @return list<array{
+     *     key: string,
+     *     label: string,
+     *     fields: list<array{
+     *         key: string,
+     *         label: string,
+     *         help: ?string,
+     *         repeatable: bool,
+     *         event_context: bool
+     *     }>
+     * }>
+     */
+    public function claimGroups(bool $eventOnly): array
+    {
+        $descriptors = array_values(array_filter(
+            $this->catalog->all(),
+            static fn (SupportedAcquisitionFieldDescriptor $descriptor): bool => $descriptor->isDirectClaim()
+                && ($descriptor->subjectMentionKind === MentionKind::EVENT) === $eventOnly,
+        ));
+
+        return $this->groups($descriptors);
+    }
+
+    /**
+     * @param  list<SupportedAcquisitionFieldDescriptor>  $descriptors
+     * @return list<array{
+     *     key: string,
+     *     label: string,
+     *     fields: list<array{
+     *         key: string,
+     *         label: string,
+     *         help: ?string,
+     *         repeatable: bool,
+     *         event_context: bool
+     *     }>
+     * }>
+     */
+    private function groups(array $descriptors): array
     {
         /**
          * @var array<string, array{
@@ -60,8 +105,8 @@ final readonly class SupportedFieldPickerPresentation
          */
         $groups = [];
 
-        foreach ($this->catalog->all() as $descriptor) {
-            $groupKey = Str::snake($descriptor->group);
+        foreach ($descriptors as $descriptor) {
+            $groupKey = $this->groupKey($descriptor);
             $groups[$groupKey] ??= [
                 'key' => $groupKey,
                 'label' => $this->translation(
@@ -85,6 +130,62 @@ final readonly class SupportedFieldPickerPresentation
         });
 
         return array_values($groups);
+    }
+
+    private function groupKey(SupportedAcquisitionFieldDescriptor $descriptor): string
+    {
+        if ($descriptor->editorKind === SupportedAcquisitionFieldEditorKind::EventContext) {
+            return 'event_contexts';
+        }
+
+        return match ($descriptor->predicateKey) {
+            PredicateKey::PersonGivenName,
+            PredicateKey::PersonSurname,
+            PredicateKey::PersonAge,
+            PredicateKey::PersonBirthDate,
+            PredicateKey::PersonDeathDate => 'person_general',
+
+            PredicateKey::PersonParent,
+            PredicateKey::PersonSpouse => 'person_relationships',
+
+            PredicateKey::PersonBirthPlace,
+            PredicateKey::PersonResidence,
+            PredicateKey::PersonPermanentResidence,
+            PredicateKey::PersonTemporaryStay,
+            PredicateKey::PersonPresence,
+            PredicateKey::PersonAddress,
+            PredicateKey::PersonOrigin,
+            PredicateKey::PersonWorkPlace,
+            PredicateKey::PersonStudyPlace,
+            PredicateKey::PersonDetentionPlace,
+            PredicateKey::PersonExilePlace,
+            PredicateKey::PersonDeportationDestination => 'person_places',
+
+            PredicateKey::PersonOccupation,
+            PredicateKey::PersonSocialStatus,
+            PredicateKey::PersonSocialEstate,
+            PredicateKey::PersonOffice,
+            PredicateKey::PersonRank,
+            PredicateKey::PersonTitle,
+            PredicateKey::PersonAcademicDegree => 'person_status',
+
+            PredicateKey::EventDate,
+            PredicateKey::EventPlace,
+            PredicateKey::EventOriginPlace,
+            PredicateKey::EventDestinationPlace,
+            PredicateKey::EventReason => 'event_general',
+
+            PredicateKey::EventParticipant,
+            PredicateKey::EventChild,
+            PredicateKey::EventParent,
+            PredicateKey::EventSpouse,
+            PredicateKey::EventWitness,
+            PredicateKey::EventDeclarant,
+            PredicateKey::EventOfficiant => 'event_roles',
+
+            PredicateKey::PlaceName => 'place_general',
+            default => 'source_general',
+        };
     }
 
     /**
