@@ -17,6 +17,40 @@ use App\Infrastructure\Persistence\Eloquent\Models\User;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
 use Pest\Browser\Api\AwaitableWebpage;
 
+function sourceWorkspaceBrowserDebugEnabled(): bool
+{
+    return getenv('MYTREE_BROWSER_DEBUG') === '1';
+}
+
+function sourceWorkspaceBrowserDebugCheckpoint(string $message): void
+{
+    if (! sourceWorkspaceBrowserDebugEnabled()) {
+        return;
+    }
+
+    static $startedAt = null;
+    $startedAt ??= microtime(true);
+
+    file_put_contents(
+        'php://stderr',
+        sprintf("[browser-debug +%.3fs] %s\n", microtime(true) - $startedAt, $message),
+        FILE_APPEND,
+    );
+}
+
+function sourceWorkspaceBrowserDebugScreenshot(
+    AwaitableWebpage $page,
+    string $name,
+): void {
+    if (! sourceWorkspaceBrowserDebugEnabled()) {
+        return;
+    }
+
+    sourceWorkspaceBrowserDebugCheckpoint("screenshot:$name:before");
+    $page->screenshot(fullPage: false, filename: "debug-$name");
+    sourceWorkspaceBrowserDebugCheckpoint("screenshot:$name:after");
+}
+
 function authenticateSourceWorkspaceBrowserTestUser(): void
 {
     $guardName = config('auth.defaults.guard');
@@ -41,14 +75,29 @@ function openSourceWorkspaceForBrowserTest(string $sourceId): AwaitableWebpage
         changedBy: null,
     );
 
-    $pendingPage = visit('/admin/acquisition/source?source='.urlencode($sourceId));
+    $visitOptions = [];
+    if (sourceWorkspaceBrowserDebugEnabled()) {
+        $videoDirectory = base_path('tests/Browser/Videos');
+        if (! is_dir($videoDirectory) && ! mkdir($videoDirectory, 0755, true) && ! is_dir($videoDirectory)) {
+            throw new RuntimeException("Could not create browser debug video directory [$videoDirectory].");
+        }
+
+        $visitOptions['recordVideo'] = ['dir' => $videoDirectory];
+    }
+
+    sourceWorkspaceBrowserDebugCheckpoint('open:visit:before');
+    $pendingPage = visit('/admin/acquisition/source?source='.urlencode($sourceId), $visitOptions);
+    sourceWorkspaceBrowserDebugCheckpoint('open:visit:created');
     $page = $pendingPage->__call('assertPresent', ['[data-source-workspace]']);
+    sourceWorkspaceBrowserDebugCheckpoint('open:workspace-present');
 
     if (! $page instanceof AwaitableWebpage) {
         throw new RuntimeException('Browser visit did not resolve to an awaitable webpage.');
     }
 
     $page->assertPresent('[data-mentions-claims-editor]');
+    sourceWorkspaceBrowserDebugCheckpoint('open:evidence-editor-present');
+    sourceWorkspaceBrowserDebugScreenshot($page, '01-opened');
 
     return $page;
 }
@@ -119,7 +168,9 @@ function sourceWorkspaceEvidenceItemSelector(
         $index + 1,
     );
 
+    sourceWorkspaceBrowserDebugCheckpoint("selector:$repeaterName:$index:before");
     $page->assertPresent($selector);
+    sourceWorkspaceBrowserDebugCheckpoint("selector:$repeaterName:$index:present");
 
     return $selector;
 }
@@ -227,20 +278,29 @@ function fillSourceWorkspaceBrowserField(
     string $value,
     ?string $scopeSelector = null,
 ): void {
+    sourceWorkspaceBrowserDebugCheckpoint("fill:$label:resolve-selector:before");
     $selector = sourceWorkspaceBrowserFieldSelectorByLabel($page, $label, $scopeSelector);
+    sourceWorkspaceBrowserDebugCheckpoint("fill:$label:resolve-selector:after");
 
+    sourceWorkspaceBrowserDebugCheckpoint("fill:$label:fill:before");
     $page->fill($selector, $value);
+    sourceWorkspaceBrowserDebugCheckpoint("fill:$label:fill:after");
     $page->assertValue($selector, $value);
+    sourceWorkspaceBrowserDebugCheckpoint("fill:$label:value-confirmed");
 }
 
 function submitSourceWorkspaceBrowserForm(AwaitableWebpage $page): AwaitableWebpage
 {
+    sourceWorkspaceBrowserDebugCheckpoint('submit:click:before');
     $page->click('form.source-acquisition-form button[type="submit"]');
+    sourceWorkspaceBrowserDebugCheckpoint('submit:click:after');
 
     return $page;
 }
 
 it('scopes Mention JSON validation styling and moves it when the failing Mention changes', function (): void {
+    sourceWorkspaceBrowserDebugCheckpoint('test:first:start');
+
     $source = app(CreateSource::class)->handle(SourceType::generic());
     app(CreateMention::class)->handle(
         sourceId: $source->id,
@@ -271,17 +331,23 @@ it('scopes Mention JSON validation styling and moves it when the failing Mention
         $firstMention,
     );
 
-    submitSourceWorkspaceBrowserForm($page)
-        ->assertSee('Błąd składni JSON w Mention nr 1 (person_valentin).')
-        ->assertVisible('[data-source-workspace-save-errors]')
-        ->assertScript(
-            "document.querySelector('[data-mentions-claims-editor]').classList.contains('source-workspace-error-region')",
-            false,
-        )
-        ->assertScript(
-            "document.querySelectorAll('details.source-workspace-details')[0].classList.contains('source-workspace-error-region')",
-            false,
-        );
+    submitSourceWorkspaceBrowserForm($page);
+    sourceWorkspaceBrowserDebugCheckpoint('first-validation:assert-message:before');
+    $page->assertSee('Błąd składni JSON w Mention nr 1 (person_valentin).');
+    sourceWorkspaceBrowserDebugCheckpoint('first-validation:assert-message:after');
+    $page->assertVisible('[data-source-workspace-save-errors]');
+    sourceWorkspaceBrowserDebugCheckpoint('first-validation:errors-visible');
+    $page->assertScript(
+        "document.querySelector('[data-mentions-claims-editor]').classList.contains('source-workspace-error-region')",
+        false,
+    );
+    sourceWorkspaceBrowserDebugCheckpoint('first-validation:evidence-root-unmarked');
+    $page->assertScript(
+        "document.querySelectorAll('details.source-workspace-details')[0].classList.contains('source-workspace-error-region')",
+        false,
+    );
+    sourceWorkspaceBrowserDebugCheckpoint('first-validation:source-details-unmarked');
+    sourceWorkspaceBrowserDebugScreenshot($page, '02-first-validation');
 
     assertSourceWorkspaceEvidenceItemValidationState($page, $firstMention, hasError: true, collapsed: false);
     assertSourceWorkspaceEvidenceItemValidationState($page, $secondMention, hasError: false, collapsed: true);
@@ -302,9 +368,13 @@ it('scopes Mention JSON validation styling and moves it when the failing Mention
     toggleSourceWorkspaceEvidenceItem($page, $secondMention);
     assertSourceWorkspaceEvidenceItemValidationState($page, $secondMention, hasError: false, collapsed: true);
 
-    submitSourceWorkspaceBrowserForm($page)
-        ->assertSee('Błąd składni JSON w Mention nr 2 (person_anna).')
-        ->assertVisible('[data-source-workspace-save-errors]');
+    submitSourceWorkspaceBrowserForm($page);
+    sourceWorkspaceBrowserDebugCheckpoint('second-validation:assert-message:before');
+    $page->assertSee('Błąd składni JSON w Mention nr 2 (person_anna).');
+    sourceWorkspaceBrowserDebugCheckpoint('second-validation:assert-message:after');
+    $page->assertVisible('[data-source-workspace-save-errors]');
+    sourceWorkspaceBrowserDebugCheckpoint('second-validation:errors-visible');
+    sourceWorkspaceBrowserDebugScreenshot($page, '03-second-validation');
 
     assertSourceWorkspaceEvidenceItemValidationState($page, $firstMention, hasError: false);
     assertSourceWorkspaceEvidenceItemValidationState($page, $secondMention, hasError: true, collapsed: false);
@@ -315,6 +385,8 @@ it('scopes Mention JSON validation styling and moves it when the failing Mention
             true,
         )
         ->assertNoJavaScriptErrors();
+
+    sourceWorkspaceBrowserDebugCheckpoint('test:first:completed');
 });
 
 it('routes stale Claim subject errors to only the failing Claim after a Mention key rename', function (): void {
