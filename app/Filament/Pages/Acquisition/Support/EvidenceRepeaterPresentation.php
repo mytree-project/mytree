@@ -52,9 +52,9 @@ final readonly class EvidenceRepeaterPresentation
             ->addActionLabel(__('evidence.add_mention'))
             ->collapsible()
             ->collapsed()
-            ->itemLabel(fn (array $state, Repeater $component): string => $this->mentionSummary(
+            ->itemLabel(fn (array $state, int $index): string => $this->mentionSummary(
                 $state,
-                $this->itemNumber($component, $state),
+                $index + 1,
             ));
     }
 
@@ -76,10 +76,10 @@ final readonly class EvidenceRepeaterPresentation
             ], merge: true)
             ->collapsible()
             ->collapsed()
-            ->itemLabel(fn (array $state, Repeater $component): string => $this->claimSummary(
+            ->itemLabel(fn (array $state, int $index): string => $this->claimSummary(
                 $state,
                 $includeSubject,
-                $this->itemNumber($component, $state),
+                $index + 1,
             ));
 
         $this->makeSummaryFieldsLive($repeater, [
@@ -102,9 +102,9 @@ final readonly class EvidenceRepeaterPresentation
             ->addActionLabel(__('evidence.add_event'))
             ->collapsible()
             ->collapsed()
-            ->itemLabel(fn (array $state, Repeater $component): string => $this->eventSummary(
+            ->itemLabel(fn (array $state, int $index): string => $this->eventSummary(
                 $state,
-                $this->itemNumber($component, $state),
+                $index + 1,
             ));
 
         $childSchema = $repeater->getChildSchema();
@@ -136,24 +136,6 @@ final readonly class EvidenceRepeaterPresentation
 
             $component->live(onBlur: $component->getName() === 'value_raw');
         }
-    }
-
-    /** @param array<string, mixed> $state */
-    private function itemNumber(Repeater $repeater, array $state): int
-    {
-        $repeaterState = $repeater->getState();
-        if (! is_array($repeaterState)) {
-            return 1;
-        }
-
-        $key = array_search($state, $repeaterState, true);
-        if ($key === false) {
-            return 1;
-        }
-
-        $index = array_search($key, array_keys($repeaterState), true);
-
-        return $index === false ? 1 : $index + 1;
     }
 
     /** @param  array<string, mixed>  $state */
