@@ -93,7 +93,7 @@ final class StructuredAcquisitionFormAdapterTest extends TestCase
             'enum_key' => 'stale',
         ]];
 
-        $claim = $adapter->editInput($state)->claims[0];
+        $claim = $adapter->editInput($state)->fields[0];
 
         self::assertNull($claim->objectLocalKey);
         self::assertNotNull($claim->value);
