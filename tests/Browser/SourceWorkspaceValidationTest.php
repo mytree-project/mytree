@@ -56,12 +56,20 @@ function openSourceWorkspaceForBrowserTest(string $sourceId): AwaitableWebpage
 function sourceWorkspaceBrowserFieldSelectorByLabel(
     AwaitableWebpage $page,
     string $label,
+    ?string $scopeSelector = null,
 ): string {
     $script = strtr(<<<'JS'
         (() => {
             const expectedLabel = __LABEL__;
+            const scopeSelector = __SCOPE__;
+            const scope = scopeSelector === null ? document : document.querySelector(scopeSelector);
             const normalize = (value) => value.replace(/\s+/g, ' ').trim();
-            const label = Array.from(document.querySelectorAll('label')).find(
+
+            if (! scope) {
+                throw new Error(`Form scope ${scopeSelector} was not found.`);
+            }
+
+            const label = Array.from(scope.querySelectorAll('label')).find(
                 (candidate) => normalize(candidate.textContent ?? '').startsWith(expectedLabel),
             );
 
@@ -85,6 +93,7 @@ function sourceWorkspaceBrowserFieldSelectorByLabel(
         })()
         JS, [
         '__LABEL__' => json_encode($label, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+        '__SCOPE__' => json_encode($scopeSelector, JSON_THROW_ON_ERROR),
     ]);
 
     $selector = $page->script($script);
@@ -94,6 +103,87 @@ function sourceWorkspaceBrowserFieldSelectorByLabel(
     }
 
     return $selector;
+}
+
+function sourceWorkspaceEvidenceItemSelector(
+    AwaitableWebpage $page,
+    string $repeaterName,
+    int $index,
+    ?string $scopeSelector = null,
+): string {
+    $script = strtr(<<<'JS'
+        (() => {
+            const repeaterName = __REPEATER__;
+            const itemIndex = __INDEX__;
+            const scopeSelector = __SCOPE__;
+            const scope = scopeSelector === null
+                ? document.querySelector('[data-mentions-claims-editor]')
+                : document.querySelector(scopeSelector);
+
+            if (! scope) {
+                throw new Error(`Evidence scope ${scopeSelector ?? 'root'} was not found.`);
+            }
+
+            const repeater = scope.querySelector(`[data-evidence-repeater="${repeaterName}"]`);
+            const list = repeater?.querySelector(':scope > .fi-fo-repeater-items');
+            const items = list
+                ? Array.from(list.children).filter((child) => child.classList.contains('fi-fo-repeater-item'))
+                : [];
+            const item = items[itemIndex] ?? null;
+
+            if (! item) {
+                throw new Error(`Evidence item ${repeaterName}[${itemIndex}] was not found.`);
+            }
+
+            if (! item.id) {
+                item.id = `source-workspace-validation-item-${Math.random().toString(36).slice(2)}`;
+            }
+
+            return `#${CSS.escape(item.id)}`;
+        })()
+        JS, [
+        '__REPEATER__' => json_encode($repeaterName, JSON_THROW_ON_ERROR),
+        '__INDEX__' => (string) $index,
+        '__SCOPE__' => json_encode($scopeSelector, JSON_THROW_ON_ERROR),
+    ]);
+
+    $selector = $page->script($script);
+
+    if (! is_string($selector) || $selector === '') {
+        throw new RuntimeException("Could not resolve evidence item selector for [$repeaterName][$index].");
+    }
+
+    return $selector;
+}
+
+function assertSourceWorkspaceEvidenceItemValidationState(
+    AwaitableWebpage $page,
+    string $itemSelector,
+    bool $hasError,
+    ?bool $collapsed = null,
+): void {
+    $selector = json_encode($itemSelector, JSON_THROW_ON_ERROR);
+
+    $page->assertScript(
+        "document.querySelector($selector)?.classList.contains('source-workspace-error-item') ?? false",
+        $hasError,
+    );
+
+    if ($collapsed !== null) {
+        $page->assertScript(
+            "document.querySelector($selector)?.classList.contains('fi-collapsed') ?? false",
+            $collapsed,
+        );
+    }
+}
+
+function toggleSourceWorkspaceEvidenceItem(
+    AwaitableWebpage $page,
+    string $itemSelector,
+): void {
+    $page->click(
+        $itemSelector.' > .fi-fo-repeater-item-header > .fi-fo-repeater-item-header-end-actions > .fi-fo-repeater-item-header-collapsible-actions',
+    );
 }
 
 function expandSourceWorkspaceEvidenceItem(
@@ -139,9 +229,7 @@ function expandSourceWorkspaceEvidenceItem(
         return;
     }
 
-    $page->click(
-        $itemSelector.' > .fi-fo-repeater-item-header > .fi-fo-repeater-item-header-end-actions > .fi-fo-repeater-item-header-collapsible-actions',
-    );
+    toggleSourceWorkspaceEvidenceItem($page, $itemSelector);
     $page->assertScript(
         sprintf(
             '!document.querySelector(%s).classList.contains("fi-collapsed")',
@@ -155,8 +243,9 @@ function fillSourceWorkspaceBrowserField(
     AwaitableWebpage $page,
     string $label,
     string $value,
+    ?string $scopeSelector = null,
 ): void {
-    $selector = sourceWorkspaceBrowserFieldSelectorByLabel($page, $label);
+    $selector = sourceWorkspaceBrowserFieldSelectorByLabel($page, $label, $scopeSelector);
 
     $page->fill($selector, $value);
     $page->assertValue($selector, $value);
@@ -169,7 +258,7 @@ function submitSourceWorkspaceBrowserForm(AwaitableWebpage $page): AwaitableWebp
     return $page;
 }
 
-it('routes Mention JSON syntax errors to Mentions and Claims and keeps entered state', function (): void {
+it('scopes Mention JSON validation styling and moves it when the failing Mention changes', function (): void {
     $source = app(CreateSource::class)->handle(SourceType::generic());
     app(CreateMention::class)->handle(
         sourceId: $source->id,
@@ -178,21 +267,26 @@ it('routes Mention JSON syntax errors to Mentions and Claims and keeps entered s
         role: 'declarant',
         displayLabel: 'Valentin Wiśniewski',
     );
+    app(CreateMention::class)->handle(
+        sourceId: $source->id,
+        kind: MentionKind::person(),
+        localKey: 'person_anna',
+        role: 'witness',
+        displayLabel: 'Anna Wiśniewska',
+    );
 
     authenticateSourceWorkspaceBrowserTestUser();
 
     $page = openSourceWorkspaceForBrowserTest($source->id->value);
-    expandSourceWorkspaceEvidenceItem($page, 'person_valentin');
+    $firstMention = sourceWorkspaceEvidenceItemSelector($page, 'mentions', 0);
+    $secondMention = sourceWorkspaceEvidenceItemSelector($page, 'mentions', 1);
 
+    expandSourceWorkspaceEvidenceItem($page, 'person_valentin');
     fillSourceWorkspaceBrowserField(
         $page,
         'Raw source-local data (JSON object)',
         '{"broken":',
-    );
-
-    $page->assertScript(
-        "Array.from(document.querySelectorAll('input')).some((input) => input.value === 'person_valentin')",
-        true,
+        $firstMention,
     );
 
     submitSourceWorkspaceBrowserForm($page)
@@ -200,33 +294,58 @@ it('routes Mention JSON syntax errors to Mentions and Claims and keeps entered s
         ->assertVisible('[data-source-workspace-save-errors]')
         ->assertScript(
             "document.querySelector('[data-mentions-claims-editor]').classList.contains('source-workspace-error-region')",
-            true,
+            false,
         )
         ->assertScript(
             "document.querySelectorAll('details.source-workspace-details')[0].classList.contains('source-workspace-error-region')",
             false,
-        )
+        );
+
+    assertSourceWorkspaceEvidenceItemValidationState($page, $firstMention, hasError: true, collapsed: false);
+    assertSourceWorkspaceEvidenceItemValidationState($page, $secondMention, hasError: false, collapsed: true);
+
+    fillSourceWorkspaceBrowserField(
+        $page,
+        'Raw source-local data (JSON object)',
+        '{}',
+        $firstMention,
+    );
+    expandSourceWorkspaceEvidenceItem($page, 'person_anna');
+    fillSourceWorkspaceBrowserField(
+        $page,
+        'Raw source-local data (JSON object)',
+        '{"also-broken":',
+        $secondMention,
+    );
+    toggleSourceWorkspaceEvidenceItem($page, $secondMention);
+    assertSourceWorkspaceEvidenceItemValidationState($page, $secondMention, hasError: false, collapsed: true);
+
+    submitSourceWorkspaceBrowserForm($page)
+        ->assertSee('Błąd składni JSON w Mention nr 2 (person_anna).')
+        ->assertVisible('[data-source-workspace-save-errors]');
+
+    assertSourceWorkspaceEvidenceItemValidationState($page, $firstMention, hasError: false);
+    assertSourceWorkspaceEvidenceItemValidationState($page, $secondMention, hasError: true, collapsed: false);
+
+    $page
         ->assertScript(
-            "Array.from(document.querySelectorAll('input')).some((input) => input.value === 'person_valentin')",
+            "Array.from(document.querySelectorAll('textarea')).some((textarea) => textarea.value === '{\"also-broken\":')",
             true,
         )
-        ->assertScript(
-            "Array.from(document.querySelectorAll('textarea')).some((textarea) => textarea.value === '{\"broken\":')",
-            true,
-        )
-        ->assertScript("document.querySelector('.source-workspace-error-details').open", false)
-        ->click('.source-workspace-error-details summary')
-        ->assertVisible('.source-workspace-error-details code')
-        ->assertScript("document.querySelector('.source-workspace-error-details code').textContent.trim()", 'Syntax error')
         ->assertNoJavaScriptErrors();
 });
 
-it('routes stale Claim subject errors to Mentions and Claims after a Mention key rename', function (): void {
+it('routes stale Claim subject errors to only the failing Claim after a Mention key rename', function (): void {
     $source = app(CreateSource::class)->handle(SourceType::generic());
     $person = app(CreateMention::class)->handle(
         sourceId: $source->id,
         kind: MentionKind::person(),
         localKey: 'person_subject',
+    );
+    $otherPerson = app(CreateMention::class)->handle(
+        sourceId: $source->id,
+        kind: MentionKind::person(),
+        localKey: 'person_other',
     );
     app(CreateClaim::class)->handle(
         sourceId: $source->id,
@@ -234,21 +353,27 @@ it('routes stale Claim subject errors to Mentions and Claims after a Mention key
         predicate: PredicateVocabulary::get(PredicateKey::PersonOccupation),
         value: new TextClaimValue('rolnik'),
     );
+    app(CreateClaim::class)->handle(
+        sourceId: $source->id,
+        subjectMentionId: $otherPerson->id,
+        predicate: PredicateVocabulary::get(PredicateKey::PersonOccupation),
+        value: new TextClaimValue('kowal'),
+    );
 
     authenticateSourceWorkspaceBrowserTestUser();
 
     $page = openSourceWorkspaceForBrowserTest($source->id->value);
-    expandSourceWorkspaceEvidenceItem($page, 'person_subject');
+    $renamedMention = sourceWorkspaceEvidenceItemSelector($page, 'mentions', 0);
+    $otherMention = sourceWorkspaceEvidenceItemSelector($page, 'mentions', 1);
+    $failingClaim = sourceWorkspaceEvidenceItemSelector($page, 'claims', 0);
+    $validClaim = sourceWorkspaceEvidenceItemSelector($page, 'claims', 1);
 
+    expandSourceWorkspaceEvidenceItem($page, 'person_subject');
     fillSourceWorkspaceBrowserField(
         $page,
         'Local key',
         'person_renamed',
-    );
-
-    $page->assertScript(
-        "Array.from(document.querySelectorAll('input')).some((input) => input.value === 'rolnik')",
-        true,
+        $renamedMention,
     );
 
     submitSourceWorkspaceBrowserForm($page)
@@ -256,17 +381,75 @@ it('routes stale Claim subject errors to Mentions and Claims after a Mention key
         ->assertVisible('[data-source-workspace-save-errors]')
         ->assertScript(
             "document.querySelector('[data-mentions-claims-editor]').classList.contains('source-workspace-error-region')",
-            true,
+            false,
         )
         ->assertScript(
             "document.querySelectorAll('details.source-workspace-details')[0].classList.contains('source-workspace-error-region')",
             false,
-        )
+        );
+
+    assertSourceWorkspaceEvidenceItemValidationState($page, $renamedMention, hasError: false);
+    assertSourceWorkspaceEvidenceItemValidationState($page, $otherMention, hasError: false);
+    assertSourceWorkspaceEvidenceItemValidationState($page, $failingClaim, hasError: true, collapsed: false);
+    assertSourceWorkspaceEvidenceItemValidationState($page, $validClaim, hasError: false, collapsed: true);
+
+    $page
         ->assertScript(
             "Array.from(document.querySelectorAll('input')).some((input) => input.value === 'person_renamed')",
             true,
         )
         ->assertNoJavaScriptErrors();
+});
+
+it('marks the failing Event Claim and its enclosing Event without marking sibling evidence', function (): void {
+    $source = app(CreateSource::class)->handle(SourceType::generic());
+    $place = app(CreateMention::class)->handle(
+        sourceId: $source->id,
+        kind: MentionKind::place(),
+        localKey: 'place_original',
+        displayLabel: 'Original place',
+    );
+    $event = app(CreateMention::class)->handle(
+        sourceId: $source->id,
+        kind: MentionKind::event(),
+        localKey: 'event_birth',
+        displayLabel: 'Birth event',
+    );
+    app(CreateClaim::class)->handle(
+        sourceId: $source->id,
+        subjectMentionId: $event->id,
+        predicate: PredicateVocabulary::get(PredicateKey::EventPlace),
+        objectMentionId: $place->id,
+    );
+
+    authenticateSourceWorkspaceBrowserTestUser();
+
+    $page = openSourceWorkspaceForBrowserTest($source->id->value);
+    $placeMention = sourceWorkspaceEvidenceItemSelector($page, 'mentions', 0);
+    $eventItem = sourceWorkspaceEvidenceItemSelector($page, 'events', 0);
+    $eventClaim = sourceWorkspaceEvidenceItemSelector($page, 'event-claims', 0, $eventItem);
+
+    expandSourceWorkspaceEvidenceItem($page, 'place_original');
+    fillSourceWorkspaceBrowserField(
+        $page,
+        'Local key',
+        'place_renamed',
+        $placeMention,
+    );
+
+    submitSourceWorkspaceBrowserForm($page)
+        ->assertSee('Twierdzenie nr 1 w zdarzeniu nr 1 zawiera nieprawidłowe dane.')
+        ->assertVisible('[data-source-workspace-save-errors]')
+        ->assertScript(
+            "document.querySelector('[data-mentions-claims-editor]').classList.contains('source-workspace-error-region')",
+            false,
+        );
+
+    assertSourceWorkspaceEvidenceItemValidationState($page, $placeMention, hasError: false);
+    assertSourceWorkspaceEvidenceItemValidationState($page, $eventItem, hasError: true, collapsed: false);
+    assertSourceWorkspaceEvidenceItemValidationState($page, $eventClaim, hasError: true, collapsed: false);
+
+    $page->assertNoJavaScriptErrors();
 });
 
 it('routes metadata value errors to Source details instead of Mentions and Claims', function (): void {
