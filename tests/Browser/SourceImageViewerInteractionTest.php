@@ -63,7 +63,9 @@ it('fits high resolution images and supports focal zoom plus bounded mouse and t
                 const viewport = document.querySelector('[data-source-asset-image-viewport]');
                 const state = Alpine.$data(viewer);
 
-                return Math.abs(state.scale - state.minScale) < 0.001
+                return state.naturalWidth === 2400
+                    && state.naturalHeight === 1600
+                    && Math.abs(state.scale - state.minScale) < 0.001
                     && (state.naturalWidth * state.scale) <= viewport.clientWidth + 1
                     && (state.naturalHeight * state.scale) <= viewport.clientHeight + 1;
             })()
@@ -158,12 +160,30 @@ it('fits high resolution images and supports focal zoom plus bounded mouse and t
             const movedByDrag = state.x < beforeX || state.y < beforeY;
 
             state.panBy(-100000, -100000);
-            const minX = rect.width - (state.naturalWidth * state.scale);
-            const minY = rect.height - (state.naturalHeight * state.scale);
-            const lowerBounded = state.x >= minX - 1 && state.y >= minY - 1;
+            const lowerRect = viewport.getBoundingClientRect();
+            const lowerImageWidth = state.naturalWidth * state.scale;
+            const lowerImageHeight = state.naturalHeight * state.scale;
+            const expectedLowerX = lowerImageWidth <= lowerRect.width
+                ? (lowerRect.width - lowerImageWidth) / 2
+                : lowerRect.width - lowerImageWidth;
+            const expectedLowerY = lowerImageHeight <= lowerRect.height
+                ? (lowerRect.height - lowerImageHeight) / 2
+                : lowerRect.height - lowerImageHeight;
+            const lowerBounded = Math.abs(state.x - expectedLowerX) <= 1
+                && Math.abs(state.y - expectedLowerY) <= 1;
 
             state.panBy(100000, 100000);
-            const upperBounded = state.x <= 1 && state.y <= 1;
+            const upperRect = viewport.getBoundingClientRect();
+            const upperImageWidth = state.naturalWidth * state.scale;
+            const upperImageHeight = state.naturalHeight * state.scale;
+            const expectedUpperX = upperImageWidth <= upperRect.width
+                ? (upperRect.width - upperImageWidth) / 2
+                : 0;
+            const expectedUpperY = upperImageHeight <= upperRect.height
+                ? (upperRect.height - upperImageHeight) / 2
+                : 0;
+            const upperBounded = Math.abs(state.x - expectedUpperX) <= 1
+                && Math.abs(state.y - expectedUpperY) <= 1;
 
             window.__sourceImageViewerPointer = {
                 movedByDrag,
