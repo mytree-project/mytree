@@ -28,7 +28,7 @@ function authenticateSupportedFieldPickerBrowserTestUser(): void
 function openSupportedFieldPickerWorkspace(string $sourceId): AwaitableWebpage
 {
     $pendingPage = visit('/admin/acquisition/source?source='.urlencode($sourceId));
-    $page = $pendingPage->__call('assertPresent', ['[data-supported-field-picker]']);
+    $page = $pendingPage->__call('assertPresent', ['[data-supported-field-palette-name="add_supported_field"]']);
 
     if (! $page instanceof AwaitableWebpage) {
         throw new RuntimeException('Browser visit did not resolve to an awaitable webpage.');
@@ -37,63 +37,166 @@ function openSupportedFieldPickerWorkspace(string $sourceId): AwaitableWebpage
     return $page;
 }
 
-function assertSupportedFieldPickerItemVisible(
+function supportedFieldPaletteTrigger(string $name): string
+{
+    return sprintf(
+        '[data-supported-field-palette-name=%s] [data-supported-field-palette-trigger]',
+        json_encode($name, JSON_THROW_ON_ERROR),
+    );
+}
+
+function activeSupportedFieldPaletteOptionSelector(AwaitableWebpage $page, string $fieldKey): string
+{
+    $selector = $page->script(strtr(<<<'JS'
+        (() => {
+            const fieldKey = __FIELD_KEY__;
+            const panel = Array.from(document.querySelectorAll('[data-supported-field-palette-panel]'))
+                .find((candidate) => candidate.offsetParent !== null);
+
+            if (! panel) {
+                throw new Error('No supported-field palette is open.');
+            }
+
+            const option = panel.querySelector(
+                '[data-supported-field-palette-option][data-supported-field-key="' + CSS.escape(fieldKey) + '"]',
+            );
+
+            if (! option) {
+                throw new Error('Supported field is not available in the active palette: ' + fieldKey);
+            }
+
+            if (! option.id) {
+                option.id = 'supported-field-palette-option-' + Math.random().toString(36).slice(2);
+            }
+
+            return '#' + CSS.escape(option.id);
+        })()
+        JS, [
+        '__FIELD_KEY__' => json_encode($fieldKey, JSON_THROW_ON_ERROR),
+    ]));
+
+    if (! is_string($selector) || $selector === '') {
+        throw new RuntimeException(sprintf('Could not resolve picker option [%s].', $fieldKey));
+    }
+
+    return $selector;
+}
+
+function setActiveSupportedFieldPaletteSearch(AwaitableWebpage $page, string $query): void
+{
+    $page->script(strtr(<<<'JS'
+        (() => {
+            const query = __QUERY__;
+            const panel = Array.from(document.querySelectorAll('[data-supported-field-palette-panel]'))
+                .find((candidate) => candidate.offsetParent !== null);
+            const input = panel?.querySelector('[data-supported-field-palette-search]');
+
+            if (! (input instanceof HTMLInputElement)) {
+                throw new Error('Active supported-field palette search input was not found.');
+            }
+
+            const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+            setter?.call(input, query);
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        })()
+        JS, [
+        '__QUERY__' => json_encode($query, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+    ]));
+}
+
+function assertActiveSupportedFieldPaletteOptionVisible(
     AwaitableWebpage $page,
     string $fieldKey,
     bool $visible,
 ): void {
-    $selector = sprintf(
-        '[data-supported-field-picker-item=%s]',
-        json_encode($fieldKey, JSON_THROW_ON_ERROR),
-    );
+    $page->assertScript(strtr(<<<'JS'
+        (() => {
+            const fieldKey = __FIELD_KEY__;
+            const panel = Array.from(document.querySelectorAll('[data-supported-field-palette-panel]'))
+                .find((candidate) => candidate.offsetParent !== null);
+            const option = panel?.querySelector(
+                '[data-supported-field-palette-option][data-supported-field-key="' + CSS.escape(fieldKey) + '"]',
+            );
 
-    $page->assertScript(
-        sprintf('document.querySelector(%s)?.offsetParent !== null', json_encode($selector, JSON_THROW_ON_ERROR)),
-        $visible,
-    );
+            return option?.offsetParent !== null;
+        })()
+        JS, [
+        '__FIELD_KEY__' => json_encode($fieldKey, JSON_THROW_ON_ERROR),
+    ]), $visible);
 }
 
-it('groups and filters supported fields and keeps repeatable canonical choices available', function (): void {
+it('opens a multi-column categorized predicate palette and filters by label or canonical key', function (): void {
     $source = app(CreateSource::class)->handle(SourceType::generic());
 
     authenticateSupportedFieldPickerBrowserTestUser();
     $page = openSupportedFieldPickerWorkspace($source->id->value);
 
     $page
-        ->assertPresent('[data-supported-field-picker-trigger]')
-        ->click('[data-supported-field-picker-trigger]')
-        ->assertVisible('[data-supported-field-picker-panel]')
-        ->assertSee('Person facts')
+        ->click(supportedFieldPaletteTrigger('add_supported_field'))
+        ->assertVisible('[data-supported-field-palette-panel]')
+        ->assertSee('Person · Basic information')
+        ->assertSee('Person · Relationships')
+        ->assertSee('Person · Places')
+        ->assertSee('Person · Occupation, status & titles')
         ->assertSee('Event contexts')
-        ->assertSee('Event facts')
-        ->assertSee('Place facts')
-        ->assertSee('Event group')
+        ->assertSee('Event · General facts')
+        ->assertSee('Event · Participants & roles')
+        ->assertSee('Place')
         ->assertScript(
-            "document.querySelector('[data-supported-field-picker-item="event.context"]').classList.contains('supported-field-picker-item-event-context')",
+            "getComputedStyle(Array.from(document.querySelectorAll('[data-supported-field-palette-panel]')).find((candidate) => candidate.offsetParent !== null).querySelector('.supported-field-palette-columns')).gridTemplateColumns.split(' ').length > 1",
             true,
         );
 
-    $page->fill('[data-supported-field-picker-search]', 'Occupation');
-    assertSupportedFieldPickerItemVisible($page, 'person.occupation', true);
-    assertSupportedFieldPickerItemVisible($page, 'person.social_estate', false);
+    $eventContext = activeSupportedFieldPaletteOptionSelector($page, 'event.context');
+    $page->assertScript(
+        sprintf(
+            'document.querySelector(%s).classList.contains("supported-field-palette-option-event-context")',
+            json_encode($eventContext, JSON_THROW_ON_ERROR),
+        ),
+        true,
+    );
 
-    $page->fill('[data-supported-field-picker-search]', 'person.social_estate');
-    assertSupportedFieldPickerItemVisible($page, 'person.social_estate', true);
-    assertSupportedFieldPickerItemVisible($page, 'person.occupation', false);
+    setActiveSupportedFieldPaletteSearch($page, 'Occupation');
+    assertActiveSupportedFieldPaletteOptionVisible($page, 'person.occupation', true);
+    assertActiveSupportedFieldPaletteOptionVisible($page, 'person.social_estate', false);
 
-    $page->fill('[data-supported-field-picker-search]', '');
-    assertSupportedFieldPickerItemVisible($page, 'person.occupation', true);
+    setActiveSupportedFieldPaletteSearch($page, 'person.social_estate');
+    assertActiveSupportedFieldPaletteOptionVisible($page, 'person.social_estate', true);
+    assertActiveSupportedFieldPaletteOptionVisible($page, 'person.occupation', false);
+
+    setActiveSupportedFieldPaletteSearch($page, '');
+    $occupation = activeSupportedFieldPaletteOptionSelector($page, 'person.occupation');
 
     $page
-        ->click('[data-supported-field-picker-add][data-supported-field-key="person.occupation"]')
+        ->click($occupation)
         ->assertSee('Claim 1 · Occupation')
-        ->click('[data-supported-field-picker-trigger]')
-        ->assertVisible('[data-supported-field-picker-panel]');
-
-    assertSupportedFieldPickerItemVisible($page, 'person.occupation', true);
+        ->assertPresent('[data-supported-field-palette-name="field_key"]');
 
     $page
-        ->click('[data-supported-field-picker-add][data-supported-field-key="person.occupation"]')
+        ->click(supportedFieldPaletteTrigger('field_key'))
+        ->assertVisible('[data-supported-field-palette-panel]');
+
+    $page->assertScript(
+        "(() => { const panel = Array.from(document.querySelectorAll('[data-supported-field-palette-panel]')).find((candidate) => candidate.offsetParent !== null); return panel.querySelector('[data-supported-field-palette-group=\"event_contexts\"]') === null && panel.querySelector('[data-supported-field-palette-group=\"event_general\"]') === null; })()",
+        true,
+    );
+
+    $birthDate = activeSupportedFieldPaletteOptionSelector($page, 'person.birth_date');
+
+    $page
+        ->click($birthDate)
+        ->assertSee('Claim 1 · Birth date')
+        ->assertSee('Expression');
+
+    $page
+        ->click(supportedFieldPaletteTrigger('add_supported_field'))
+        ->assertVisible('[data-supported-field-palette-panel]');
+
+    assertActiveSupportedFieldPaletteOptionVisible($page, 'person.occupation', true);
+    $secondOccupation = activeSupportedFieldPaletteOptionSelector($page, 'person.occupation');
+
+    $page
+        ->click($secondOccupation)
         ->assertSee('Claim 2 · Occupation')
         ->assertNoJavaScriptErrors();
 });
