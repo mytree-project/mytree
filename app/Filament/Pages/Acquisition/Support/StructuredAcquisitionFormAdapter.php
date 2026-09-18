@@ -411,9 +411,9 @@ final readonly class StructuredAcquisitionFormAdapter
         $schema = [
             Hidden::make('claim_id'),
             Hidden::make('presentation_origin'),
-            Select::make('field_key')
-                ->label('Supported field')
-                ->options($this->fieldOptions($eventOnly))
+            SupportedFieldPicker::make('field_key')
+                ->label(__('supported_fields.picker.field_label'))
+                ->groups(fn (): array => app(SupportedFieldPickerPresentation::class)->claimGroups($eventOnly))
                 ->live(),
         ];
 
