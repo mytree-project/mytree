@@ -45,6 +45,19 @@ final readonly class SupportedFieldPickerPresentation
      */
     public function groups(): array
     {
+        /**
+         * @var array<string, array{
+         *     key: string,
+         *     label: string,
+         *     fields: list<array{
+         *         key: string,
+         *         label: string,
+         *         help: ?string,
+         *         repeatable: bool,
+         *         event_context: bool
+         *     }>
+         * }> $groups
+         */
         $groups = [];
 
         foreach ($this->catalog->all() as $descriptor) {
@@ -65,8 +78,10 @@ final readonly class SupportedFieldPickerPresentation
             $leftOrder = array_search($left, self::GROUP_ORDER, true);
             $rightOrder = array_search($right, self::GROUP_ORDER, true);
 
-            return ($leftOrder === false ? PHP_INT_MAX : $leftOrder)
+            $comparison = ($leftOrder === false ? PHP_INT_MAX : $leftOrder)
                 <=> ($rightOrder === false ? PHP_INT_MAX : $rightOrder);
+
+            return $comparison !== 0 ? $comparison : strcmp($left, $right);
         });
 
         return array_values($groups);
@@ -99,6 +114,12 @@ final readonly class SupportedFieldPickerPresentation
 
     private function translation(string $key, string $fallback): string
     {
-        return Lang::has($key) ? __($key) : $fallback;
+        if (! Lang::has($key)) {
+            return $fallback;
+        }
+
+        $translated = __($key);
+
+        return is_string($translated) ? $translated : $fallback;
     }
 }
