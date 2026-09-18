@@ -62,6 +62,11 @@ final class SourceWorkspaceSaveFailureTest extends TestCase
             ->assertSet('evidenceData.mentions.0.local_key', 'person_hedvig')
             ->assertSet('evidenceData.mentions.1.local_key', 'person_valentin')
             ->assertSet('evidenceData.mentions.1.display_label', 'Valentin Wiśniewski')
+            ->assertSet('workspaceValidationTargets', [[
+                'type' => 'mention',
+                'index' => 1,
+            ]])
+            ->assertSet('workspaceHasUntargetedEvidenceValidationError', false)
             ->assertNoRedirect()
             ->assertSee(__('ui.workspace.save_failed'))
             ->assertSee('Błąd składni JSON w Mention nr 2 (person_valentin).')
@@ -126,10 +131,53 @@ final class SourceWorkspaceSaveFailureTest extends TestCase
             ->call('save')
             ->assertHasErrors(['evidenceData.fields.0.subject_local_key'])
             ->assertHasNoErrors(['data'])
+            ->assertSet('workspaceValidationTargets', [[
+                'type' => 'claim',
+                'index' => 0,
+            ]])
+            ->assertSet('workspaceHasUntargetedEvidenceValidationError', false)
             ->assertNoRedirect()
             ->assertSee('Claim nr 1 zawiera nieprawidłowe dane.')
             ->assertSee(__('workspace_validation.technical_details'))
             ->assertSee('Predicate &quot;person.given_name&quot; requires a &quot;person&quot; subject Mention.', escape: false);
+    }
+
+    public function test_event_claim_failure_targets_nested_claim_and_enclosing_event_path(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+        app()->setLocale('pl');
+        $source = app(CreateSource::class)->handle(SourceType::generic());
+
+        Livewire::test(SourceEditor::class, ['source' => $source->id->value])
+            ->set('evidenceData.event_contexts', [[
+                'id' => null,
+                'local_key' => 'event.birth.1',
+                'role' => 'birth',
+                'display_label' => 'Birth event',
+                'raw_data_json' => '{}',
+                'claims' => [[
+                    'claim_id' => null,
+                    'presentation_origin' => null,
+                    'field_key' => 'event.place',
+                    'subject_local_key' => null,
+                    'object_local_key' => 'missing-place',
+                    'value_raw' => null,
+                    'transcription_certainty' => 'unspecified',
+                    'interpretation_certainty' => 'unspecified',
+                ]],
+            ]])
+            ->call('save')
+            ->assertHasErrors(['evidenceData.event_contexts.0.claims.0.object_local_key'])
+            ->assertSet('workspaceValidationTargets', [[
+                'type' => 'event_claim',
+                'event_index' => 0,
+                'claim_index' => 0,
+            ]])
+            ->assertSet('workspaceHasUntargetedEvidenceValidationError', false)
+            ->assertNoRedirect()
+            ->assertSee('Claim nr 1 w Event nr 1 zawiera nieprawidłowe dane.')
+            ->assertSee(__('workspace_validation.technical_details'))
+            ->assertSee('Object Mention local key &quot;missing-place&quot; does not exist in this Source.', escape: false);
     }
 
     public function test_missing_claim_subject_uses_specific_message_and_targeted_path(): void
