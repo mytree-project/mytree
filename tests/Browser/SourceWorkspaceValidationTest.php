@@ -131,17 +131,31 @@ function assertSourceWorkspaceEvidenceItemValidationState(
     ?bool $collapsed = null,
 ): void {
     $selector = json_encode($itemSelector, JSON_THROW_ON_ERROR);
+    $state = $page->script(
+        "(() => {
+            const item = document.querySelector($selector);
 
-    $page->assertScript(
-        "document.querySelector($selector)?.classList.contains('source-workspace-error-item') ?? false",
-        $hasError,
+            if (! item) {
+                return null;
+            }
+
+            const style = getComputedStyle(item);
+
+            return {
+                hasError: style.outlineStyle !== 'none' && style.outlineWidth !== '0px',
+                collapsed: item.classList.contains('fi-collapsed'),
+            };
+        })()",
     );
 
+    if (! is_array($state)) {
+        throw new RuntimeException("Evidence item [$itemSelector] disappeared from the page.");
+    }
+
+    expect($state['hasError'] ?? null)->toBe($hasError);
+
     if ($collapsed !== null) {
-        $page->assertScript(
-            "document.querySelector($selector)?.classList.contains('fi-collapsed') ?? false",
-            $collapsed,
-        );
+        expect($state['collapsed'] ?? null)->toBe($collapsed);
     }
 }
 
