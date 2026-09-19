@@ -16,8 +16,8 @@ Commands:
   style    Verify formatting with Laravel Pint without modifying files
   static   Run Larastan/PHPStan static analysis
   tests    Run the non-browser automated test suite through Pest/PHPUnit
-  browser       Run Pest 4 browser tests through Playwright/Chromium (manual opt-in only)
-  browser-debug Record and checkpoint the first Source Workspace validation browser test
+  browser       Run the full Pest 4 browser suite through Playwright/Chromium
+  browser-debug Run the full browser suite with diagnostic checkpoints and artifacts
 USAGE
 }
 
@@ -28,6 +28,9 @@ fi
 
 command_name="${1:-all}"
 
+readonly BROWSER_WATCHDOG_SECONDS=60
+readonly BROWSER_WATCHDOG_KILL_AFTER_SECONDS=5
+
 run_browser_debug() {
     local video_dir="tests/Browser/Videos"
     local screenshot_dir="tests/Browser/Screenshots"
@@ -36,19 +39,20 @@ run_browser_debug() {
     find "${video_dir}" -maxdepth 1 -type f -delete
     find "${screenshot_dir}" -maxdepth 1 -type f -name 'debug-*.png' -delete
 
-    printf 'Running the first Source Workspace validation browser test in diagnostic mode...\n'
+    printf 'Running the full Pest browser suite in diagnostic mode...\n'
     printf 'Playwright video directory: %s\n' "${video_dir}"
     printf 'Checkpoint screenshot directory: %s\n' "${screenshot_dir}"
-    printf 'Diagnostic watchdog: 120 seconds. Checkpoint output is written to stderr as each step completes.\n'
+    printf 'Browser debug suite watchdog: %s seconds. Checkpoint output is written to stderr where available.\n' "${BROWSER_WATCHDOG_SECONDS}"
 
-    browser_debug_run timeout --signal=INT --kill-after=15s 120s \
-        vendor/bin/pest tests/Browser/SourceWorkspaceValidationTest.php \
-        --filter='scopes Mention JSON validation styling' \
-        --stop-on-failure || {
+    browser_debug_run timeout \
+        --signal=INT \
+        --kill-after="${BROWSER_WATCHDOG_KILL_AFTER_SECONDS}s" \
+        "${BROWSER_WATCHDOG_SECONDS}s" \
+        vendor/bin/pest tests/Browser --stop-on-failure || {
         status=$?
 
         if [[ ${status} -eq 124 || ${status} -eq 137 ]]; then
-            printf 'Error: diagnostic browser test exceeded the 120 second watchdog.\n' >&2
+            printf 'Error: diagnostic browser suite exceeded the %s second watchdog.\n' "${BROWSER_WATCHDOG_SECONDS}" >&2
         fi
 
         printf 'Diagnostic artifacts, if finalized, are under %s and %s.\n' "${video_dir}" "${screenshot_dir}" >&2
@@ -155,14 +159,17 @@ run_tests() {
 
 run_browser_tests() {
     printf 'Running Pest browser tests with Playwright/Chromium...\n'
-    printf 'Browser suite watchdog: 120 seconds; execution stops after the first failed test.\n'
+    printf 'Browser suite watchdog: %s seconds; execution stops after the first failed test.\n' "${BROWSER_WATCHDOG_SECONDS}"
 
-    browser_run timeout --signal=TERM --kill-after=10s 120s \
+    browser_run timeout \
+        --signal=TERM \
+        --kill-after="${BROWSER_WATCHDOG_KILL_AFTER_SECONDS}s" \
+        "${BROWSER_WATCHDOG_SECONDS}s" \
         vendor/bin/pest tests/Browser --stop-on-failure || {
         status=$?
 
         if [[ ${status} -eq 124 || ${status} -eq 137 ]]; then
-            printf 'Error: browser tests exceeded the 120 second watchdog. The suite is expected to finish well below this limit.\n' >&2
+            printf 'Error: browser tests exceeded the %s second watchdog. The suite is expected to finish well below this limit.\n' "${BROWSER_WATCHDOG_SECONDS}" >&2
         fi
 
         return "${status}"

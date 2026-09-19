@@ -34,6 +34,8 @@ use App\Domain\Acquisition\SourceTextId;
 use App\Domain\Acquisition\SourceTextKind;
 use App\Domain\Acquisition\SourceType;
 use App\Filament\Pages\Acquisition\Support\StructuredAcquisitionFormAdapter;
+use App\Filament\Pages\Acquisition\Support\SupportedFieldPicker;
+use App\Filament\Pages\Acquisition\Support\SupportedFieldPickerPresentation;
 use DateTimeImmutable;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\FileUpload;
@@ -229,11 +231,10 @@ abstract class SourceWorkspacePage extends Page
     {
         return $schema
             ->components([
-                Select::make('add_supported_field')
-                    ->label(__('ui.workspace.evidence.add_field'))
-                    ->helperText(__('ui.workspace.evidence.add_field_help'))
-                    ->placeholder(__('ui.workspace.evidence.choose_field'))
-                    ->options(fn (): array => app(StructuredAcquisitionFormAdapter::class)->pickerOptions())
+                SupportedFieldPicker::make('add_supported_field')
+                    ->label(__('supported_fields.picker.open'))
+                    ->helperText(__('supported_fields.picker.description'))
+                    ->groups(fn (): array => app(SupportedFieldPickerPresentation::class)->addGroups())
                     ->live()
                     ->afterStateUpdated(function (?string $state): void {
                         $this->supportedFieldSelected($state);

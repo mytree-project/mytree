@@ -411,9 +411,9 @@ final readonly class StructuredAcquisitionFormAdapter
         $schema = [
             Hidden::make('claim_id'),
             Hidden::make('presentation_origin'),
-            Select::make('field_key')
-                ->label('Supported field')
-                ->options($this->fieldOptions($eventOnly))
+            SupportedFieldPicker::make('field_key')
+                ->label(__('supported_fields.picker.field_label'))
+                ->groups(fn (): array => app(SupportedFieldPickerPresentation::class)->claimGroups($eventOnly))
                 ->live(),
         ];
 
@@ -581,24 +581,6 @@ final readonly class StructuredAcquisitionFormAdapter
             'range' => 'From',
             default => $value,
         };
-    }
-
-    /** @return array<string, string> */
-    private function fieldOptions(bool $eventOnly): array
-    {
-        $options = [];
-        foreach ($this->catalog->all() as $descriptor) {
-            if (! $descriptor->isDirectClaim()) {
-                continue;
-            }
-            if ($eventOnly !== ($descriptor->subjectMentionKind === MentionKind::EVENT)) {
-                continue;
-            }
-
-            $options[$descriptor->key] = sprintf('%s · %s', $descriptor->group, $descriptor->label);
-        }
-
-        return $options;
     }
 
     /** @return array<string, string> */

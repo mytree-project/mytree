@@ -153,37 +153,45 @@ function assertCollapsibleEvidenceItemState(
     );
 }
 
-function setCollapsibleEvidenceSelectByLabel(
+function setCollapsibleEvidencePredicate(
     AwaitableWebpage $page,
-    string $label,
-    string $value,
+    string $fieldKey,
 ): void {
-    $selector = collapsibleEvidenceFieldSelectorByLabel($page, $label);
-    $script = strtr(<<<'JS'
-        (() => {
-            const control = document.querySelector(__SELECTOR__);
-            const value = __VALUE__;
+    $page->click('[data-supported-field-palette-name="field_key"] [data-supported-field-palette-trigger]');
 
-            if (! (control instanceof HTMLSelectElement)) {
-                throw new Error('Expected a native select control.');
+    $selector = $page->script(strtr(<<<'JS'
+        (() => {
+            const fieldKey = __FIELD_KEY__;
+            const panel = Array.from(document.querySelectorAll('[data-supported-field-palette-panel]'))
+                .find((candidate) => candidate.offsetParent !== null);
+
+            if (! panel) {
+                throw new Error('No predicate palette is open.');
             }
 
-            control.value = value;
-            control.dispatchEvent(new Event('input', { bubbles: true }));
-            control.dispatchEvent(new Event('change', { bubbles: true }));
+            const option = panel.querySelector(
+                '[data-supported-field-palette-option][data-supported-field-key="' + CSS.escape(fieldKey) + '"]',
+            );
 
-            return control.value;
+            if (! option) {
+                throw new Error('Predicate is not available in the active palette: ' + fieldKey);
+            }
+
+            if (! option.id) {
+                option.id = 'collapsible-evidence-predicate-' + Math.random().toString(36).slice(2);
+            }
+
+            return '#' + CSS.escape(option.id);
         })()
         JS, [
-        '__SELECTOR__' => json_encode($selector, JSON_THROW_ON_ERROR),
-        '__VALUE__' => json_encode($value, JSON_THROW_ON_ERROR),
-    ]);
+        '__FIELD_KEY__' => json_encode($fieldKey, JSON_THROW_ON_ERROR),
+    ]));
 
-    $selected = $page->script($script);
-
-    if ($selected !== $value) {
-        throw new RuntimeException("Could not select value [$value] for field [$label].");
+    if (! is_string($selector) || $selector === '') {
+        throw new RuntimeException("Could not resolve predicate palette option [$fieldKey].");
     }
+
+    $page->click($selector);
 }
 
 function assertSourceWorkspaceDetailsOpen(
@@ -343,7 +351,7 @@ it('preserves unrelated details state when a Claim predicate reacts', function (
     assertSourceWorkspaceDetailsOpen($page, $sourceDetails, false);
     assertSourceWorkspaceDetailsOpen($page, $otherTexts, true);
 
-    setCollapsibleEvidenceSelectByLabel($page, 'Supported field', PredicateKey::PersonBirthDate->value);
+    setCollapsibleEvidencePredicate($page, PredicateKey::PersonBirthDate->value);
     $page->assertSee('Birth date');
     assertCollapsibleEvidenceLabelPresent($page, 'Expression', true);
     assertSourceWorkspaceDetailsOpen($page, $sourceDetails, false);
@@ -354,7 +362,7 @@ it('preserves unrelated details state when a Claim predicate reacts', function (
     assertSourceWorkspaceDetailsOpen($page, $sourceDetails, true);
     assertSourceWorkspaceDetailsOpen($page, $otherTexts, false);
 
-    setCollapsibleEvidenceSelectByLabel($page, 'Supported field', PredicateKey::PersonGivenName->value);
+    setCollapsibleEvidencePredicate($page, PredicateKey::PersonGivenName->value);
     $page->assertSee('Given name');
     assertCollapsibleEvidenceLabelPresent($page, 'Expression', false);
     assertSourceWorkspaceDetailsOpen($page, $sourceDetails, true);
