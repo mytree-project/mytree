@@ -18,9 +18,9 @@ final readonly class SourceEvidenceGraphProjector
     /** @return array<string, mixed> */
     public function project(SourceDraftState $state, ?SourceDraftState $persistedState = null): array
     {
-        $persistedMentionIds = $this->ids($persistedState?->mentions ?? []);
-        $persistedClaimIds = $this->ids($persistedState?->claims ?? []);
-        $persistedLocatorIds = $this->ids($persistedState?->locators ?? []);
+        $persistedMentionIds = $this->ids($persistedState->mentions ?? []);
+        $persistedClaimIds = $this->ids($persistedState->claims ?? []);
+        $persistedLocatorIds = $this->ids($persistedState->locators ?? []);
 
         $mentionsById = [];
         foreach ($state->mentions as $mention) {
@@ -177,11 +177,20 @@ final readonly class SourceEvidenceGraphProjector
         if ($claim->value !== null) {
             $node['value'] = $this->claimValue($claim->value);
         } else {
-            $object = $mentionsById[$claim->objectMentionId?->value ?? ''] ?? null;
+            $objectMentionId = $claim->objectMentionId;
+            if ($objectMentionId === null) {
+                throw new InvalidArgumentException('Mention-reference Claim is missing its object Mention identity.');
+            }
+
+            $object = $mentionsById[$objectMentionId->value] ?? null;
+            if ($object === null) {
+                throw new InvalidArgumentException('Mention-reference Claim points outside the projected Source graph.');
+            }
+
             $reference = [
-                'local_key' => $object?->localKey ?? $claim->objectMentionId?->value,
+                'local_key' => $object->localKey,
             ];
-            if ($object !== null && isset($persistedMentionIds[$object->id->value])) {
+            if (isset($persistedMentionIds[$object->id->value])) {
                 $reference['id'] = $object->id->value;
             }
             $node['object'] = $reference;
@@ -277,17 +286,24 @@ final readonly class SourceEvidenceGraphProjector
             return 'value:'.$claim->value->type()->value.':'.$claim->value->raw();
         }
 
-        $object = $mentionsById[$claim->objectMentionId?->value ?? ''] ?? null;
+        $objectMentionId = $claim->objectMentionId;
+        if ($objectMentionId === null) {
+            return 'object:';
+        }
 
-        return 'object:'.($object?->localKey ?? $claim->objectMentionId?->value ?? '');
+        $object = $mentionsById[$objectMentionId->value] ?? null;
+
+        return 'object:'.($object === null ? $objectMentionId->value : $object->localKey);
     }
 
     private function locatorSortValue(SourceLocator $locator): string
     {
+        $sourceAssetId = $locator->sourceAssetId;
+
         return $locator->value->type()->value.'|'.json_encode(
             $this->sortObject($locator->value->data()),
             JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
-        ).'|'.($locator->sourceAssetId?->value ?? '');
+        ).'|'.($sourceAssetId === null ? '' : $sourceAssetId->value);
     }
 
     private function originHasAdditionalData(Claim $claim): bool
