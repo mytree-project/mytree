@@ -9,6 +9,7 @@
         'transcription' => __('ui.workspace.modes.transcription'),
         'translation' => __('ui.workspace.modes.translation'),
         'evidence' => __('ui.workspace.modes.evidence'),
+        'graph' => __('ui.workspace.modes.graph'),
     ];
     $sideLabel = __('ui.workspace.sides.'.$side);
     $panelLabel = __('ui.workspace.panel', ['side' => $sideLabel]);
