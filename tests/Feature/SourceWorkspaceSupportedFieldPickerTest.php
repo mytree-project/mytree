@@ -119,19 +119,71 @@ final class SourceWorkspaceSupportedFieldPickerTest extends TestCase
         $component = Livewire::test(SourceEditor::class, ['source' => $source->id->value])
             ->call('supportedFieldSelected', PredicateKey::PersonOccupation->value)
             ->assertSet('evidenceData.add_supported_field', null)
-            ->assertSet('evidenceData.fields.0.field_key', PredicateKey::PersonOccupation->value);
+            ->assertSet('evidenceData.fields', fn (mixed $fields): bool => $this->fieldKeyCount(
+                $fields,
+                PredicateKey::PersonOccupation->value,
+            ) === 1);
 
         $component
             ->call('supportedFieldSelected', PredicateKey::PersonOccupation->value)
-            ->assertSet('evidenceData.fields.1.field_key', PredicateKey::PersonOccupation->value);
+            ->assertSet('evidenceData.fields', fn (mixed $fields): bool => $this->fieldKeyCount(
+                $fields,
+                PredicateKey::PersonOccupation->value,
+            ) === 2);
 
         $component
             ->call('supportedFieldSelected', SupportedAcquisitionFieldCatalog::EVENT_CONTEXT_KEY)
-            ->assertSet('evidenceData.event_contexts.0.claims', []);
+            ->assertSet('evidenceData.event_contexts', fn (mixed $events): bool => $this->eventContextCount(
+                $events,
+            ) === 1);
 
         $component
             ->call('supportedFieldSelected', PredicateKey::EventDate->value)
-            ->assertSet('evidenceData.event_contexts.1.claims.0.field_key', PredicateKey::EventDate->value);
+            ->assertSet('evidenceData.event_contexts', fn (mixed $events): bool => $this->eventClaimKeyCount(
+                $events,
+                PredicateKey::EventDate->value,
+            ) === 1);
+    }
+
+    private function fieldKeyCount(mixed $fields, string $fieldKey): int
+    {
+        if (! is_array($fields)) {
+            return 0;
+        }
+
+        return count(array_filter(
+            $fields,
+            static fn (mixed $field): bool => is_array($field)
+                && ($field['field_key'] ?? null) === $fieldKey,
+        ));
+    }
+
+    private function eventContextCount(mixed $events): int
+    {
+        if (! is_array($events)) {
+            return 0;
+        }
+
+        return count(array_filter($events, 'is_array'));
+    }
+
+    private function eventClaimKeyCount(mixed $events, string $fieldKey): int
+    {
+        if (! is_array($events)) {
+            return 0;
+        }
+
+        $count = 0;
+
+        foreach ($events as $event) {
+            if (! is_array($event) || ! is_array($event['claims'] ?? null)) {
+                continue;
+            }
+
+            $count += $this->fieldKeyCount($event['claims'], $fieldKey);
+        }
+
+        return $count;
     }
 
     /**
