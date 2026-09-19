@@ -57,9 +57,17 @@ final class SourceWorkspaceSupportedFieldPickerTest extends TestCase
             )),
         );
 
+        $personGeneralGroup = $this->group($groups, 'person_general');
+        self::assertSame('Osoba · Informacje podstawowe', $personGeneralGroup['label']);
         self::assertSame(
-            'Osoba · Informacje podstawowe',
-            $this->group($groups, 'person_general')['label'],
+            [
+                PredicateKey::PersonGivenName->value,
+                PredicateKey::PersonSurname->value,
+                PredicateKey::PersonAge->value,
+                PredicateKey::PersonBirthDate->value,
+                PredicateKey::PersonDeathDate->value,
+            ],
+            array_column($personGeneralGroup['fields'], 'key'),
         );
         self::assertSame(
             'Osoba · Relacje',
