@@ -57,6 +57,7 @@ final class SourceAcquisitionPageTest extends TestCase
             ->assertSee('Transcription')
             ->assertSee('Translation')
             ->assertSee('Mentions &amp; Claims', false)
+            ->assertSee('Evidence graph (YAML)')
             ->assertSee('Attach new assets');
 
         $this->actingAs($regularUser)
@@ -90,7 +91,38 @@ final class SourceAcquisitionPageTest extends TestCase
             ->assertSet('rightPanel', 'translation')
             ->call('setWorkspacePanel', 'left', 'translation')
             ->assertSet('leftPanel', 'translation')
-            ->assertSet('rightPanel', 'transcription');
+            ->assertSet('rightPanel', 'transcription')
+            ->call('setWorkspacePanel', 'right', 'graph')
+            ->assertSet('leftPanel', 'translation')
+            ->assertSet('rightPanel', 'graph');
+    }
+
+    public function test_evidence_graph_panel_reflects_unsaved_form_state_and_downloads_yaml(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+        $source = app(CreateSource::class)->handle(SourceType::generic());
+
+        Livewire::test(SourceEditor::class, ['source' => $source->id->value])
+            ->fillForm([
+                'mentions' => [[
+                    'id' => null,
+                    'kind' => 'person',
+                    'local_key' => 'person.unsaved',
+                    'role' => null,
+                    'display_label' => 'Anna Nowak',
+                    'raw_data_json' => '{}',
+                ]],
+                'fields' => [],
+                'event_contexts' => [],
+            ], 'evidenceForm')
+            ->call('setWorkspacePanel', 'right', 'graph')
+            ->assertSet('rightPanel', 'graph')
+            ->assertSee('mytree.source-evidence-graph.v1')
+            ->assertSee('person.unsaved')
+            ->assertSee('Anna Nowak')
+            ->assertSee('Download evidence graph as YAML')
+            ->call('downloadEvidenceGraph')
+            ->assertFileDownloaded(sprintf('source-%s-evidence-graph.yml', $source->id->value));
     }
 
     public function test_blank_workspace_creates_source_with_scalar_metadata_and_repeated_source_text(): void
