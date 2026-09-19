@@ -177,7 +177,6 @@ function assertActiveSupportedFieldPaletteOptionVisible(
     ]), $visible);
 }
 
-
 function assertSingleSupportedFieldPaletteOpen(AwaitableWebpage $page): void
 {
     $page->assertScript(
@@ -185,7 +184,6 @@ function assertSingleSupportedFieldPaletteOpen(AwaitableWebpage $page): void
         true,
     );
 }
-
 
 it('opens a multi-column categorized predicate palette and filters by label or canonical key', function (): void {
     $source = app(CreateSource::class)->handle(SourceType::generic());
