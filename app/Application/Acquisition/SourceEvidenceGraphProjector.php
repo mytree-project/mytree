@@ -10,6 +10,7 @@ use App\Domain\Acquisition\ClaimValue;
 use App\Domain\Acquisition\Mention;
 use App\Domain\Acquisition\MentionKind;
 use App\Domain\Acquisition\SourceLocator;
+use InvalidArgumentException;
 
 final readonly class SourceEvidenceGraphProjector
 {
