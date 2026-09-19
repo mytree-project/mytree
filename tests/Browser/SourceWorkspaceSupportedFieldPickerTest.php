@@ -45,7 +45,6 @@ function supportedFieldPaletteTrigger(string $name): string
     );
 }
 
-
 function expandSupportedFieldPickerClaim(
     AwaitableWebpage $page,
     string $summary,
