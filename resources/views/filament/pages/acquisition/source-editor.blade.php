@@ -210,6 +210,36 @@
         .source-text-content-field textarea { min-height: 20rem; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; line-height: 1.5; }
         .source-workspace-empty { border: 1px dashed rgb(209 213 219); border-radius: .65rem; padding: 1rem; color: rgb(107 114 128); }
         .dark .source-workspace-empty { border-color: rgb(75 85 99); }
+        .source-evidence-graph { display: grid; gap: .85rem; min-height: 100%; }
+        .source-evidence-graph-toolbar { display: flex; align-items: start; justify-content: space-between; gap: 1rem; }
+        .source-evidence-graph-toolbar p { margin: 0; color: rgb(107 114 128); font-size: .875rem; }
+        .source-evidence-graph-download {
+            display: inline-flex;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: center;
+            width: 2.25rem;
+            height: 2.25rem;
+            border: 1px solid rgb(209 213 219);
+            border-radius: .5rem;
+        }
+        .source-evidence-graph-download svg { width: 1.15rem; height: 1.15rem; }
+        .source-evidence-graph-download:disabled { opacity: .45; cursor: not-allowed; }
+        .dark .source-evidence-graph-download { border-color: rgb(75 85 99); }
+        .source-evidence-graph-yaml {
+            min-height: 24rem;
+            margin: 0;
+            overflow: auto;
+            border: 1px solid rgb(229 231 235);
+            border-radius: .65rem;
+            padding: 1rem;
+            background: rgb(249 250 251);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: .82rem;
+            line-height: 1.55;
+            white-space: pre;
+        }
+        .dark .source-evidence-graph-yaml { border-color: rgb(55 65 81); background: rgb(3 7 18); }
         .source-workspace-secondary-button,
         .source-asset-toolbar button {
             border: 1px solid rgb(209 213 219);
