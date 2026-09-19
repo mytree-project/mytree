@@ -54,6 +54,7 @@ return [
             'transcription' => 'Transcription',
             'translation' => 'Translation',
             'evidence' => 'Mentions & Claims',
+            'graph' => 'Evidence graph (YAML)',
         ],
         'sides' => [
             'left' => 'left',
@@ -115,6 +116,13 @@ return [
             'add_field' => 'Add supported structured field',
             'add_field_help' => 'The picker is independent of the selected template. Event predicates create an event context because their subject must be an event Mention.',
             'choose_field' => 'Choose a field to add',
+        ],
+        'graph' => [
+            'description' => 'Read-only YAML projection of the current Source-local Mention/Claim graph. Valid unsaved form edits are reflected here.',
+            'download' => 'Download evidence graph as YAML',
+            'invalid' => 'The YAML graph cannot be generated until the structured Mention/Claim form contains valid, complete graph data.',
+            'unavailable' => 'The YAML graph is temporarily unavailable.',
+            'download_unavailable' => 'Evidence graph download unavailable',
         ],
         'template_incompatible' => 'The selected template is not active and compatible with the current Source type.',
         'saved' => 'Source saved',
