@@ -30,7 +30,7 @@ function openSupportedFieldPickerWorkspace(string $sourceId): AwaitableWebpage
     $pendingPage = visit('/admin/acquisition/source?source='.urlencode($sourceId));
     $page = $pendingPage->__call('assertPresent', ['[data-supported-field-palette-name="add_supported_field"]']);
 
-    if (! $page instanceof AwaitableWebpage) {
+    if (! ($page instanceof AwaitableWebpage)) {
         throw new RuntimeException('Browser visit did not resolve to an awaitable webpage.');
     }
 
