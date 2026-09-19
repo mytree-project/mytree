@@ -14,6 +14,15 @@ use Illuminate\Support\Facades\Lang;
 final readonly class SupportedFieldPickerPresentation
 {
     /** @var list<string> */
+    private const PERSON_GENERAL_ORDER = [
+        'person.given_name',
+        'person.surname',
+        'person.age',
+        'person.birth_date',
+        'person.death_date',
+    ];
+
+    /** @var list<string> */
     private const GROUP_ORDER = [
         'person_general',
         'person_relationships',
@@ -118,6 +127,21 @@ final readonly class SupportedFieldPickerPresentation
 
             $groups[$groupKey]['fields'][] = $this->field($descriptor);
         }
+
+        foreach ($groups as $groupKey => &$group) {
+            if ($groupKey !== 'person_general') {
+                continue;
+            }
+
+            usort($group['fields'], static function (array $left, array $right): int {
+                $leftOrder = array_search($left['key'], self::PERSON_GENERAL_ORDER, true);
+                $rightOrder = array_search($right['key'], self::PERSON_GENERAL_ORDER, true);
+
+                return ($leftOrder === false ? PHP_INT_MAX : $leftOrder)
+                    <=> ($rightOrder === false ? PHP_INT_MAX : $rightOrder);
+            });
+        }
+        unset($group);
 
         uksort($groups, static function (string $left, string $right): int {
             $leftOrder = array_search($left, self::GROUP_ORDER, true);
