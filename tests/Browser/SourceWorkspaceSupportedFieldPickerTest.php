@@ -12,7 +12,7 @@ function authenticateSupportedFieldPickerBrowserTestUser(): void
 {
     $guardName = config('auth.defaults.guard');
 
-    if (! is_string($guardName) || $guardName === '') {
+    if (!is_string($guardName) || $guardName === '') {
         throw new RuntimeException('Default authentication guard is not configured.');
     }
 
@@ -74,7 +74,7 @@ function expandSupportedFieldPickerClaim(
         '__SUMMARY__' => json_encode($summary, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
     ]));
 
-    if (! is_string($selector) || $selector === '') {
+    if (!is_string($selector) || $selector === '') {
         throw new RuntimeException("Could not resolve Claim repeater item [$summary].");
     }
 
@@ -128,7 +128,7 @@ function activeSupportedFieldPaletteOptionSelector(AwaitableWebpage $page, strin
         '__FIELD_KEY__' => json_encode($fieldKey, JSON_THROW_ON_ERROR),
     ]));
 
-    if (! is_string($selector) || $selector === '') {
+    if (!is_string($selector) || $selector === '') {
         throw new RuntimeException(sprintf('Could not resolve picker option [%s].', $fieldKey));
     }
 
