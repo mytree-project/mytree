@@ -20,7 +20,7 @@
         data-supported-field-palette
         data-supported-field-palette-name="{{ $getName() }}"
         x-data="{
-            state: $wire.{{ $applyStateBindingModifiers("$entangle('{$getStatePath()}')") }},
+            state: $wire.{{ $applyStateBindingModifiers("\$entangle('{$getStatePath()}')") }},
             query: '',
             labels: @js($labels),
             normalize(value) {
