@@ -45,6 +45,59 @@ function supportedFieldPaletteTrigger(string $name): string
     );
 }
 
+
+function expandSupportedFieldPickerClaim(
+    AwaitableWebpage $page,
+    string $summary,
+): void {
+    $selector = $page->script(strtr(<<<'JS'
+        (() => {
+            const expectedSummary = __SUMMARY__;
+            const normalize = (value) => value.replace(/\s+/g, ' ').trim();
+            const item = Array.from(document.querySelectorAll('.fi-fo-repeater-item')).find((candidate) => {
+                const label = candidate.querySelector('.fi-fo-repeater-item-header-label');
+
+                return label && normalize(label.textContent ?? '').includes(expectedSummary);
+            });
+
+            if (! item) {
+                throw new Error('Claim repeater item was not found: ' + expectedSummary);
+            }
+
+            if (! item.id) {
+                item.id = 'supported-field-picker-claim-' + Math.random().toString(36).slice(2);
+            }
+
+            return '#' + CSS.escape(item.id);
+        })()
+        JS, [
+        '__SUMMARY__' => json_encode($summary, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+    ]));
+
+    if (! is_string($selector) || $selector === '') {
+        throw new RuntimeException("Could not resolve Claim repeater item [$summary].");
+    }
+
+    $collapsed = $page->script(sprintf(
+        'document.querySelector(%s)?.classList.contains("fi-collapsed") === true',
+        json_encode($selector, JSON_THROW_ON_ERROR),
+    ));
+
+    if ($collapsed === true) {
+        $page->click(
+            $selector.' > .fi-fo-repeater-item-header > .fi-fo-repeater-item-header-end-actions > .fi-fo-repeater-item-header-collapsible-actions',
+        );
+    }
+
+    $page->assertScript(
+        sprintf(
+            'document.querySelector(%s)?.classList.contains("fi-collapsed") === false',
+            json_encode($selector, JSON_THROW_ON_ERROR),
+        ),
+        true,
+    );
+}
+
 function activeSupportedFieldPaletteOptionSelector(AwaitableWebpage $page, string $fieldKey): string
 {
     $selector = $page->script(strtr(<<<'JS'
@@ -169,10 +222,12 @@ it('opens a multi-column categorized predicate palette and filters by label or c
 
     $page
         ->click($occupation)
-        ->assertSee('Claim 1 · Occupation')
-        ->assertPresent('[data-supported-field-palette-name="field_key"]');
+        ->assertSee('Claim 1 · Occupation');
+
+    expandSupportedFieldPickerClaim($page, 'Claim 1 · Occupation');
 
     $page
+        ->assertVisible(supportedFieldPaletteTrigger('field_key'))
         ->click(supportedFieldPaletteTrigger('field_key'))
         ->assertVisible('[data-supported-field-palette-panel]');
 
