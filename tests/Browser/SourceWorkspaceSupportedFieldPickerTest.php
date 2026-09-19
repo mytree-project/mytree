@@ -177,15 +177,26 @@ function assertActiveSupportedFieldPaletteOptionVisible(
     ]), $visible);
 }
 
+
+function assertSingleSupportedFieldPaletteOpen(AwaitableWebpage $page): void
+{
+    $page->assertScript(
+        "Array.from(document.querySelectorAll('[data-supported-field-palette-panel]')).filter((candidate) => candidate.offsetParent !== null).length === 1",
+        true,
+    );
+}
+
+
 it('opens a multi-column categorized predicate palette and filters by label or canonical key', function (): void {
     $source = app(CreateSource::class)->handle(SourceType::generic());
 
     authenticateSupportedFieldPickerBrowserTestUser();
     $page = openSupportedFieldPickerWorkspace($source->id->value);
 
+    $page->click(supportedFieldPaletteTrigger('add_supported_field'));
+    assertSingleSupportedFieldPaletteOpen($page);
+
     $page
-        ->click(supportedFieldPaletteTrigger('add_supported_field'))
-        ->assertVisible('[data-supported-field-palette-panel]')
         ->assertSee('Person · Basic information')
         ->assertSee('Person · Relationships')
         ->assertSee('Person · Places')
@@ -227,8 +238,8 @@ it('opens a multi-column categorized predicate palette and filters by label or c
 
     $page
         ->assertVisible(supportedFieldPaletteTrigger('field_key'))
-        ->click(supportedFieldPaletteTrigger('field_key'))
-        ->assertVisible('[data-supported-field-palette-panel]');
+        ->click(supportedFieldPaletteTrigger('field_key'));
+    assertSingleSupportedFieldPaletteOpen($page);
 
     $page->assertScript(
         "(() => { const panel = Array.from(document.querySelectorAll('[data-supported-field-palette-panel]')).find((candidate) => candidate.offsetParent !== null); return panel.querySelector('[data-supported-field-palette-group=\"event_contexts\"]') === null && panel.querySelector('[data-supported-field-palette-group=\"event_general\"]') === null; })()",
@@ -242,9 +253,8 @@ it('opens a multi-column categorized predicate palette and filters by label or c
         ->assertSee('Claim 1 · Birth date')
         ->assertSee('Expression');
 
-    $page
-        ->click(supportedFieldPaletteTrigger('add_supported_field'))
-        ->assertVisible('[data-supported-field-palette-panel]');
+    $page->click(supportedFieldPaletteTrigger('add_supported_field'));
+    assertSingleSupportedFieldPaletteOpen($page);
 
     assertActiveSupportedFieldPaletteOptionVisible($page, 'person.occupation', true);
     $secondOccupation = activeSupportedFieldPaletteOptionSelector($page, 'person.occupation');
