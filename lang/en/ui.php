@@ -24,6 +24,8 @@ return [
         'details_title' => 'Source details',
         'close_details' => 'Close details',
         'id' => 'ID',
+        'details_loading' => 'Loading Source details…',
+        'evidence_graph_yaml' => 'Evidence graph (YAML)',
         'empty' => 'No Sources match the current search.',
         'no_metadata' => 'No metadata',
     ],
