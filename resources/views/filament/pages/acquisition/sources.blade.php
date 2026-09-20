@@ -1,7 +1,7 @@
 <x-filament-panels::page>
     <div
         class="space-y-6"
-        x-data="{ detailsOpen: false, details: null }"
+        x-data="{ detailsOpen: false, details: null, detailsLoading: false }"
         @keydown.escape.window="detailsOpen = false"
     >
         <x-filament::input.wrapper>
@@ -210,6 +210,29 @@
                 font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
                 font-size: 0.75rem;
             }
+
+            .mytree-source-details-loading {
+                padding: 1.5rem;
+                color: rgb(107 114 128);
+            }
+
+            .mytree-source-details-yaml {
+                max-height: 32rem;
+                overflow: auto;
+                border: 1px solid rgb(229 231 235);
+                border-radius: 0.5rem;
+                padding: 0.75rem;
+                background: rgb(249 250 251);
+                font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+                font-size: 0.75rem;
+                line-height: 1.5;
+                white-space: pre;
+            }
+
+            .dark .mytree-source-details-yaml {
+                border-color: rgb(55 65 81);
+                background: rgb(3 7 18);
+            }
         </style>
 
         <div class="mytree-sources-table-wrapper rounded-xl border border-gray-200 bg-white dark:border-white/10 dark:bg-gray-900">
@@ -288,7 +311,15 @@
                                     <button
                                         type="button"
                                         class="mytree-source-details-button"
-                                        x-on:click="details = @js($this->sourceDetails($source)); detailsOpen = true; $nextTick(() => $refs.detailsPanel?.focus())"
+                                        x-on:click="
+                                            details = null;
+                                            detailsOpen = true;
+                                            detailsLoading = true;
+                                            $nextTick(() => $refs.detailsPanel?.focus());
+                                            $wire.loadSourceDetails(@js($source->id->value))
+                                                .then((loadedDetails) => details = loadedDetails)
+                                                .finally(() => detailsLoading = false);
+                                        "
                                     >
                                         {{ __('ui.sources.details') }}
                                     </button>
@@ -347,7 +378,16 @@
                     </button>
                 </header>
 
-                <dl class="mytree-source-details-body" x-show="details">
+                <div
+                    class="mytree-source-details-loading"
+                    x-show="detailsLoading"
+                    role="status"
+                    aria-live="polite"
+                >
+                    {{ __('ui.sources.details_loading') }}
+                </div>
+
+                <dl class="mytree-source-details-body" x-show="details && ! detailsLoading">
                     <div class="mytree-source-details-row">
                         <dt>{{ __('ui.sources.source') }}</dt>
                         <dd class="font-medium text-gray-950 dark:text-white" x-text="details?.name"></dd>
@@ -370,6 +410,12 @@
                     <div class="mytree-source-details-row">
                         <dt>{{ __('ui.sources.metadata') }}</dt>
                         <dd x-text="details?.metadata"></dd>
+                    </div>
+                    <div class="mytree-source-details-row">
+                        <dt>{{ __('ui.sources.evidence_graph_yaml') }}</dt>
+                        <dd>
+                            <pre class="mytree-source-details-yaml" data-source-details-yaml x-text="details?.graph_yaml"></pre>
+                        </dd>
                     </div>
                 </dl>
             </aside>
