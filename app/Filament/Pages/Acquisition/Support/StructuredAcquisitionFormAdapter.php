@@ -7,7 +7,6 @@ namespace App\Filament\Pages\Acquisition\Support;
 use App\Application\Acquisition\SourceDraft;
 use App\Application\Acquisition\SupportedAcquisitionClaimInput;
 use App\Application\Acquisition\SupportedAcquisitionEditInput;
-use App\Application\Acquisition\SupportedAcquisitionEventContextInput;
 use App\Application\Acquisition\SupportedAcquisitionFieldCatalog;
 use App\Application\Acquisition\SupportedAcquisitionFieldDescriptor;
 use App\Application\Acquisition\SupportedAcquisitionFieldEditorKind;
@@ -369,7 +368,6 @@ final readonly class StructuredAcquisitionFormAdapter
             $fields[] = $this->claimInput($row, null, "data.fields.$index");
         }
 
-        $eventContexts = [];
         foreach (array_values($eventRows) as $eventIndex => $eventRow) {
             if (! is_array($eventRow)) {
                 throw ValidationException::withMessages(["data.event_contexts.$eventIndex" => 'Invalid event context row.']);
@@ -384,7 +382,8 @@ final readonly class StructuredAcquisitionFormAdapter
                 throw ValidationException::withMessages(["data.event_contexts.$eventIndex.claims" => 'Event Claims must be a list.']);
             }
 
-            $claims = [];
+            $mentions[] = $event;
+
             foreach (array_values($claimRows) as $claimIndex => $claimRow) {
                 if (! is_array($claimRow)) {
                     throw ValidationException::withMessages(["data.event_contexts.$eventIndex.claims.$claimIndex" => 'Invalid event Claim row.']);
@@ -392,17 +391,16 @@ final readonly class StructuredAcquisitionFormAdapter
                 if ($this->isEmptyClaimRow($claimRow)) {
                     continue;
                 }
-                $claims[] = $this->claimInput(
+                $fields[] = $this->claimInput(
                     $claimRow,
                     $event->localKey,
                     "data.event_contexts.$eventIndex.claims.$claimIndex",
                 );
             }
 
-            $eventContexts[] = new SupportedAcquisitionEventContextInput($event, $claims);
         }
 
-        return new SupportedAcquisitionEditInput($mentions, $fields, $eventContexts);
+        return new SupportedAcquisitionEditInput($mentions, $fields);
     }
 
     /** @return list<Component> */
