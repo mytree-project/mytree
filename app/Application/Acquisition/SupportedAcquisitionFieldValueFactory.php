@@ -47,7 +47,7 @@ final class SupportedAcquisitionFieldValueFactory
                 $input->enumKey ?? throw new InvalidArgumentException('Enum field requires a controlled key.'),
             ),
             SupportedAcquisitionFieldEditorKind::MentionReference,
-            SupportedAcquisitionFieldEditorKind::EventContext => throw new InvalidArgumentException(sprintf(
+            SupportedAcquisitionFieldEditorKind::MentionPreset => throw new InvalidArgumentException(sprintf(
                 'Supported acquisition field "%s" is not a literal editor.',
                 $descriptor->key,
             )),
