@@ -26,6 +26,7 @@ return [
         'id' => 'ID',
         'details_loading' => 'Ładowanie szczegółów źródła…',
         'evidence_graph_yaml' => 'Graf źródła (YAML)',
+        'download_evidence_graph_yaml' => 'Pobierz graf źródła jako YAML',
         'empty' => 'Brak źródeł pasujących do wyszukiwania.',
         'no_metadata' => 'Brak metadanych',
     ],
