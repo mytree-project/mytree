@@ -29,16 +29,8 @@ final readonly class EvidenceRepeaterPresentation
                 continue;
             }
 
-            switch ($component->getName()) {
-                case 'mentions':
-                    $this->configureMentions($component);
-                    break;
-                case 'fields':
-                    $this->configureClaims($component, includeSubject: true, configureCollectionPresentation: true);
-                    break;
-                case 'event_contexts':
-                    $this->configureEvents($component);
-                    break;
+            if ($component->getName() === 'mentions') {
+                $this->configureMentions($component);
             }
         }
     }
@@ -56,29 +48,32 @@ final readonly class EvidenceRepeaterPresentation
                 $state,
                 $index + 1,
             ));
-    }
 
-    private function configureClaims(
-        Repeater $repeater,
-        bool $includeSubject,
-        bool $configureCollectionPresentation = false,
-    ): void {
-        if ($configureCollectionPresentation) {
-            $repeater
-                ->label(__('evidence.claims'))
-                ->helperText(__('evidence.claims_help'))
-                ->addActionLabel(__('evidence.add_claim'));
+        $childSchema = $repeater->getChildSchema();
+        if ($childSchema === null) {
+            return;
         }
 
+        foreach ($childSchema->getComponents(withHidden: true) as $component) {
+            if ($component instanceof Repeater && $component->getName() === 'claims') {
+                $this->configureClaims($component);
+            }
+        }
+    }
+
+    private function configureClaims(Repeater $repeater): void
+    {
         $repeater
+            ->label(__('evidence.claims'))
+            ->helperText(__('evidence.claims_help'))
+            ->addActionLabel(__('evidence.add_claim'))
             ->extraAttributes([
-                'data-evidence-repeater' => $includeSubject ? 'claims' : 'event-claims',
+                'data-evidence-repeater' => 'claims',
             ], merge: true)
             ->collapsible()
             ->collapsed()
             ->itemLabel(fn (array $state, int $index): string => $this->claimSummary(
                 $state,
-                $includeSubject,
                 $index + 1,
             ));
 
@@ -91,32 +86,6 @@ final readonly class EvidenceRepeaterPresentation
             'integer_value',
             'boolean_value',
         ]);
-    }
-
-    private function configureEvents(Repeater $repeater): void
-    {
-        $repeater
-            ->extraAttributes(['data-evidence-repeater' => 'events'], merge: true)
-            ->label(__('evidence.events'))
-            ->helperText(__('evidence.events_help'))
-            ->addActionLabel(__('evidence.add_event'))
-            ->collapsible()
-            ->collapsed()
-            ->itemLabel(fn (array $state, int $index): string => $this->eventSummary(
-                $state,
-                $index + 1,
-            ));
-
-        $childSchema = $repeater->getChildSchema();
-        if ($childSchema === null) {
-            return;
-        }
-
-        foreach ($childSchema->getComponents(withHidden: true) as $component) {
-            if ($component instanceof Repeater && $component->getName() === 'claims') {
-                $this->configureClaims($component, includeSubject: false);
-            }
-        }
     }
 
     /**
@@ -143,36 +112,20 @@ final readonly class EvidenceRepeaterPresentation
     {
         return $this->joinSummary([
             sprintf('%s %d', __('evidence.mention'), $number),
+            $this->summaryString($state['kind'] ?? null),
             $this->summaryString($state['display_label'] ?? null),
             $this->summaryString($state['local_key'] ?? null),
         ]);
     }
 
     /** @param  array<string, mixed>  $state */
-    private function eventSummary(array $state, int $number): string
+    private function claimSummary(array $state, int $number): string
     {
         return $this->joinSummary([
-            sprintf('%s %d', __('evidence.event'), $number),
-            $this->summaryString($state['display_label'] ?? null),
-            $this->summaryString($state['local_key'] ?? null),
-        ]);
-    }
-
-    /** @param  array<string, mixed>  $state */
-    private function claimSummary(array $state, bool $includeSubject, int $number): string
-    {
-        $parts = [
             sprintf('%s %d', __('evidence.claim'), $number),
             $this->fieldLabel($state['field_key'] ?? null),
-        ];
-
-        if ($includeSubject) {
-            $parts[] = $this->summaryString($state['subject_local_key'] ?? null);
-        }
-
-        $parts[] = $this->claimValueSummary($state);
-
-        return $this->joinSummary($parts);
+            $this->claimValueSummary($state),
+        ]);
     }
 
     private function fieldLabel(mixed $fieldKey): string
