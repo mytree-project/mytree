@@ -189,7 +189,7 @@ final readonly class SupportedFieldPickerPresentation
 
     private function groupKey(SupportedAcquisitionFieldDescriptor $descriptor): string
     {
-        if ($descriptor->editorKind === SupportedAcquisitionFieldEditorKind::EventContext) {
+        if ($descriptor->editorKind === SupportedAcquisitionFieldEditorKind::MentionPreset) {
             return 'event_contexts';
         }
 
@@ -264,7 +264,7 @@ final readonly class SupportedFieldPickerPresentation
                 ? null
                 : $this->translation($helpKey, $descriptor->helpText),
             'repeatable' => $descriptor->repeatable,
-            'event_context' => $descriptor->editorKind === SupportedAcquisitionFieldEditorKind::EventContext,
+            'event_context' => $descriptor->editorKind === SupportedAcquisitionFieldEditorKind::MentionPreset,
         ];
     }
 
