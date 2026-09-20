@@ -289,6 +289,18 @@ it('collapses Mention cards and their nested Claims while preserving unsaved sta
     $displayLabelSelector = setCollapsibleEvidenceField($page, 'Display label', 'Valentin Updated');
     $page->assertSee('person · Valentin Updated · person_valentin');
 
+    // Display label is live-on-blur, so Livewire may replace the repeater DOM.
+    // Re-resolve temporary DOM selectors before interacting with those cards again.
+    $personSelector = collapsibleEvidenceItemSelectorBySummary(
+        $page,
+        'person · Valentin Updated · person_valentin',
+    );
+    $claimSelector = collapsibleEvidenceItemSelectorBySummary($page, 'Claim 1 · Given name · Valentin');
+    $eventSelector = collapsibleEvidenceItemSelectorBySummary(
+        $page,
+        'event · Birth of Peter · event_birth',
+    );
+
     toggleCollapsibleEvidenceItem($page, $claimSelector);
     assertCollapsibleEvidenceItemState($page, $claimSelector, false);
     toggleCollapsibleEvidenceItem($page, $claimSelector);
