@@ -29,7 +29,7 @@ The current implemented baseline contains:
 - transactional `SourceDraft` load/validate/save application workflows with optimistic base-state conflict detection and semantic no-op handling,
 - an application-owned supported acquisition field catalog with typed Mention/Claim editing, repeatable fields and reified event contexts,
 - versioned Source Type Templates used only as presentation configuration for Basic Source Acquisition,
-- an integrated Filament Basic Source Acquisition workspace for create/edit, template selection, metadata/text/assets and supported structured fields,
+- an integrated Filament Basic Source Acquisition workspace for create/edit, template selection, metadata/text/assets, supported structured fields and a downloadable read-only YAML evidence graph,
 - Eloquent persistence adapters and migrations for the implemented Acquisition contracts.
 
 Source Acquisition is therefore implemented through the M4 Basic Source Acquisition baseline. The editing UI composes one Source-scoped draft and saves through Application use cases; templates and supported-field metadata do not become a second domain model or overwrite Source/Mention/Claim truth. Existing unsupported data is not silently discarded, and persisted Claim provenance, qualifiers and SourceLocators remain part of the authoritative acquisition state.

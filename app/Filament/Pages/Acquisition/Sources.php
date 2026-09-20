@@ -5,10 +5,15 @@ declare(strict_types=1);
 namespace App\Filament\Pages\Acquisition;
 
 use App\Application\Acquisition\BrowseSources;
+use App\Application\Acquisition\LoadSourceDraft;
 use App\Application\Acquisition\SourceBrowseItem;
+use App\Application\Acquisition\SourceEvidenceGraphYamlExporter;
+use App\Application\Acquisition\SourceNotFound;
+use App\Domain\Acquisition\SourceId;
 use App\Filament\Support\SourceTypePresentationCatalog;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class Sources extends Page
 {
@@ -64,9 +69,51 @@ final class Sources extends Page
     }
 
     /**
+     * @return array{id: string, name: string, type: string, type_diagnostic: string, revision: int, metadata: string, graph_yaml: string}
+     */
+    public function loadSourceDetails(string $sourceId): array
+    {
+        $id = new SourceId($sourceId);
+        $source = app(BrowseSources::class)->find($id);
+
+        if ($source === null) {
+            throw SourceNotFound::forId($id);
+        }
+
+        return [
+            ...$this->sourceDetails($source),
+            'graph_yaml' => $this->sourceEvidenceGraphYaml($id),
+        ];
+    }
+
+    public function downloadSourceDetailsGraph(string $sourceId): StreamedResponse
+    {
+        $id = new SourceId($sourceId);
+        $yaml = $this->sourceEvidenceGraphYaml($id);
+
+        return response()->streamDownload(
+            static function () use ($yaml): void {
+                echo $yaml;
+            },
+            sprintf('source-%s-evidence-graph.yml', $id->value),
+            ['Content-Type' => 'application/yaml; charset=UTF-8'],
+        );
+    }
+
+    private function sourceEvidenceGraphYaml(SourceId $sourceId): string
+    {
+        $draft = app(LoadSourceDraft::class)->handle($sourceId);
+
+        return app(SourceEvidenceGraphYamlExporter::class)->export(
+            $draft->current,
+            $draft->current,
+        );
+    }
+
+    /**
      * @return array{id: string, name: string, type: string, type_diagnostic: string, revision: int, metadata: string}
      */
-    public function sourceDetails(SourceBrowseItem $source): array
+    private function sourceDetails(SourceBrowseItem $source): array
     {
         return [
             'id' => $source->id->value,

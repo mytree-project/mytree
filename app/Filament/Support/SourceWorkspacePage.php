@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Support;
 
 use App\Application\Acquisition\BrowseSources;
+use App\Application\Acquisition\BuildSourceDraftState;
 use App\Application\Acquisition\InvalidSourceDraft;
 use App\Application\Acquisition\ListSourceTypeTemplates;
 use App\Application\Acquisition\LoadSourceDraft;
@@ -13,8 +14,11 @@ use App\Application\Acquisition\SourceDraft;
 use App\Application\Acquisition\SourceDraftBaseState;
 use App\Application\Acquisition\SourceDraftChanges;
 use App\Application\Acquisition\SourceDraftConflict;
+use App\Application\Acquisition\SourceDraftOperationInvalid;
 use App\Application\Acquisition\SourceDraftSourceChanges;
+use App\Application\Acquisition\SourceDraftState;
 use App\Application\Acquisition\SourceDraftValidationResult;
+use App\Application\Acquisition\SourceEvidenceGraphYamlExporter;
 use App\Application\Acquisition\SourceIdentifierGenerator;
 use App\Application\Acquisition\SourceNotFound;
 use App\Application\Acquisition\SourceTypeTemplateVersion;
@@ -49,6 +53,7 @@ use Filament\Schemas\Schema;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 /**
@@ -64,7 +69,7 @@ use Throwable;
 abstract class SourceWorkspacePage extends Page
 {
     /** @var list<string> */
-    private const WORKSPACE_MODES = ['asset', 'transcription', 'translation', 'evidence'];
+    private const WORKSPACE_MODES = ['asset', 'transcription', 'translation', 'evidence', 'graph'];
 
     protected static ?string $slug = 'acquisition/source';
 
@@ -331,6 +336,57 @@ abstract class SourceWorkspacePage extends Page
         }
     }
 
+    /**
+     * @return array{yaml: ?string, error: ?string}
+     */
+    public function evidenceGraphPresentation(): array
+    {
+        try {
+            [$state, $persistedState] = $this->evidenceGraphStates();
+
+            return [
+                'yaml' => app(SourceEvidenceGraphYamlExporter::class)->export($state, $persistedState),
+                'error' => null,
+            ];
+        } catch (ValidationException|InvalidArgumentException|SourceDraftConflict|SourceDraftOperationInvalid) {
+            return [
+                'yaml' => null,
+                'error' => __('ui.workspace.graph.invalid'),
+            ];
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return [
+                'yaml' => null,
+                'error' => __('ui.workspace.graph.unavailable'),
+            ];
+        }
+    }
+
+    public function downloadEvidenceGraph(): ?StreamedResponse
+    {
+        $presentation = $this->evidenceGraphPresentation();
+        if ($presentation['yaml'] === null) {
+            Notification::make()
+                ->title(__('ui.workspace.graph.download_unavailable'))
+                ->body($presentation['error'] ?? __('ui.workspace.graph.unavailable'))
+                ->warning()
+                ->send();
+
+            return null;
+        }
+
+        $yaml = $presentation['yaml'];
+
+        return response()->streamDownload(
+            static function () use ($yaml): void {
+                echo $yaml;
+            },
+            $this->evidenceGraphFilename(),
+            ['Content-Type' => 'application/yaml; charset=UTF-8'],
+        );
+    }
+
     public function addSourceText(string $kind): void
     {
         if (! in_array($kind, array_column(SourceTextKind::cases(), 'value'), true)) {
@@ -491,6 +547,30 @@ abstract class SourceWorkspacePage extends Page
             updateLocators: $structuredChanges->updateLocators,
             removeLocatorIds: $structuredChanges->removeLocatorIds,
         );
+    }
+
+    /**
+     * @return array{0: SourceDraftState, 1: ?SourceDraftState}
+     */
+    private function evidenceGraphStates(): array
+    {
+        $draft = $this->draftForSave();
+        $evidenceData = is_array($this->evidenceData) ? $this->evidenceData : [];
+        $structuredInput = app(StructuredAcquisitionFormAdapter::class)->editInput($evidenceData);
+        $structuredChanges = app(SupportedAcquisitionDraftEditor::class)->changes($draft, $structuredInput);
+        $state = app(BuildSourceDraftState::class)->project($draft->withChanges($structuredChanges));
+
+        return [
+            $state,
+            $draft->isNew ? null : $draft->current,
+        ];
+    }
+
+    private function evidenceGraphFilename(): string
+    {
+        return $this->sourceId === null
+            ? 'source-evidence-graph.yml'
+            : sprintf('source-%s-evidence-graph.yml', $this->sourceId);
     }
 
     private function draftForSave(): SourceDraft

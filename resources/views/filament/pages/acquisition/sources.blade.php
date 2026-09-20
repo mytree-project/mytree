@@ -1,7 +1,7 @@
 <x-filament-panels::page>
     <div
         class="space-y-6"
-        x-data="{ detailsOpen: false, details: null }"
+        x-data="{ detailsOpen: false, details: null, detailsLoading: false }"
         @keydown.escape.window="detailsOpen = false"
     >
         <x-filament::input.wrapper>
@@ -204,11 +204,68 @@
                 overflow-wrap: anywhere;
             }
 
+            .mytree-source-details-row-heading {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 0.75rem;
+            }
+
+            .mytree-source-details-yaml-download {
+                display: inline-flex;
+                flex: 0 0 auto;
+                align-items: center;
+                justify-content: center;
+                width: 2rem;
+                height: 2rem;
+                border: 1px solid rgb(209 213 219);
+                border-radius: 0.5rem;
+                color: rgb(75 85 99);
+            }
+
+            .mytree-source-details-yaml-download:hover,
+            .mytree-source-details-yaml-download:focus-visible {
+                color: rgb(17 24 39);
+            }
+
+            .mytree-source-details-yaml-download:focus-visible {
+                outline: 2px solid currentColor;
+                outline-offset: 2px;
+            }
+
+            .dark .mytree-source-details-yaml-download {
+                border-color: rgb(75 85 99);
+                color: rgb(209 213 219);
+            }
+
             .mytree-source-details-diagnostic {
                 margin-top: 0.25rem;
                 color: rgb(107 114 128);
                 font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
                 font-size: 0.75rem;
+            }
+
+            .mytree-source-details-loading {
+                padding: 1.5rem;
+                color: rgb(107 114 128);
+            }
+
+            .mytree-source-details-yaml {
+                max-height: 32rem;
+                overflow: auto;
+                border: 1px solid rgb(229 231 235);
+                border-radius: 0.5rem;
+                padding: 0.75rem;
+                background: rgb(249 250 251);
+                font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+                font-size: 0.75rem;
+                line-height: 1.5;
+                white-space: pre;
+            }
+
+            .dark .mytree-source-details-yaml {
+                border-color: rgb(55 65 81);
+                background: rgb(3 7 18);
             }
         </style>
 
@@ -288,7 +345,16 @@
                                     <button
                                         type="button"
                                         class="mytree-source-details-button"
-                                        x-on:click="details = @js($this->sourceDetails($source)); detailsOpen = true; $nextTick(() => $refs.detailsPanel?.focus())"
+                                        data-source-details-trigger="{{ $source->id->value }}"
+                                        x-on:click="
+                                            details = null;
+                                            detailsOpen = true;
+                                            detailsLoading = true;
+                                            $nextTick(() => $refs.detailsPanel?.focus());
+                                            $wire.loadSourceDetails(@js($source->id->value))
+                                                .then((loadedDetails) => details = loadedDetails)
+                                                .finally(() => detailsLoading = false);
+                                        "
                                     >
                                         {{ __('ui.sources.details') }}
                                     </button>
@@ -347,7 +413,16 @@
                     </button>
                 </header>
 
-                <dl class="mytree-source-details-body" x-show="details">
+                <div
+                    class="mytree-source-details-loading"
+                    x-show="detailsLoading"
+                    role="status"
+                    aria-live="polite"
+                >
+                    {{ __('ui.sources.details_loading') }}
+                </div>
+
+                <dl class="mytree-source-details-body" x-show="details && ! detailsLoading">
                     <div class="mytree-source-details-row">
                         <dt>{{ __('ui.sources.source') }}</dt>
                         <dd class="font-medium text-gray-950 dark:text-white" x-text="details?.name"></dd>
@@ -370,6 +445,25 @@
                     <div class="mytree-source-details-row">
                         <dt>{{ __('ui.sources.metadata') }}</dt>
                         <dd x-text="details?.metadata"></dd>
+                    </div>
+                    <div class="mytree-source-details-row">
+                        <dt class="mytree-source-details-row-heading">
+                            <span>{{ __('ui.sources.evidence_graph_yaml') }}</span>
+                            <button
+                                type="button"
+                                class="mytree-source-details-yaml-download"
+                                x-on:click="$wire.downloadSourceDetailsGraph(details.id)"
+                                x-bind:disabled="! details?.id"
+                                aria-label="{{ __('ui.sources.download_evidence_graph_yaml') }}"
+                                title="{{ __('ui.sources.download_evidence_graph_yaml') }}"
+                                data-source-details-yaml-download
+                            >
+                                <x-filament::icon icon="heroicon-m-arrow-down-tray" class="h-4 w-4" />
+                            </button>
+                        </dt>
+                        <dd>
+                            <pre class="mytree-source-details-yaml" data-source-details-yaml x-text="details?.graph_yaml"></pre>
+                        </dd>
                     </div>
                 </dl>
             </aside>

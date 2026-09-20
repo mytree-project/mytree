@@ -131,4 +131,44 @@
             {{ $this->evidenceForm }}
         </div>
         @break
+
+    @case('graph')
+        @php($evidenceGraph = $this->evidenceGraphPresentation())
+
+        <div class="source-evidence-graph" data-source-evidence-graph>
+            <div class="source-evidence-graph-toolbar">
+                <p>{{ __('ui.workspace.graph.description') }}</p>
+
+                <button
+                    type="button"
+                    class="source-evidence-graph-download"
+                    wire:click="downloadEvidenceGraph"
+                    wire:loading.attr="disabled"
+                    wire:target="downloadEvidenceGraph"
+                    aria-label="{{ __('ui.workspace.graph.download') }}"
+                    title="{{ __('ui.workspace.graph.download') }}"
+                    @disabled($evidenceGraph['yaml'] === null)
+                    data-source-evidence-graph-download
+                >
+                    <svg
+                        aria-hidden="true"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                    >
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M5 15v4h14v-4" />
+                    </svg>
+                </button>
+            </div>
+
+            @if ($evidenceGraph['yaml'] === null)
+                <div class="source-workspace-empty" data-source-evidence-graph-error>
+                    {{ $evidenceGraph['error'] }}
+                </div>
+            @else
+                <pre class="source-evidence-graph-yaml" data-source-evidence-graph-yaml><code>{{ $evidenceGraph['yaml'] }}</code></pre>
+            @endif
+        </div>
+        @break
 @endswitch
