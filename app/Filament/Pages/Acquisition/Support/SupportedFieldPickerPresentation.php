@@ -74,9 +74,13 @@ final readonly class SupportedFieldPickerPresentation
      */
     public function claimGroups(bool $eventOnly): array
     {
-        return $this->claimGroupsForMentionKind(
-            $eventOnly ? MentionKind::EVENT : MentionKind::PERSON,
-        );
+        $descriptors = array_values(array_filter(
+            $this->catalog->all(),
+            static fn (SupportedAcquisitionFieldDescriptor $descriptor): bool => $descriptor->isDirectClaim()
+                && ($descriptor->subjectMentionKind === MentionKind::EVENT) === $eventOnly,
+        ));
+
+        return $this->groups($descriptors);
     }
 
     /**
