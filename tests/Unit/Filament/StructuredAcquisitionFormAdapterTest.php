@@ -32,44 +32,17 @@ final class StructuredAcquisitionFormAdapterTest extends TestCase
         );
         self::assertSame(
             [
-                'person.child' => 'Jan Kowalski · person.child',
-                'person.witness' => 'person.witness',
-            ],
-            $adapter->mentionPickerOptions($state, PredicateKey::PersonSpouse->value, subject: false),
-        );
-    }
-
-    public function test_event_claim_object_options_are_filtered_while_event_subject_is_available_from_context_state(): void
-    {
-        $adapter = new StructuredAcquisitionFormAdapter(new SupportedAcquisitionFieldCatalog);
-        $state = $this->state();
-
-        self::assertSame(
-            [
-                'place.birth' => 'Wieś X · place.birth',
-            ],
-            $adapter->mentionPickerOptions($state, PredicateKey::EventPlace->value, subject: false),
-        );
-        self::assertSame(
-            [
-                'person.child' => 'Jan Kowalski · person.child',
-                'person.witness' => 'person.witness',
-            ],
-            $adapter->mentionPickerOptions($state, PredicateKey::EventWitness->value, subject: false),
-        );
-        self::assertSame(
-            [
                 'event.birth.1' => 'Birth record event · event.birth.1',
             ],
             $adapter->mentionPickerOptions($state, PredicateKey::EventDate->value, subject: true),
         );
     }
 
-    public function test_event_context_presentation_flattens_to_the_canonical_mention_and_claim_input(): void
+    public function test_event_mention_and_its_claims_use_the_same_canonical_input_path_as_other_mentions(): void
     {
         $adapter = new StructuredAcquisitionFormAdapter(new SupportedAcquisitionFieldCatalog);
         $state = $this->state();
-        $state['event_contexts'][0]['claims'] = [[
+        $state['mentions'][4]['claims'] = [[
             'field_key' => PredicateKey::EventWitness->value,
             'object_local_key' => 'person.witness',
         ]];
@@ -77,10 +50,7 @@ final class StructuredAcquisitionFormAdapterTest extends TestCase
         $input = $adapter->editInput($state);
 
         self::assertCount(5, $input->mentions);
-        self::assertSame(
-            MentionKind::EVENT,
-            $input->mentions[4]->kind->key,
-        );
+        self::assertSame(MentionKind::EVENT, $input->mentions[4]->kind->key);
         self::assertSame('event.birth.1', $input->mentions[4]->localKey);
         self::assertCount(1, $input->fields);
         self::assertSame(PredicateKey::EventWitness->value, $input->fields[0]->fieldKey);
@@ -88,23 +58,43 @@ final class StructuredAcquisitionFormAdapterTest extends TestCase
         self::assertSame('person.witness', $input->fields[0]->objectLocalKey);
     }
 
-    public function test_literal_fields_do_not_offer_object_mentions(): void
+    public function test_template_presentation_groups_defaults_under_subject_kind_mentions_without_persisting_empty_rows(): void
     {
         $adapter = new StructuredAcquisitionFormAdapter(new SupportedAcquisitionFieldCatalog);
 
-        self::assertSame(
-            [],
-            $adapter->mentionPickerOptions($this->state(), PredicateKey::PersonOccupation->value, subject: false),
+        $state = $adapter->applyTemplatePresentation(
+            ['mentions' => []],
+            [
+                PredicateKey::PersonGivenName->value,
+                PredicateKey::PersonSurname->value,
+                SupportedAcquisitionFieldCatalog::EVENT_CONTEXT_KEY,
+                PredicateKey::EventDate->value,
+            ],
         );
+
+        self::assertCount(2, $state['mentions']);
+        self::assertSame(MentionKind::PERSON, $state['mentions'][0]['kind']);
+        self::assertSame(
+            [PredicateKey::PersonGivenName->value, PredicateKey::PersonSurname->value],
+            array_column($state['mentions'][0]['claims'], 'field_key'),
+        );
+        self::assertSame(MentionKind::EVENT, $state['mentions'][1]['kind']);
+        self::assertSame(
+            [PredicateKey::EventDate->value],
+            array_column($state['mentions'][1]['claims'], 'field_key'),
+        );
+
+        $input = $adapter->editInput($state);
+        self::assertSame([], $input->mentions);
+        self::assertSame([], $input->fields);
     }
 
     public function test_text_field_ignores_stale_controls_from_other_value_types(): void
     {
         $adapter = new StructuredAcquisitionFormAdapter(new SupportedAcquisitionFieldCatalog);
         $state = $this->state();
-        $state['fields'] = [[
+        $state['mentions'][0]['claims'] = [[
             'field_key' => PredicateKey::PersonGivenName->value,
-            'subject_local_key' => 'person.child',
             'object_local_key' => 'place.birth',
             'value_raw' => 'Jan',
             'expression_kind' => 'range',
@@ -118,6 +108,7 @@ final class StructuredAcquisitionFormAdapterTest extends TestCase
 
         $claim = $adapter->editInput($state)->fields[0];
 
+        self::assertSame('person.child', $claim->subjectLocalKey);
         self::assertNull($claim->objectLocalKey);
         self::assertNotNull($claim->value);
         self::assertSame('Jan', $claim->value->rawValue);
@@ -134,9 +125,8 @@ final class StructuredAcquisitionFormAdapterTest extends TestCase
     {
         $adapter = new StructuredAcquisitionFormAdapter(new SupportedAcquisitionFieldCatalog);
         $state = $this->state();
-        $state['fields'] = [[
+        $state['mentions'][0]['claims'] = [[
             'field_key' => PredicateKey::PersonBirthDate->value,
-            'subject_local_key' => 'person.child',
             'value_raw' => '3 II 1891',
             'expression_kind' => 'exact',
             'value_from' => '1891-02-03',
@@ -155,9 +145,8 @@ final class StructuredAcquisitionFormAdapterTest extends TestCase
     {
         $adapter = new StructuredAcquisitionFormAdapter(new SupportedAcquisitionFieldCatalog);
         $state = $this->state();
-        $state['fields'] = [[
+        $state['mentions'][0]['claims'] = [[
             'field_key' => PredicateKey::PersonResidence->value,
-            'subject_local_key' => 'person.child',
             'object_local_key' => 'place.birth',
             'value_raw' => 'stale literal',
             'integer_value' => 42,
@@ -165,6 +154,7 @@ final class StructuredAcquisitionFormAdapterTest extends TestCase
 
         $claim = $adapter->editInput($state)->fields[0];
 
+        self::assertSame('person.child', $claim->subjectLocalKey);
         self::assertSame('place.birth', $claim->objectLocalKey);
         self::assertNull($claim->value);
     }
@@ -179,30 +169,32 @@ final class StructuredAcquisitionFormAdapterTest extends TestCase
                     'kind' => MentionKind::PERSON,
                     'local_key' => 'person.child',
                     'display_label' => 'Jan Kowalski',
+                    'claims' => [],
                 ],
                 [
                     'id' => null,
                     'kind' => MentionKind::PERSON,
                     'local_key' => 'person.witness',
                     'display_label' => null,
+                    'claims' => [],
                 ],
                 [
                     'id' => null,
                     'kind' => MentionKind::PLACE,
                     'local_key' => 'place.birth',
                     'display_label' => 'Wieś X',
+                    'claims' => [],
                 ],
                 [
                     'id' => null,
                     'kind' => MentionKind::ORGANIZATION,
                     'local_key' => 'organization.parish',
                     'display_label' => 'Parish X',
+                    'claims' => [],
                 ],
-            ],
-            'fields' => [],
-            'event_contexts' => [
                 [
                     'id' => null,
+                    'kind' => MentionKind::EVENT,
                     'local_key' => 'event.birth.1',
                     'display_label' => 'Birth record event',
                     'claims' => [],
