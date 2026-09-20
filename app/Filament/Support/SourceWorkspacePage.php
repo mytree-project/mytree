@@ -38,8 +38,6 @@ use App\Domain\Acquisition\SourceTextId;
 use App\Domain\Acquisition\SourceTextKind;
 use App\Domain\Acquisition\SourceType;
 use App\Filament\Pages\Acquisition\Support\StructuredAcquisitionFormAdapter;
-use App\Filament\Pages\Acquisition\Support\SupportedFieldPicker;
-use App\Filament\Pages\Acquisition\Support\SupportedFieldPickerPresentation;
 use DateTimeImmutable;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\FileUpload;
@@ -235,17 +233,7 @@ abstract class SourceWorkspacePage extends Page
     public function evidenceForm(Schema $schema): Schema
     {
         return $schema
-            ->components([
-                SupportedFieldPicker::make('add_supported_field')
-                    ->label(__('supported_fields.picker.open'))
-                    ->helperText(__('supported_fields.picker.description'))
-                    ->groups(fn (): array => app(SupportedFieldPickerPresentation::class)->addGroups())
-                    ->live()
-                    ->afterStateUpdated(function (?string $state): void {
-                        $this->supportedFieldSelected($state);
-                    }),
-                ...app(StructuredAcquisitionFormAdapter::class)->components(),
-            ])
+            ->components(app(StructuredAcquisitionFormAdapter::class)->components())
             ->statePath('evidenceData');
     }
 
@@ -294,23 +282,8 @@ abstract class SourceWorkspacePage extends Page
             $evidenceState,
             $template?->definition->defaultFieldKeys ?? [],
         );
-        $evidenceState['add_supported_field'] = null;
         $this->evidenceData = $evidenceState;
         $this->evidenceForm->fill($evidenceState);
-    }
-
-    public function supportedFieldSelected(?string $fieldKey): void
-    {
-        $fieldKey = $this->optionalString($fieldKey);
-        if ($fieldKey === null) {
-            return;
-        }
-
-        $state = is_array($this->evidenceData) ? $this->evidenceData : [];
-        $state = app(StructuredAcquisitionFormAdapter::class)->addSupportedField($state, $fieldKey);
-        $state['add_supported_field'] = null;
-        $this->evidenceData = $state;
-        $this->evidenceForm->fill($state);
     }
 
     public function setWorkspacePanel(string $side, string $mode): void
@@ -869,10 +842,7 @@ abstract class SourceWorkspacePage extends Page
             'detach_asset_ids' => [],
             'uploads' => [],
         ]);
-        $this->evidenceForm->fill([
-            'add_supported_field' => null,
-            ...$structuredState,
-        ]);
+        $this->evidenceForm->fill($structuredState);
     }
 
     private function applyRequestedTemplate(): void
