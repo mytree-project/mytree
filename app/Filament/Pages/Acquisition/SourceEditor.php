@@ -174,7 +174,7 @@ final class SourceEditor extends SourceWorkspacePage
         return null;
     }
 
-    private function workspaceValidationPath(string $path, ?string $message = null): string    private function workspaceValidationPath(string $path, ?string $message = null): string
+    private function workspaceValidationPath(string $path, ?string $message = null): string
     {
         foreach ([
             'data.mentions' => 'evidenceData.mentions',
@@ -305,7 +305,7 @@ final class SourceEditor extends SourceWorkspacePage
         return __('workspace_validation.workspace_data_invalid');
     }
 
-    private function validationMessageWithoutCodePrefix(string $message): string    private function validationMessageWithoutCodePrefix(string $message): string
+    private function validationMessageWithoutCodePrefix(string $message): string
     {
         return preg_replace('/^\[[^\]]+\]\s*/', '', $message) ?? $message;
     }
@@ -432,7 +432,6 @@ final class SourceEditor extends SourceWorkspacePage
     }
 
     /** @return array<string, mixed>|null */
-    private function mentionAtPresentationIndex    /** @return array<string, mixed>|null */
     private function mentionAtPresentationIndex(int $index): ?array
     {
         return $this->evidenceRowAt('mentions', $index);
