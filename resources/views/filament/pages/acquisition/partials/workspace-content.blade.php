@@ -58,16 +58,12 @@
                         }
 
                         if (target.type === 'claim') {
-                            expand(itemAt($el, 'claims', target.index));
+                            const mentionItem = itemAt($el, 'mentions', target.mention_index);
+                            expand(mentionItem);
 
-                            return;
-                        }
-
-                        const eventItem = itemAt($el, 'events', target.event_index ?? target.index);
-                        expand(eventItem);
-
-                        if (target.type === 'event_claim' && eventItem) {
-                            expand(itemAt(eventItem, 'event-claims', target.claim_index));
+                            if (mentionItem) {
+                                expand(itemAt(mentionItem, 'claims', target.claim_index));
+                            }
                         }
                     });
                 };
@@ -93,32 +89,11 @@
                                 outline: 2px solid rgb(220 38 38);
                                 outline-offset: 2px;
                             }
-                        @elseif ($target['type'] === 'claim')
-                            [data-mentions-claims-editor]
-                            [data-evidence-repeater="claims"] > .fi-fo-repeater-items
-                            > .fi-fo-repeater-item:nth-of-type({{ $target['index'] + 1 }}) {
-                                outline: 2px solid rgb(220 38 38);
-                                outline-offset: 2px;
-                            }
-                        @elseif ($target['type'] === 'event')
-                            [data-mentions-claims-editor]
-                            [data-evidence-repeater="events"] > .fi-fo-repeater-items
-                            > .fi-fo-repeater-item:nth-of-type({{ $target['index'] + 1 }}) {
-                                outline: 2px solid rgb(220 38 38);
-                                outline-offset: 2px;
-                            }
                         @else
                             [data-mentions-claims-editor]
-                            [data-evidence-repeater="events"] > .fi-fo-repeater-items
-                            > .fi-fo-repeater-item:nth-of-type({{ $target['event_index'] + 1 }}) {
-                                outline: 2px solid rgb(220 38 38);
-                                outline-offset: 2px;
-                            }
-
-                            [data-mentions-claims-editor]
-                            [data-evidence-repeater="events"] > .fi-fo-repeater-items
-                            > .fi-fo-repeater-item:nth-of-type({{ $target['event_index'] + 1 }})
-                            [data-evidence-repeater="event-claims"] > .fi-fo-repeater-items
+                            [data-evidence-repeater="mentions"] > .fi-fo-repeater-items
+                            > .fi-fo-repeater-item:nth-of-type({{ $target['mention_index'] + 1 }})
+                            [data-evidence-repeater="claims"] > .fi-fo-repeater-items
                             > .fi-fo-repeater-item:nth-of-type({{ $target['claim_index'] + 1 }}) {
                                 outline: 2px solid rgb(220 38 38);
                                 outline-offset: 2px;
