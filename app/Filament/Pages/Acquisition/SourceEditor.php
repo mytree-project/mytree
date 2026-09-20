@@ -541,5 +541,4 @@ final class SourceEditor extends SourceWorkspacePage
         return 'evidenceData.mentions.'.$mentionIndex.'.claims.'.$claimIndex
             .($fieldSuffix === null ? '' : '.'.$fieldSuffix);
     }
-
 }
