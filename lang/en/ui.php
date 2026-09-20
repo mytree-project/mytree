@@ -26,6 +26,7 @@ return [
         'id' => 'ID',
         'details_loading' => 'Loading Source details…',
         'evidence_graph_yaml' => 'Evidence graph (YAML)',
+        'download_evidence_graph_yaml' => 'Download evidence graph as YAML',
         'empty' => 'No Sources match the current search.',
         'no_metadata' => 'No metadata',
     ],
