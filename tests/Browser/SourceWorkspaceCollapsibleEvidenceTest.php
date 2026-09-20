@@ -262,8 +262,6 @@ it('collapses Mention cards and their nested Claims while preserving unsaved sta
     $page
         ->assertSee('Mentions')
         ->assertSee('Add mention')
-        ->assertSee('Claims')
-        ->assertSee('Add claim')
         ->assertSee('Mention 1 · person · Valentin Wiśniewski · person_valentin')
         ->assertSee('Mention 2 · event · Birth of Peter · event_birth');
 
@@ -281,6 +279,9 @@ it('collapses Mention cards and their nested Claims while preserving unsaved sta
 
     toggleCollapsibleEvidenceItem($page, $personSelector);
     assertCollapsibleEvidenceItemState($page, $personSelector, false);
+    $page
+        ->assertSee('Claims')
+        ->assertSee('Add claim');
 
     $claimSelector = collapsibleEvidenceItemSelectorBySummary($page, 'Claim 1 · Given name · Valentin');
     assertCollapsibleEvidenceItemState($page, $claimSelector, true);
