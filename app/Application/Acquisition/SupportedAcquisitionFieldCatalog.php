@@ -40,7 +40,7 @@ final class SupportedAcquisitionFieldCatalog
             repeatable: true,
             mappingKind: SupportedAcquisitionFieldMappingKind::MentionPreset,
             subjectMentionKind: MentionKind::EVENT,
-            helpText: 'Presentation-only template preset for an ordinary source-local event Mention and its event Claims.'
+            helpText: 'Presentation-only template preset for an ordinary source-local event Mention and its event Claims.',
             contextPredicateKeys: [
                 PredicateKey::EventDate,
                 PredicateKey::EventPlace,
