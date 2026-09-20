@@ -14,7 +14,6 @@ use App\Domain\Acquisition\SourceType;
 use App\Domain\Acquisition\TextClaimValue;
 use App\Infrastructure\Persistence\Eloquent\Models\User;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
-use RuntimeException;
 
 function authenticateSourceDetailsYamlBrowserTestUser(): void
 {
