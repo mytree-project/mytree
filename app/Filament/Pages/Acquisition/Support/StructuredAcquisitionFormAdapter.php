@@ -153,7 +153,6 @@ final readonly class StructuredAcquisitionFormAdapter
     }
 
     /**
-     * Apply a template as presentation state only.    /**
      * Apply a template as presentation state only.
      *
      * Existing persisted rows and user-populated former template rows are kept.
@@ -446,7 +445,7 @@ final readonly class StructuredAcquisitionFormAdapter
         return $schema;
     }
 
-    private function editorKind    private function editorKind(mixed $fieldKey): ?SupportedAcquisitionFieldEditorKind
+    private function editorKind(mixed $fieldKey): ?SupportedAcquisitionFieldEditorKind
     {
         if (! is_string($fieldKey) || ! $this->catalog->has($fieldKey)) {
             return null;
@@ -958,7 +957,6 @@ final readonly class StructuredAcquisitionFormAdapter
     }
 
     /** @return list<array<string, mixed>> */
-    private function rows    /** @return list<array<string, mixed>> */
     private function rows(mixed $value): array
     {
         if (! is_array($value)) {
