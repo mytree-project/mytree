@@ -65,6 +65,29 @@ final class StructuredAcquisitionFormAdapterTest extends TestCase
         );
     }
 
+    public function test_event_context_presentation_flattens_to_the_canonical_mention_and_claim_input(): void
+    {
+        $adapter = new StructuredAcquisitionFormAdapter(new SupportedAcquisitionFieldCatalog);
+        $state = $this->state();
+        $state['event_contexts'][0]['claims'] = [[
+            'field_key' => PredicateKey::EventWitness->value,
+            'object_local_key' => 'person.witness',
+        ]];
+
+        $input = $adapter->editInput($state);
+
+        self::assertCount(5, $input->mentions);
+        self::assertSame(
+            MentionKind::EVENT,
+            $input->mentions[4]->kind->key,
+        );
+        self::assertSame('event.birth.1', $input->mentions[4]->localKey);
+        self::assertCount(1, $input->fields);
+        self::assertSame(PredicateKey::EventWitness->value, $input->fields[0]->fieldKey);
+        self::assertSame('event.birth.1', $input->fields[0]->subjectLocalKey);
+        self::assertSame('person.witness', $input->fields[0]->objectLocalKey);
+    }
+
     public function test_literal_fields_do_not_offer_object_mentions(): void
     {
         $adapter = new StructuredAcquisitionFormAdapter(new SupportedAcquisitionFieldCatalog);
