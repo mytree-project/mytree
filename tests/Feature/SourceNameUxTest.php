@@ -121,10 +121,14 @@ final class SourceNameUxTest extends TestCase
             ->assertSee('Szczegóły')
             ->assertSee('Szczegóły źródła')
             ->assertSee('Graf źródła (YAML)')
+            ->assertSee('Pobierz graf źródła jako YAML')
             ->assertSee('Ładowanie szczegółów źródła…')
             ->assertSee('data-source-details-panel', false)
             ->assertSee('data-source-details-yaml', false)
             ->assertSee('$wire.loadSourceDetails', false)
+            ->assertSee('data-source-details-yaml-download', false)
+            ->call('downloadSourceDetailsGraph', $source->id->value)
+            ->assertFileDownloaded(sprintf('source-%s-evidence-graph.yml', $source->id->value))
             ->assertDontSee('Pola');
 
         Livewire::test(SourceEditor::class, ['source' => $source->id->value])
