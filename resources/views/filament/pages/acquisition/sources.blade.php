@@ -204,6 +204,40 @@
                 overflow-wrap: anywhere;
             }
 
+            .mytree-source-details-row-heading {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 0.75rem;
+            }
+
+            .mytree-source-details-yaml-download {
+                display: inline-flex;
+                flex: 0 0 auto;
+                align-items: center;
+                justify-content: center;
+                width: 2rem;
+                height: 2rem;
+                border: 1px solid rgb(209 213 219);
+                border-radius: 0.5rem;
+                color: rgb(75 85 99);
+            }
+
+            .mytree-source-details-yaml-download:hover,
+            .mytree-source-details-yaml-download:focus-visible {
+                color: rgb(17 24 39);
+            }
+
+            .mytree-source-details-yaml-download:focus-visible {
+                outline: 2px solid currentColor;
+                outline-offset: 2px;
+            }
+
+            .dark .mytree-source-details-yaml-download {
+                border-color: rgb(75 85 99);
+                color: rgb(209 213 219);
+            }
+
             .mytree-source-details-diagnostic {
                 margin-top: 0.25rem;
                 color: rgb(107 114 128);
@@ -413,7 +447,20 @@
                         <dd x-text="details?.metadata"></dd>
                     </div>
                     <div class="mytree-source-details-row">
-                        <dt>{{ __('ui.sources.evidence_graph_yaml') }}</dt>
+                        <dt class="mytree-source-details-row-heading">
+                            <span>{{ __('ui.sources.evidence_graph_yaml') }}</span>
+                            <button
+                                type="button"
+                                class="mytree-source-details-yaml-download"
+                                x-on:click="$wire.downloadSourceDetailsGraph(details.id)"
+                                x-bind:disabled="! details?.id"
+                                aria-label="{{ __('ui.sources.download_evidence_graph_yaml') }}"
+                                title="{{ __('ui.sources.download_evidence_graph_yaml') }}"
+                                data-source-details-yaml-download
+                            >
+                                <x-filament::icon icon="heroicon-m-arrow-down-tray" class="h-4 w-4" />
+                            </button>
+                        </dt>
                         <dd>
                             <pre class="mytree-source-details-yaml" data-source-details-yaml x-text="details?.graph_yaml"></pre>
                         </dd>
