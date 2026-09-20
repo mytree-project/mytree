@@ -194,7 +194,7 @@ final readonly class StructuredAcquisitionFormAdapter
             $descriptor = $this->descriptor($fieldKey);
             $kind = $descriptor->subjectMentionKind;
 
-            if ($descriptor->editorKind === SupportedAcquisitionFieldEditorKind::EventContext) {
+            if ($descriptor->editorKind === SupportedAcquisitionFieldEditorKind::MentionPreset) {
                 if (! $this->hasMentionKind($mentions, MentionKind::EVENT)) {
                     $templateMentions[MentionKind::EVENT] ??= $this->blankMentionRow(
                         MentionKind::EVENT,
@@ -353,6 +353,7 @@ final readonly class StructuredAcquisitionFormAdapter
                 ))
                 ->searchable()
                 ->preload()
+                ->live()
                 ->visible(fn (Get $get): bool => $this->editorKind($get('field_key')) === SupportedAcquisitionFieldEditorKind::MentionReference),
             TextInput::make('value_raw')
                 ->label('Raw/source value')
@@ -460,7 +461,7 @@ final readonly class StructuredAcquisitionFormAdapter
 
         return $kind !== null
             && $kind !== SupportedAcquisitionFieldEditorKind::MentionReference
-            && $kind !== SupportedAcquisitionFieldEditorKind::EventContext;
+            && $kind !== SupportedAcquisitionFieldEditorKind::MentionPreset;
     }
 
     private function isTemporalValueEditor(mixed $fieldKey): bool
