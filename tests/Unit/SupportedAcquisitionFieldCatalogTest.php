@@ -61,12 +61,12 @@ final class SupportedAcquisitionFieldCatalogTest extends TestCase
         }
     }
 
-    public function test_event_context_is_an_explicit_reified_graph_field(): void
+    public function test_event_context_key_is_a_presentation_only_event_mention_preset(): void
     {
-        $descriptor = (new SupportedAcquisitionFieldCatalog)->get(SupportedAcquisitionFieldCatalog::EVENT_CONTEXT_KEY);
+        $descriptor = (new SupportedAcquisitionFieldCatalog)->get(SupportedAcquisitionFieldCatalog::EVENT_MENTION_PRESET_KEY);
 
-        self::assertSame(SupportedAcquisitionFieldMappingKind::ReifiedContext, $descriptor->mappingKind);
-        self::assertSame(SupportedAcquisitionFieldEditorKind::EventContext, $descriptor->editorKind);
+        self::assertSame(SupportedAcquisitionFieldMappingKind::MentionPreset, $descriptor->mappingKind);
+        self::assertSame(SupportedAcquisitionFieldEditorKind::MentionPreset, $descriptor->editorKind);
         self::assertSame(MentionKind::EVENT, $descriptor->subjectMentionKind);
         self::assertContains(PredicateKey::EventDate, $descriptor->contextPredicateKeys);
         self::assertContains(PredicateKey::EventPlace, $descriptor->contextPredicateKeys);
