@@ -472,17 +472,13 @@ it('scopes Mention JSON validation styling and moves it when the failing Mention
     sourceWorkspaceBrowserDebugCheckpoint('test:first:completed');
 });
 
-it('routes stale Claim subject errors to only the failing Claim after a Mention key rename', function (): void {
+it('keeps a nested Claim attached when its containing Mention local key is renamed', function (): void {
     $source = app(CreateSource::class)->handle(SourceType::generic());
     $person = app(CreateMention::class)->handle(
         sourceId: $source->id,
         kind: MentionKind::person(),
         localKey: 'person_subject',
-    );
-    $otherPerson = app(CreateMention::class)->handle(
-        sourceId: $source->id,
-        kind: MentionKind::person(),
-        localKey: 'person_other',
+        displayLabel: 'Subject person',
     );
     app(CreateClaim::class)->handle(
         sourceId: $source->id,
@@ -490,59 +486,34 @@ it('routes stale Claim subject errors to only the failing Claim after a Mention 
         predicate: PredicateVocabulary::get(PredicateKey::PersonOccupation),
         value: new TextClaimValue('rolnik'),
     );
-    app(CreateClaim::class)->handle(
-        sourceId: $source->id,
-        subjectMentionId: $otherPerson->id,
-        predicate: PredicateVocabulary::get(PredicateKey::PersonOccupation),
-        value: new TextClaimValue('kowal'),
-    );
 
     authenticateSourceWorkspaceBrowserTestUser();
 
     $page = openSourceWorkspaceForBrowserTest($source->id->value);
-    $renamedMention = sourceWorkspaceEvidenceItemBySummary($page, 'mentions', 'person_subject');
-    $otherMention = sourceWorkspaceEvidenceItemBySummary($page, 'mentions', 'person_other');
-    $failingClaim = sourceWorkspaceEvidenceItemBySummary($page, 'claims', 'person_subject');
-    $validClaim = sourceWorkspaceEvidenceItemBySummary($page, 'claims', 'person_other');
+    $mention = sourceWorkspaceEvidenceItemBySummary($page, 'mentions', 'person_subject');
 
-    toggleSourceWorkspaceEvidenceItem($page, $renamedMention['selector']);
-    assertSourceWorkspaceEvidenceItemValidationState($page, $renamedMention['selector'], hasError: false, collapsed: false);
+    toggleSourceWorkspaceEvidenceItem($page, $mention['selector']);
+    assertSourceWorkspaceEvidenceItemValidationState($page, $mention['selector'], hasError: false, collapsed: false);
+
+    $claim = sourceWorkspaceEvidenceItemSelector($page, 'claims', 0, $mention['selector']);
+    assertSourceWorkspaceEvidenceItemValidationState($page, $claim, hasError: false, collapsed: true);
+
     fillSourceWorkspaceBrowserField(
         $page,
         'Local key',
         'person_renamed',
-        $renamedMention['selector'],
+        $mention['selector'],
     );
 
-    submitSourceWorkspaceBrowserForm($page)
-        ->assertSee(sprintf(
-            'Twierdzenie nr %d odwołuje się do nieistniejącej Wzmianki jako podmiotu.',
-            $failingClaim['number'],
-        ))
-        ->assertVisible('[data-source-workspace-save-errors]')
-        ->assertScript(
-            "document.querySelector('[data-mentions-claims-editor]').classList.contains('source-workspace-error-region')",
-            false,
-        )
-        ->assertScript(
-            "document.querySelector('[data-source-workspace-source-details-region]').classList.contains('source-workspace-error-region')",
-            false,
-        );
-
-    assertSourceWorkspaceEvidenceItemValidationState($page, $renamedMention['selector'], hasError: false);
-    assertSourceWorkspaceEvidenceItemValidationState($page, $otherMention['selector'], hasError: false);
-    assertSourceWorkspaceEvidenceItemValidationState($page, $failingClaim['selector'], hasError: true, collapsed: false);
-    assertSourceWorkspaceEvidenceItemValidationState($page, $validClaim['selector'], hasError: false, collapsed: true);
+    submitSourceWorkspaceBrowserForm($page);
 
     $page
-        ->assertScript(
-            "Array.from(document.querySelectorAll('input')).some((input) => input.value === 'person_renamed')",
-            true,
-        )
+        ->assertDontSee('odwołuje się do nieistniejącej Wzmianki jako podmiotu')
+        ->assertDontSee('Subject Mention local key')
         ->assertNoJavaScriptErrors();
 });
 
-it('marks the failing Event Claim and its enclosing Event without marking sibling evidence', function (): void {
+it('marks a failing nested event Claim while treating the Event as an ordinary Mention', function (): void {
     $source = app(CreateSource::class)->handle(SourceType::generic());
     $place = app(CreateMention::class)->handle(
         sourceId: $source->id,
@@ -566,28 +537,35 @@ it('marks the failing Event Claim and its enclosing Event without marking siblin
     authenticateSourceWorkspaceBrowserTestUser();
 
     $page = openSourceWorkspaceForBrowserTest($source->id->value);
-    $placeMention = sourceWorkspaceEvidenceItemSelector($page, 'mentions', 0);
-    $eventItem = sourceWorkspaceEvidenceItemSelector($page, 'events', 0);
-    $eventClaim = sourceWorkspaceEvidenceItemSelector($page, 'event-claims', 0, $eventItem);
+    $placeMention = sourceWorkspaceEvidenceItemBySummary($page, 'mentions', 'place_original');
+    $eventMention = sourceWorkspaceEvidenceItemBySummary($page, 'mentions', 'event_birth');
+
+    expandSourceWorkspaceEvidenceItem($page, 'event_birth');
+    $eventClaim = sourceWorkspaceEvidenceItemSelector(
+        $page,
+        'claims',
+        0,
+        $eventMention['selector'],
+    );
 
     expandSourceWorkspaceEvidenceItem($page, 'place_original');
     fillSourceWorkspaceBrowserField(
         $page,
         'Local key',
         'place_renamed',
-        $placeMention,
+        $placeMention['selector'],
     );
 
     submitSourceWorkspaceBrowserForm($page)
-        ->assertSee('Twierdzenie nr 1 w Zdarzeniu nr 1 zawiera nieprawidłowe dane.')
+        ->assertSee('Twierdzenie nr 1 odwołuje się do nieistniejącej Wzmianki jako obiektu.')
         ->assertVisible('[data-source-workspace-save-errors]')
         ->assertScript(
             "document.querySelector('[data-mentions-claims-editor]').classList.contains('source-workspace-error-region')",
             false,
         );
 
-    assertSourceWorkspaceEvidenceItemValidationState($page, $placeMention, hasError: false);
-    assertSourceWorkspaceEvidenceItemValidationState($page, $eventItem, hasError: true, collapsed: false);
+    assertSourceWorkspaceEvidenceItemValidationState($page, $placeMention['selector'], hasError: false);
+    assertSourceWorkspaceEvidenceItemValidationState($page, $eventMention['selector'], hasError: false, collapsed: false);
     assertSourceWorkspaceEvidenceItemValidationState($page, $eventClaim, hasError: true, collapsed: false);
 
     $page->assertNoJavaScriptErrors();
