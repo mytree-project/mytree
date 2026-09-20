@@ -69,6 +69,8 @@ it('loads the persisted evidence YAML lazily in Source details', function (): vo
         ->click($trigger)
         ->assertVisible('[data-source-details-panel]')
         ->assertSee('Graf źródła (YAML)')
+        ->assertVisible('[data-source-details-yaml-download]')
+        ->assertSee('Pobierz graf źródła jako YAML')
         ->assertSee('mytree.source-evidence-graph.v1')
         ->assertSee('person_piotr')
         ->assertSee('Piotr Wiśniewski')
