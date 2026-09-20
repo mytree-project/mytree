@@ -172,7 +172,7 @@ it('filters the nested Claim palette by the containing Mention kind', function (
 
     $personItem = mentionOwnedPickerItemSelector(
         $page,
-        'Mention 1 · person · Jan Kowalski · person_jan',
+        'person · Jan Kowalski · person_jan',
     );
     expandMentionOwnedPickerItem($page, $personItem);
 
@@ -195,7 +195,7 @@ it('filters the nested Claim palette by the containing Mention kind', function (
 
     $eventItem = mentionOwnedPickerItemSelector(
         $page,
-        'Mention 2 · event · Birth of Jan · event_birth',
+        'event · Birth of Jan · event_birth',
     );
     expandMentionOwnedPickerItem($page, $eventItem);
 
