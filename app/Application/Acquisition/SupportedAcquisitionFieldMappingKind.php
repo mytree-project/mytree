@@ -7,5 +7,5 @@ namespace App\Application\Acquisition;
 enum SupportedAcquisitionFieldMappingKind: string
 {
     case DirectClaim = 'direct_claim';
-    case ReifiedContext = 'reified_context';
+    case MentionPreset = 'mention_preset';
 }
