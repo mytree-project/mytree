@@ -74,10 +74,37 @@ final readonly class SupportedFieldPickerPresentation
      */
     public function claimGroups(bool $eventOnly): array
     {
+        return $this->claimGroupsForMentionKind(
+            $eventOnly ? MentionKind::EVENT : MentionKind::PERSON,
+        );
+    }
+
+    /**
+     * Picker used inside one Mention card. Only predicates whose controlled
+     * subject kind matches that Mention are offered.
+     *
+     * @return list<array{
+     *     key: string,
+     *     label: string,
+     *     fields: list<array{
+     *         key: string,
+     *         label: string,
+     *         help: ?string,
+     *         repeatable: bool,
+     *         event_context: bool
+     *     }>
+     * }>
+     */
+    public function claimGroupsForMentionKind(mixed $mentionKind): array
+    {
+        if (! is_string($mentionKind)) {
+            return [];
+        }
+
         $descriptors = array_values(array_filter(
             $this->catalog->all(),
             static fn (SupportedAcquisitionFieldDescriptor $descriptor): bool => $descriptor->isDirectClaim()
-                && ($descriptor->subjectMentionKind === MentionKind::EVENT) === $eventOnly,
+                && $descriptor->subjectMentionKind === $mentionKind,
         ));
 
         return $this->groups($descriptors);
