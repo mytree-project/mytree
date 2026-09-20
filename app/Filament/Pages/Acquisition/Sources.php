@@ -8,6 +8,7 @@ use App\Application\Acquisition\BrowseSources;
 use App\Application\Acquisition\LoadSourceDraft;
 use App\Application\Acquisition\SourceBrowseItem;
 use App\Application\Acquisition\SourceEvidenceGraphYamlExporter;
+use App\Application\Acquisition\SourceNotFound;
 use App\Domain\Acquisition\SourceId;
 use App\Filament\Support\SourceTypePresentationCatalog;
 use Filament\Actions\Action;
@@ -75,7 +76,7 @@ final class Sources extends Page
         $source = app(BrowseSources::class)->find($id);
 
         if ($source === null) {
-            throw \App\Application\Acquisition\SourceNotFound::forId($id);
+            throw SourceNotFound::forId($id);
         }
 
         $draft = app(LoadSourceDraft::class)->handle($id);
