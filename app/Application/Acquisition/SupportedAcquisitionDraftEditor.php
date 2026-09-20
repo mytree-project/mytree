@@ -10,7 +10,6 @@ use App\Domain\Acquisition\ClaimId;
 use App\Domain\Acquisition\ClaimQualifiers;
 use App\Domain\Acquisition\Mention;
 use App\Domain\Acquisition\MentionId;
-use App\Domain\Acquisition\MentionKind;
 use App\Domain\Acquisition\MentionRawData;
 use InvalidArgumentException;
 
@@ -25,19 +24,12 @@ final readonly class SupportedAcquisitionDraftEditor
 
     public function changes(SourceDraft $draft, SupportedAcquisitionEditInput $input): SourceDraftChanges
     {
-        [$addMentions, $updateMentions, $removeMentionIds, $mentionsByLocalKey, $newEventIds] = $this->mentionChanges($draft, $input);
-        [$addClaims, $updateClaims, $removeClaimIds, $claimsBySubject] = $this->claimChanges(
+        [$addMentions, $updateMentions, $removeMentionIds, $mentionsByLocalKey] = $this->mentionChanges($draft, $input);
+        [$addClaims, $updateClaims, $removeClaimIds] = $this->claimChanges(
             $draft,
             $input,
             $mentionsByLocalKey,
         );
-
-        foreach ($newEventIds as $eventId) {
-            $event = $this->findMentionById($addMentions, $eventId);
-            if ($event !== null) {
-                $this->fieldMapper->reifiedEventContext($event, $claimsBySubject[$eventId] ?? []);
-            }
-        }
 
         return new SourceDraftChanges(
             addMentions: $addMentions,
@@ -50,7 +42,7 @@ final readonly class SupportedAcquisitionDraftEditor
     }
 
     /**
-     * @return array{0: list<Mention>, 1: list<Mention>, 2: list<MentionId>, 3: array<string, Mention>, 4: list<string>}
+     * @return array{0: list<Mention>, 1: list<Mention>, 2: list<MentionId>, 3: array<string, Mention>}
      */
     private function mentionChanges(SourceDraft $draft, SupportedAcquisitionEditInput $input): array
     {
@@ -60,16 +52,11 @@ final readonly class SupportedAcquisitionDraftEditor
         }
 
         $mentionInputs = $input->mentions;
-        foreach ($input->eventContexts as $eventContext) {
-            $mentionInputs[] = $eventContext->event;
-        }
 
         $add = [];
         $update = [];
         $seenIds = [];
         $mentionsByLocalKey = [];
-        $newEventIds = [];
-
         foreach ($mentionInputs as $mentionInput) {
             $existing = null;
             if ($mentionInput->id !== null) {
@@ -101,9 +88,6 @@ final readonly class SupportedAcquisitionDraftEditor
 
             if ($existing === null) {
                 $add[] = $mention;
-                if ($mention->kind->key === MentionKind::EVENT) {
-                    $newEventIds[] = $mention->id->value;
-                }
             } else {
                 $update[] = $mention;
             }
@@ -116,12 +100,12 @@ final readonly class SupportedAcquisitionDraftEditor
             }
         }
 
-        return [$add, $update, $remove, $mentionsByLocalKey, $newEventIds];
+        return [$add, $update, $remove, $mentionsByLocalKey];
     }
 
     /**
      * @param  array<string, Mention>  $mentionsByLocalKey
-     * @return array{0: list<Claim>, 1: list<Claim>, 2: list<ClaimId>, 3: array<string, list<Claim>>}
+     * @return array{0: list<Claim>, 1: list<Claim>, 2: list<ClaimId>}
      */
     private function claimChanges(
         SourceDraft $draft,
@@ -134,20 +118,10 @@ final readonly class SupportedAcquisitionDraftEditor
         }
 
         $claimInputs = $input->fields;
-        foreach ($input->eventContexts as $eventContext) {
-            foreach ($eventContext->claims as $claimInput) {
-                if ($claimInput->subjectLocalKey !== $eventContext->event->localKey) {
-                    throw new InvalidArgumentException('Event context Claim subject must be the context event Mention.');
-                }
-                $claimInputs[] = $claimInput;
-            }
-        }
 
         $add = [];
         $update = [];
         $seenIds = [];
-        $claimsBySubject = [];
-
         foreach ($claimInputs as $claimInput) {
             $descriptor = $this->catalog->get($claimInput->fieldKey);
             if (! $descriptor->isDirectClaim()) {
@@ -219,9 +193,6 @@ final readonly class SupportedAcquisitionDraftEditor
                 interpretationCertainty: new ClaimCertainty($claimInput->interpretationCertainty),
             );
 
-            $claimsBySubject[$claim->subjectMentionId->value] ??= [];
-            $claimsBySubject[$claim->subjectMentionId->value][] = $claim;
-
             if ($existing === null) {
                 $add[] = $claim;
             } else {
@@ -239,18 +210,6 @@ final readonly class SupportedAcquisitionDraftEditor
             }
         }
 
-        return [$add, $update, $remove, $claimsBySubject];
-    }
-
-    /** @param  list<Mention>  $mentions */
-    private function findMentionById(array $mentions, string $id): ?Mention
-    {
-        foreach ($mentions as $mention) {
-            if ($mention->id->value === $id) {
-                return $mention;
-            }
-        }
-
-        return null;
+        return [$add, $update, $remove];
     }
 }
