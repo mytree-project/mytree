@@ -70,8 +70,7 @@ final readonly class StructuredAcquisitionFormAdapter
                         ->live(),
                     TextInput::make('local_key')
                         ->label('Local key')
-                        ->helperText('Claims in this Mention card use this source-local identity implicitly as their subject.')
-                        ->required()
+                        ->helperText('Claims in this Mention card use this source-local identity implicitly as their subject. Empty template presets are ignored until populated.')
                         ->maxLength(255)
                         ->live(onBlur: true),
                     TextInput::make('role')
