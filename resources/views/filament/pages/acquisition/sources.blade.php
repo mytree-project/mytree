@@ -311,6 +311,7 @@
                                     <button
                                         type="button"
                                         class="mytree-source-details-button"
+                                        data-source-details-trigger="{{ $source->id->value }}"
                                         x-on:click="
                                             details = null;
                                             detailsOpen = true;
