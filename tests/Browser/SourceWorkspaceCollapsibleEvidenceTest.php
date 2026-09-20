@@ -262,16 +262,16 @@ it('collapses Mention cards and their nested Claims while preserving unsaved sta
     $page
         ->assertSee('Mentions')
         ->assertSee('Add mention')
-        ->assertSee('Mention 1 · person · Valentin Wiśniewski · person_valentin')
-        ->assertSee('Mention 2 · event · Birth of Peter · event_birth');
+        ->assertSee('person · Valentin Wiśniewski · person_valentin')
+        ->assertSee('event · Birth of Peter · event_birth');
 
     $personSelector = collapsibleEvidenceItemSelectorBySummary(
         $page,
-        'Mention 1 · person · Valentin Wiśniewski · person_valentin',
+        'person · Valentin Wiśniewski · person_valentin',
     );
     $eventSelector = collapsibleEvidenceItemSelectorBySummary(
         $page,
-        'Mention 2 · event · Birth of Peter · event_birth',
+        'event · Birth of Peter · event_birth',
     );
 
     assertCollapsibleEvidenceItemState($page, $personSelector, true);
@@ -287,7 +287,7 @@ it('collapses Mention cards and their nested Claims while preserving unsaved sta
     assertCollapsibleEvidenceItemState($page, $claimSelector, true);
 
     $displayLabelSelector = setCollapsibleEvidenceField($page, 'Display label', 'Valentin Updated');
-    $page->assertSee('Mention 1 · person · Valentin Updated · person_valentin');
+    $page->assertSee('person · Valentin Updated · person_valentin');
 
     toggleCollapsibleEvidenceItem($page, $claimSelector);
     assertCollapsibleEvidenceItemState($page, $claimSelector, false);
@@ -435,12 +435,12 @@ it('localizes the unified Mention and nested Claim collections in Polish', funct
     $page
         ->assertSee('Wzmianki')
         ->assertSee('Dodaj wzmiankę')
-        ->assertSee('Wzmianka 1 · person · Jan Kowalski · person_jan')
-        ->assertSee('Wzmianka 2 · event · Urodzenie Jana · event_birth');
+        ->assertSee('person · Jan Kowalski · person_jan')
+        ->assertSee('event · Urodzenie Jana · event_birth');
 
     $eventSelector = collapsibleEvidenceItemSelectorBySummary(
         $page,
-        'Wzmianka 2 · event · Urodzenie Jana · event_birth',
+        'event · Urodzenie Jana · event_birth',
     );
     toggleCollapsibleEvidenceItem($page, $eventSelector);
 
