@@ -22,6 +22,7 @@ use App\Domain\Acquisition\MentionKind;
 use App\Domain\Acquisition\MentionRawData;
 use App\Filament\Support\SourceWorkspacePage;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -53,13 +54,15 @@ final readonly class StructuredAcquisitionFormAdapter
         return [
             Repeater::make('mentions')
                 ->label('Source-local Mentions')
-                ->helperText('Create or edit person/place/organization/other occurrences. Raw wording can be preserved without forced semantic classification.')
+                ->helperText('Create or edit source-local Mentions. Each Mention owns the Claims whose subject it is, including event Mentions.')
                 ->schema([
                     Hidden::make('id'),
+                    Hidden::make('presentation_origin'),
                     Select::make('kind')
                         ->required()
                         ->options([
                             MentionKind::PERSON => 'Person',
+                            MentionKind::EVENT => 'Event',
                             MentionKind::PLACE => 'Place',
                             MentionKind::ORGANIZATION => 'Organization',
                             MentionKind::OTHER => 'Other',
@@ -67,7 +70,7 @@ final readonly class StructuredAcquisitionFormAdapter
                         ->live(),
                     TextInput::make('local_key')
                         ->label('Local key')
-                        ->helperText('Claim selectors store this source-local identity. If it is renamed, stale Claim references must be reselected before save.')
+                        ->helperText('Claims in this Mention card use this source-local identity implicitly as their subject.')
                         ->required()
                         ->maxLength(255)
                         ->live(onBlur: true),
@@ -80,49 +83,33 @@ final readonly class StructuredAcquisitionFormAdapter
                         ->label('Raw source-local data (JSON object)')
                         ->rows(4)
                         ->columnSpanFull(),
+                    Repeater::make('claims')
+                        ->label('Claims')
+                        ->helperText('Only predicates compatible with this Mention kind are available. The subject is the containing Mention.')
+                        ->schema($this->directFieldSchema())
+                        ->columns(2)
+                        ->defaultItems(0)
+                        ->addActionLabel('Add claim')
+                        ->columnSpanFull(),
+                    Placeholder::make('incoming_relationships')
+                        ->label('Incoming relationship references')
+                        ->content(fn (Get $get, LivewireComponent $livewire): string => $this->incomingRelationshipSummary(
+                            state: $livewire instanceof SourceWorkspacePage && is_array($livewire->evidenceData)
+                                ? $livewire->evidenceData
+                                : [],
+                            targetLocalKey: $this->optionalString($get('local_key')),
+                        ) ?? '')
+                        ->visible(fn (Get $get, LivewireComponent $livewire): bool => $this->incomingRelationshipSummary(
+                            state: $livewire instanceof SourceWorkspacePage && is_array($livewire->evidenceData)
+                                ? $livewire->evidenceData
+                                : [],
+                            targetLocalKey: $this->optionalString($get('local_key')),
+                        ) !== null)
+                        ->columnSpanFull(),
                 ])
                 ->columns(2)
                 ->defaultItems(0)
                 ->addActionLabel('Add source-local Mention'),
-            Repeater::make('fields')
-                ->label('Structured fields')
-                ->helperText('Template defaults, existing additional data, and manually added fields share the same controlled field catalog. Empty presentation rows are not saved as Claims.')
-                ->schema($this->directFieldSchema(includeSubject: true))
-                ->columns(2)
-                ->defaultItems(0)
-                ->addActionLabel('Add another field occurrence'),
-            Repeater::make('event_contexts')
-                ->label('Reified event contexts')
-                ->helperText('Each populated group is one source-local event Mention with atomic event Claims. An empty template-provided context is only presentation state.')
-                ->schema([
-                    Hidden::make('id'),
-                    Hidden::make('presentation_origin'),
-                    TextInput::make('local_key')
-                        ->label('Event local key')
-                        ->helperText('Event Claims use this source-local identity implicitly as their subject.')
-                        ->maxLength(255)
-                        ->live(onBlur: true),
-                    TextInput::make('role')
-                        ->label('Event role')
-                        ->maxLength(120),
-                    TextInput::make('display_label')
-                        ->label('Event label')
-                        ->live(onBlur: true),
-                    Textarea::make('raw_data_json')
-                        ->label('Event raw data (JSON object)')
-                        ->rows(3)
-                        ->columnSpanFull(),
-                    Repeater::make('claims')
-                        ->label('Event facts / participant roles')
-                        ->schema($this->directFieldSchema(includeSubject: false, eventOnly: true))
-                        ->columns(2)
-                        ->defaultItems(0)
-                        ->addActionLabel('Add event field')
-                        ->columnSpanFull(),
-                ])
-                ->columns(2)
-                ->defaultItems(0)
-                ->addActionLabel('Add event context'),
         ];
     }
 
@@ -162,46 +149,11 @@ final readonly class StructuredAcquisitionFormAdapter
             $this->appendMentionPickerOption($options, $row);
         }
 
-        if ($requiredKind === MentionKind::EVENT) {
-            foreach ($this->rows($state['event_contexts'] ?? []) as $row) {
-                $this->appendMentionPickerOption($options, $row);
-            }
-        }
-
         return $options;
     }
 
     /**
-     * @param  array<string, mixed>  $state
-     * @return array<string, mixed>
-     */
-    public function addSupportedField(array $state, string $fieldKey): array
-    {
-        $descriptor = $this->descriptor($fieldKey);
-
-        if ($descriptor->editorKind === SupportedAcquisitionFieldEditorKind::EventContext) {
-            $state['event_contexts'] = $this->rows($state['event_contexts'] ?? []);
-            $state['event_contexts'][] = $this->blankEventRow();
-
-            return $state;
-        }
-
-        if ($descriptor->subjectMentionKind === MentionKind::EVENT) {
-            $state['event_contexts'] = $this->rows($state['event_contexts'] ?? []);
-            $event = $this->blankEventRow();
-            $event['claims'] = [$this->blankClaimRow($fieldKey)];
-            $state['event_contexts'][] = $event;
-
-            return $state;
-        }
-
-        $state['fields'] = $this->rows($state['fields'] ?? []);
-        $state['fields'][] = $this->blankClaimRow($fieldKey);
-
-        return $state;
-    }
-
-    /**
+     * Apply a template as presentation state only.    /**
      * Apply a template as presentation state only.
      *
      * Existing persisted rows and user-populated former template rows are kept.
@@ -213,56 +165,67 @@ final readonly class StructuredAcquisitionFormAdapter
      */
     public function applyTemplatePresentation(array $state, array $defaultFieldKeys): array
     {
-        $fields = [];
-        foreach ($this->rows($state['fields'] ?? []) as $row) {
-            if ($this->isRemovableTemplateClaimRow($row)) {
+        $mentions = [];
+        foreach ($this->rows($state['mentions'] ?? []) as $row) {
+            $claims = [];
+            foreach ($this->rows($row['claims'] ?? []) as $claimRow) {
+                if ($this->isRemovableTemplateClaimRow($claimRow)) {
+                    continue;
+                }
+                if (($claimRow['presentation_origin'] ?? null) === self::PRESENTATION_TEMPLATE) {
+                    $claimRow['presentation_origin'] = null;
+                }
+                $claims[] = $claimRow;
+            }
+            $row['claims'] = $claims;
+
+            if ($this->isRemovableTemplateMentionRow($row)) {
                 continue;
             }
             if (($row['presentation_origin'] ?? null) === self::PRESENTATION_TEMPLATE) {
                 $row['presentation_origin'] = null;
             }
-            $fields[] = $row;
+            $mentions[] = $row;
         }
 
-        $eventContexts = [];
-        foreach ($this->rows($state['event_contexts'] ?? []) as $row) {
-            if ($this->isRemovableTemplateEventRow($row)) {
-                continue;
-            }
-            if (($row['presentation_origin'] ?? null) === self::PRESENTATION_TEMPLATE) {
-                $row['presentation_origin'] = null;
-            }
-            $eventContexts[] = $row;
-        }
+        /** @var array<string, array<string, mixed>> $templateMentions */
+        $templateMentions = [];
 
         foreach ($defaultFieldKeys as $fieldKey) {
             $descriptor = $this->descriptor($fieldKey);
+            $kind = $descriptor->subjectMentionKind;
 
             if ($descriptor->editorKind === SupportedAcquisitionFieldEditorKind::EventContext) {
-                if (! $this->hasEventContext($eventContexts)) {
-                    $eventContexts[] = $this->blankEventRow(self::PRESENTATION_TEMPLATE);
+                if (! $this->hasMentionKind($mentions, MentionKind::EVENT)) {
+                    $templateMentions[MentionKind::EVENT] ??= $this->blankMentionRow(
+                        MentionKind::EVENT,
+                        self::PRESENTATION_TEMPLATE,
+                    );
                 }
 
                 continue;
             }
 
-            if ($descriptor->subjectMentionKind === MentionKind::EVENT) {
-                if (! $this->hasEventClaimField($eventContexts, $fieldKey)) {
-                    $event = $this->blankEventRow(self::PRESENTATION_TEMPLATE);
-                    $event['claims'] = [$this->blankClaimRow($fieldKey, self::PRESENTATION_TEMPLATE)];
-                    $eventContexts[] = $event;
-                }
-
+            if ($this->hasClaimField($mentions, $fieldKey)) {
                 continue;
             }
 
-            if (! $this->hasDirectField($fields, $fieldKey)) {
-                $fields[] = $this->blankClaimRow($fieldKey, self::PRESENTATION_TEMPLATE);
-            }
+            $templateMentions[$kind] ??= $this->blankMentionRow(
+                $kind,
+                self::PRESENTATION_TEMPLATE,
+            );
+            $templateMentions[$kind]['claims'][] = $this->blankClaimRow(
+                $fieldKey,
+                self::PRESENTATION_TEMPLATE,
+            );
         }
 
-        $state['fields'] = $this->orderTemplateFields($fields, $defaultFieldKeys);
-        $state['event_contexts'] = $eventContexts;
+        foreach ($templateMentions as $templateMention) {
+            $mentions[] = $templateMention;
+        }
+
+        $state['mentions'] = $mentions;
+        unset($state['fields'], $state['event_contexts'], $state['add_supported_field']);
 
         return $state;
     }
@@ -271,6 +234,8 @@ final readonly class StructuredAcquisitionFormAdapter
     public function stateFromDraft(SourceDraft $draft): array
     {
         $mentionsById = [];
+        $mentionRows = [];
+
         foreach ($draft->current->mentions as $mention) {
             if (! $mention->kind->isCanonical()) {
                 throw new InvalidArgumentException(sprintf(
@@ -278,22 +243,12 @@ final readonly class StructuredAcquisitionFormAdapter
                     $mention->kind->key,
                 ));
             }
+
             $mentionsById[$mention->id->value] = $mention;
-        }
-
-        $mentionRows = [];
-        $eventRows = [];
-        foreach ($draft->current->mentions as $mention) {
             $row = $this->mentionRow($mention);
-            if ($mention->kind->key === MentionKind::EVENT) {
-                $row['claims'] = [];
-                $eventRows[$mention->id->value] = $row;
-            } else {
-                $mentionRows[] = $row;
-            }
+            $mentionRows[$mention->id->value] = $row;
         }
 
-        $fieldRows = [];
         foreach ($draft->current->claims as $claim) {
             $fieldKey = $claim->predicate->key->value;
             if (! $this->catalog->has($fieldKey)) {
@@ -304,7 +259,7 @@ final readonly class StructuredAcquisitionFormAdapter
             }
 
             $subject = $mentionsById[$claim->subjectMentionId->value] ?? null;
-            if ($subject === null) {
+            if ($subject === null || ! isset($mentionRows[$claim->subjectMentionId->value])) {
                 throw new InvalidArgumentException(sprintf(
                     'Claim %s refers to a subject Mention that is not present in the SourceDraft.',
                     $claim->id->value,
@@ -318,24 +273,12 @@ final readonly class StructuredAcquisitionFormAdapter
             }
 
             $row = $this->claimRow($claim, $mentionsById);
-            if ($subject->kind->key === MentionKind::EVENT) {
-                if (! isset($eventRows[$subject->id->value])) {
-                    throw new InvalidArgumentException(sprintf(
-                        'Event Claim %s cannot be attached to a representable event context.',
-                        $claim->id->value,
-                    ));
-                }
-                unset($row['subject_local_key']);
-                $eventRows[$subject->id->value]['claims'][] = $row;
-            } else {
-                $fieldRows[] = $row;
-            }
+            unset($row['subject_local_key']);
+            $mentionRows[$claim->subjectMentionId->value]['claims'][] = $row;
         }
 
         return [
-            'mentions' => $mentionRows,
-            'fields' => $fieldRows,
-            'event_contexts' => array_values($eventRows),
+            'mentions' => array_values($mentionRows),
         ];
     }
 
@@ -343,202 +286,167 @@ final readonly class StructuredAcquisitionFormAdapter
     public function editInput(array $data): SupportedAcquisitionEditInput
     {
         $mentionRows = $data['mentions'] ?? [];
-        $fieldRows = $data['fields'] ?? [];
-        $eventRows = $data['event_contexts'] ?? [];
-        if (! is_array($mentionRows) || ! is_array($fieldRows) || ! is_array($eventRows)) {
-            throw ValidationException::withMessages(['data' => 'Structured editor state must contain lists.']);
+        if (! is_array($mentionRows)) {
+            throw ValidationException::withMessages(['data' => 'Structured editor state must contain a Mention list.']);
         }
 
         $mentions = [];
-        foreach (array_values($mentionRows) as $index => $row) {
-            if (! is_array($row)) {
-                throw ValidationException::withMessages(["data.mentions.$index" => 'Invalid Mention row.']);
-            }
-            $mentions[] = $this->mentionInput($row, null, "data.mentions.$index");
-        }
-
         $fields = [];
-        foreach (array_values($fieldRows) as $index => $row) {
+
+        foreach (array_values($mentionRows) as $mentionIndex => $row) {
             if (! is_array($row)) {
-                throw ValidationException::withMessages(["data.fields.$index" => 'Invalid structured field row.']);
+                throw ValidationException::withMessages(["data.mentions.$mentionIndex" => 'Invalid Mention row.']);
             }
-            if ($this->isEmptyClaimRow($row)) {
-                continue;
-            }
-            $fields[] = $this->claimInput($row, null, "data.fields.$index");
-        }
-
-        foreach (array_values($eventRows) as $eventIndex => $eventRow) {
-            if (! is_array($eventRow)) {
-                throw ValidationException::withMessages(["data.event_contexts.$eventIndex" => 'Invalid event context row.']);
-            }
-            if ($this->isEmptyEventRow($eventRow)) {
+            if ($this->isEmptyMentionRow($row)) {
                 continue;
             }
 
-            $event = $this->mentionInput($eventRow, MentionKind::EVENT, "data.event_contexts.$eventIndex");
-            $claimRows = $eventRow['claims'] ?? [];
+            $mention = $this->mentionInput($row, null, "data.mentions.$mentionIndex");
+            $mentions[] = $mention;
+
+            $claimRows = $row['claims'] ?? [];
             if (! is_array($claimRows)) {
-                throw ValidationException::withMessages(["data.event_contexts.$eventIndex.claims" => 'Event Claims must be a list.']);
+                throw ValidationException::withMessages([
+                    "data.mentions.$mentionIndex.claims" => 'Mention Claims must be a list.',
+                ]);
             }
-
-            $mentions[] = $event;
 
             foreach (array_values($claimRows) as $claimIndex => $claimRow) {
                 if (! is_array($claimRow)) {
-                    throw ValidationException::withMessages(["data.event_contexts.$eventIndex.claims.$claimIndex" => 'Invalid event Claim row.']);
+                    throw ValidationException::withMessages([
+                        "data.mentions.$mentionIndex.claims.$claimIndex" => 'Invalid Claim row.',
+                    ]);
                 }
                 if ($this->isEmptyClaimRow($claimRow)) {
                     continue;
                 }
+
                 $fields[] = $this->claimInput(
                     $claimRow,
-                    $event->localKey,
-                    "data.event_contexts.$eventIndex.claims.$claimIndex",
+                    $mention->localKey,
+                    "data.mentions.$mentionIndex.claims.$claimIndex",
                 );
             }
-
         }
 
         return new SupportedAcquisitionEditInput($mentions, $fields);
     }
 
     /** @return list<Component> */
-    private function directFieldSchema(bool $includeSubject, bool $eventOnly = false): array
+    private function directFieldSchema(): array
     {
         $schema = [
             Hidden::make('claim_id'),
             Hidden::make('presentation_origin'),
             SupportedFieldPicker::make('field_key')
                 ->label(__('supported_fields.picker.field_label'))
-                ->groups(fn (): array => app(SupportedFieldPickerPresentation::class)->claimGroups($eventOnly))
+                ->groups(fn (Get $get): array => app(SupportedFieldPickerPresentation::class)->claimGroupsForMentionKind(
+                    $get('../../kind'),
+                ))
                 ->live(),
-        ];
-
-        if ($includeSubject) {
-            $schema[] = MentionReferenceSelect::make('subject_local_key')
-                ->label('Subject Mention')
-                ->helperText('Select a Mention from this SourceDraft. Display labels are descriptive; the source-local key remains the reference identity.')
+            MentionReferenceSelect::make('object_local_key')
+                ->label('Object Mention')
+                ->helperText('Select the source-local Mention referenced by this Claim.')
                 ->options(fn (Get $get, LivewireComponent $livewire): array => $this->mentionPickerOptionsFromLivewire(
                     fieldKey: $get('field_key'),
                     livewire: $livewire,
-                    subject: true,
+                    subject: false,
                 ))
                 ->searchable()
-                ->preload();
-        }
-
-        $schema[] = MentionReferenceSelect::make('object_local_key')
-            ->label('Object Mention')
-            ->helperText('Select the Mention referenced by this field.')
-            ->options(fn (Get $get, LivewireComponent $livewire): array => $this->mentionPickerOptionsFromLivewire(
-                fieldKey: $get('field_key'),
-                livewire: $livewire,
-                subject: false,
-            ))
-            ->searchable()
-            ->preload()
-            ->visible(fn (Get $get): bool => $this->editorKind($get('field_key')) === SupportedAcquisitionFieldEditorKind::MentionReference);
-
-        $schema[] = TextInput::make('value_raw')
-            ->label('Raw/source value')
-            ->helperText('Preserved exactly as entered.')
-            ->visible(fn (Get $get): bool => $this->isLiteralEditor($get('field_key')));
-
-        $schema[] = Select::make('expression_kind')
-            ->label('Expression')
-            ->options([
-                'exact' => 'Exact',
-                'approximate' => 'Approximate',
-                'range' => 'Range',
-                'uncertain' => 'Uncertain',
-            ])
-            ->live()
-            ->visible(fn (Get $get): bool => $this->isTemporalValueEditor($get('field_key')));
-
-        $schema[] = TextInput::make('value_from')
-            ->label(fn (Get $get): string => $this->temporalValueLabel($get('field_key'), $get('expression_kind')))
-            ->helperText(fn (Get $get): string => $this->editorKind($get('field_key')) === SupportedAcquisitionFieldEditorKind::Age
-                ? 'Non-negative integer.'
-                : 'YYYY, YYYY-MM or YYYY-MM-DD.')
-            ->visible(fn (Get $get): bool => $this->isTemporalValueEditor($get('field_key')));
-
-        $schema[] = TextInput::make('value_to')
-            ->label('To')
-            ->helperText('Required only for a range.')
-            ->visible(fn (Get $get): bool => $this->isTemporalValueEditor($get('field_key'))
-                && $get('expression_kind') === 'range');
-
-        $schema[] = Select::make('age_unit')
-            ->label('Age unit')
-            ->options([
-                'years' => 'Years',
-                'months' => 'Months',
-                'days' => 'Days',
-            ])
-            ->visible(fn (Get $get): bool => $this->editorKind($get('field_key')) === SupportedAcquisitionFieldEditorKind::Age);
-
-        $schema[] = TextInput::make('integer_value')
-            ->label('Parsed integer')
-            ->numeric()
-            ->integer()
-            ->visible(fn (Get $get): bool => $this->editorKind($get('field_key')) === SupportedAcquisitionFieldEditorKind::Integer);
-
-        $schema[] = Select::make('boolean_value')
-            ->label('Parsed boolean')
-            ->options([
-                '1' => 'True',
-                '0' => 'False',
-            ])
-            ->visible(fn (Get $get): bool => $this->editorKind($get('field_key')) === SupportedAcquisitionFieldEditorKind::Boolean);
-
-        $schema[] = TextInput::make('enum_key')
-            ->label('Controlled enum key')
-            ->visible(fn (Get $get): bool => $this->editorKind($get('field_key')) === SupportedAcquisitionFieldEditorKind::Enum);
-
-        $schema[] = Section::make('Context & provenance')
-            ->description('Optional source context and certainty metadata.')
-            ->schema([
-                TextInput::make('effective_time_raw')
-                    ->label('Effective time raw/source value')
-                    ->helperText('Optional explicit Claim effective time/period; blank means no temporal qualifier.'),
-                Select::make('effective_time_kind')
-                    ->label('Effective time expression')
-                    ->options([
-                        'exact' => 'Exact',
-                        'approximate' => 'Approximate',
-                        'range' => 'Range',
-                        'uncertain' => 'Uncertain',
-                    ])
-                    ->live(),
-                TextInput::make('effective_time_from')
-                    ->label('Effective time value')
-                    ->helperText('YYYY, YYYY-MM or YYYY-MM-DD.'),
-                TextInput::make('effective_time_to')
-                    ->label('Effective time to')
-                    ->visible(fn (Get $get): bool => $get('effective_time_kind') === 'range'),
-                Textarea::make('raw_text')
-                    ->label('Supporting raw text')
-                    ->rows(2)
-                    ->columnSpanFull(),
-                TextInput::make('transcription_certainty')
-                    ->label('Transcription certainty')
-                    ->helperText('Stable lowercase code, e.g. unspecified, certain, uncertain.')
-                    ->default('unspecified'),
-                TextInput::make('interpretation_certainty')
-                    ->label('Interpretation certainty')
-                    ->helperText('Stable lowercase code; independent from transcription certainty.')
-                    ->default('unspecified'),
-            ])
-            ->columns(2)
-            ->collapsed()
-            ->collapsible()
-            ->columnSpanFull();
+                ->preload()
+                ->visible(fn (Get $get): bool => $this->editorKind($get('field_key')) === SupportedAcquisitionFieldEditorKind::MentionReference),
+            TextInput::make('value_raw')
+                ->label('Raw/source value')
+                ->helperText('Preserved exactly as entered.')
+                ->visible(fn (Get $get): bool => $this->isLiteralEditor($get('field_key'))),
+            Select::make('expression_kind')
+                ->label('Expression')
+                ->options([
+                    'exact' => 'Exact',
+                    'approximate' => 'Approximate',
+                    'range' => 'Range',
+                    'uncertain' => 'Uncertain',
+                ])
+                ->live()
+                ->visible(fn (Get $get): bool => $this->isTemporalValueEditor($get('field_key'))),
+            TextInput::make('value_from')
+                ->label(fn (Get $get): string => $this->temporalValueLabel($get('field_key'), $get('expression_kind')))
+                ->helperText(fn (Get $get): string => $this->editorKind($get('field_key')) === SupportedAcquisitionFieldEditorKind::Age
+                    ? 'Non-negative integer.'
+                    : 'YYYY, YYYY-MM or YYYY-MM-DD.')
+                ->visible(fn (Get $get): bool => $this->isTemporalValueEditor($get('field_key'))),
+            TextInput::make('value_to')
+                ->label('To')
+                ->helperText('Required only for a range.')
+                ->visible(fn (Get $get): bool => $this->isTemporalValueEditor($get('field_key'))
+                    && $get('expression_kind') === 'range'),
+            Select::make('age_unit')
+                ->label('Age unit')
+                ->options([
+                    'years' => 'Years',
+                    'months' => 'Months',
+                    'days' => 'Days',
+                ])
+                ->visible(fn (Get $get): bool => $this->editorKind($get('field_key')) === SupportedAcquisitionFieldEditorKind::Age),
+            TextInput::make('integer_value')
+                ->label('Parsed integer')
+                ->numeric()
+                ->integer()
+                ->visible(fn (Get $get): bool => $this->editorKind($get('field_key')) === SupportedAcquisitionFieldEditorKind::Integer),
+            Select::make('boolean_value')
+                ->label('Parsed boolean')
+                ->options([
+                    '1' => 'True',
+                    '0' => 'False',
+                ])
+                ->visible(fn (Get $get): bool => $this->editorKind($get('field_key')) === SupportedAcquisitionFieldEditorKind::Boolean),
+            TextInput::make('enum_key')
+                ->label('Controlled enum key')
+                ->visible(fn (Get $get): bool => $this->editorKind($get('field_key')) === SupportedAcquisitionFieldEditorKind::Enum),
+            Section::make('Context & provenance')
+                ->description('Optional source context and certainty metadata.')
+                ->schema([
+                    TextInput::make('effective_time_raw')
+                        ->label('Effective time raw/source value')
+                        ->helperText('Optional explicit Claim effective time/period; blank means no temporal qualifier.'),
+                    Select::make('effective_time_kind')
+                        ->label('Effective time expression')
+                        ->options([
+                            'exact' => 'Exact',
+                            'approximate' => 'Approximate',
+                            'range' => 'Range',
+                            'uncertain' => 'Uncertain',
+                        ])
+                        ->live(),
+                    TextInput::make('effective_time_from')
+                        ->label('Effective time value')
+                        ->helperText('YYYY, YYYY-MM or YYYY-MM-DD.'),
+                    TextInput::make('effective_time_to')
+                        ->label('Effective time to')
+                        ->visible(fn (Get $get): bool => $get('effective_time_kind') === 'range'),
+                    Textarea::make('raw_text')
+                        ->label('Supporting raw text')
+                        ->rows(2)
+                        ->columnSpanFull(),
+                    TextInput::make('transcription_certainty')
+                        ->label('Transcription certainty')
+                        ->helperText('Stable lowercase code, e.g. unspecified, certain, uncertain.')
+                        ->default('unspecified'),
+                    TextInput::make('interpretation_certainty')
+                        ->label('Interpretation certainty')
+                        ->helperText('Stable lowercase code; independent from transcription certainty.')
+                        ->default('unspecified'),
+                ])
+                ->columns(2)
+                ->collapsed()
+                ->collapsible()
+                ->columnSpanFull(),
+        ];
 
         return $schema;
     }
 
-    private function editorKind(mixed $fieldKey): ?SupportedAcquisitionFieldEditorKind
+    private function editorKind    private function editorKind(mixed $fieldKey): ?SupportedAcquisitionFieldEditorKind
     {
         if (! is_string($fieldKey) || ! $this->catalog->has($fieldKey)) {
             return null;
@@ -792,6 +700,7 @@ final readonly class StructuredAcquisitionFormAdapter
             'display_label' => $mention->displayLabel,
             'raw_data_json' => $rawData,
             'presentation_origin' => null,
+            'claims' => [],
         ];
     }
 
@@ -895,11 +804,12 @@ final readonly class StructuredAcquisitionFormAdapter
     }
 
     /** @return array<string, mixed> */
-    private function blankEventRow(?string $origin = null): array
+    private function blankMentionRow(string $kind, ?string $origin = null): array
     {
         return [
             'id' => null,
             'presentation_origin' => $origin,
+            'kind' => $kind,
             'local_key' => null,
             'role' => null,
             'display_label' => null,
@@ -948,11 +858,12 @@ final readonly class StructuredAcquisitionFormAdapter
     }
 
     /** @param  array<string, mixed>  $row */
-    private function isEmptyEventRow(array $row): bool
+    private function isEmptyMentionRow(array $row): bool
     {
         if ($this->optionalString($row['id'] ?? null) !== null) {
             return false;
         }
+
         foreach (['local_key', 'role', 'display_label', 'raw_data_json'] as $key) {
             if ($this->hasValue($row[$key] ?? null)) {
                 return false;
@@ -976,17 +887,17 @@ final readonly class StructuredAcquisitionFormAdapter
     }
 
     /** @param  array<string, mixed>  $row */
-    private function isRemovableTemplateEventRow(array $row): bool
+    private function isRemovableTemplateMentionRow(array $row): bool
     {
         return ($row['presentation_origin'] ?? null) === self::PRESENTATION_TEMPLATE
-            && $this->isEmptyEventRow($row);
+            && $this->isEmptyMentionRow($row);
     }
 
-    /** @param  list<array<string, mixed>>  $rows */
-    private function hasDirectField(array $rows, string $fieldKey): bool
+    /** @param  list<array<string, mixed>>  $mentions */
+    private function hasMentionKind(array $mentions, string $kind): bool
     {
-        foreach ($rows as $row) {
-            if (($row['field_key'] ?? null) === $fieldKey) {
+        foreach ($mentions as $mention) {
+            if (($mention['kind'] ?? null) === $kind && ! $this->isEmptyMentionRow($mention)) {
                 return true;
             }
         }
@@ -994,24 +905,12 @@ final readonly class StructuredAcquisitionFormAdapter
         return false;
     }
 
-    /** @param  list<array<string, mixed>>  $rows */
-    private function hasEventContext(array $rows): bool
+    /** @param  list<array<string, mixed>>  $mentions */
+    private function hasClaimField(array $mentions, string $fieldKey): bool
     {
-        foreach ($rows as $row) {
-            if (! $this->isEmptyEventRow($row) || ($row['presentation_origin'] ?? null) === self::PRESENTATION_TEMPLATE) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /** @param  list<array<string, mixed>>  $eventRows */
-    private function hasEventClaimField(array $eventRows, string $fieldKey): bool
-    {
-        foreach ($eventRows as $eventRow) {
-            foreach ($this->rows($eventRow['claims'] ?? []) as $claimRow) {
-                if (($claimRow['field_key'] ?? null) === $fieldKey) {
+        foreach ($mentions as $mention) {
+            foreach ($this->rows($mention['claims'] ?? []) as $claim) {
+                if (($claim['field_key'] ?? null) === $fieldKey && ! $this->isEmptyClaimRow($claim)) {
                     return true;
                 }
             }
@@ -1020,39 +919,46 @@ final readonly class StructuredAcquisitionFormAdapter
         return false;
     }
 
-    /**
-     * @param  list<array<string, mixed>>  $rows
-     * @param  list<string>  $defaultFieldKeys
-     * @return list<array<string, mixed>>
-     */
-    private function orderTemplateFields(array $rows, array $defaultFieldKeys): array
+    /** @param  array<string, mixed>  $state */
+    private function incomingRelationshipSummary(array $state, ?string $targetLocalKey): ?string
     {
-        $order = array_flip(array_values(array_filter(
-            $defaultFieldKeys,
-            fn (string $fieldKey): bool => $this->catalog->has($fieldKey)
-                && $this->catalog->get($fieldKey)->subjectMentionKind !== MentionKind::EVENT
-                && $this->catalog->get($fieldKey)->isDirectClaim(),
-        )));
-
-        $indexed = [];
-        foreach ($rows as $index => $row) {
-            $fieldKey = $row['field_key'] ?? null;
-            $indexed[] = [
-                'row' => $row,
-                'template_order' => is_string($fieldKey) && isset($order[$fieldKey]) ? $order[$fieldKey] : PHP_INT_MAX,
-                'original_order' => $index,
-            ];
+        if ($targetLocalKey === null) {
+            return null;
         }
 
-        usort(
-            $indexed,
-            static fn (array $left, array $right): int => [$left['template_order'], $left['original_order']] <=> [$right['template_order'], $right['original_order']],
-        );
+        $relationships = [];
+        foreach ($this->rows($state['mentions'] ?? []) as $mention) {
+            $subjectLocalKey = $this->optionalString($mention['local_key'] ?? null);
+            if ($subjectLocalKey === null) {
+                continue;
+            }
 
-        return array_map(static fn (array $item): array => $item['row'], $indexed);
+            $subjectLabel = $this->optionalString($mention['display_label'] ?? null) ?? $subjectLocalKey;
+
+            foreach ($this->rows($mention['claims'] ?? []) as $claim) {
+                if (($claim['object_local_key'] ?? null) !== $targetLocalKey) {
+                    continue;
+                }
+
+                $fieldKey = $this->optionalString($claim['field_key'] ?? null);
+                if ($fieldKey === null || ! $this->catalog->has($fieldKey)) {
+                    continue;
+                }
+
+                $descriptor = $this->catalog->get($fieldKey);
+                if ($descriptor->editorKind !== SupportedAcquisitionFieldEditorKind::MentionReference) {
+                    continue;
+                }
+
+                $relationships[] = sprintf('%s ← %s', $descriptor->label, $subjectLabel);
+            }
+        }
+
+        return $relationships === [] ? null : implode("\n", $relationships);
     }
 
     /** @return list<array<string, mixed>> */
+    private function rows    /** @return list<array<string, mixed>> */
     private function rows(mixed $value): array
     {
         if (! is_array($value)) {
