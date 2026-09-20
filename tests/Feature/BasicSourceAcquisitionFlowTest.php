@@ -68,29 +68,27 @@ final class BasicSourceAcquisitionFlowTest extends TestCase
                     'role' => 'declarant',
                     'display_label' => 'Jan Kowalski',
                     'raw_data_json' => '{"descriptor":"włościanin"}',
+                    'claims' => [[
+                        'claim_id' => null,
+                        'field_key' => PredicateKey::PersonAcademicDegree->value,
+                        'object_local_key' => null,
+                        'value_raw' => 'doktor nauk medycznych',
+                        'expression_kind' => null,
+                        'value_from' => null,
+                        'value_to' => null,
+                        'age_unit' => null,
+                        'integer_value' => null,
+                        'boolean_value' => null,
+                        'enum_key' => null,
+                        'effective_time_raw' => null,
+                        'effective_time_kind' => null,
+                        'effective_time_from' => null,
+                        'effective_time_to' => null,
+                        'raw_text' => 'doktor nauk medycznych',
+                        'transcription_certainty' => 'certain',
+                        'interpretation_certainty' => 'certain',
+                    ]],
                 ]],
-                'fields' => [[
-                    'claim_id' => null,
-                    'field_key' => PredicateKey::PersonAcademicDegree->value,
-                    'subject_local_key' => 'person-1',
-                    'object_local_key' => null,
-                    'value_raw' => 'doktor nauk medycznych',
-                    'expression_kind' => null,
-                    'value_from' => null,
-                    'value_to' => null,
-                    'age_unit' => null,
-                    'integer_value' => null,
-                    'boolean_value' => null,
-                    'enum_key' => null,
-                    'effective_time_raw' => null,
-                    'effective_time_kind' => null,
-                    'effective_time_from' => null,
-                    'effective_time_to' => null,
-                    'raw_text' => 'doktor nauk medycznych',
-                    'transcription_certainty' => 'certain',
-                    'interpretation_certainty' => 'certain',
-                ]],
-                'event_contexts' => [],
             ], 'evidenceForm')
             ->call('save')
             ->assertHasNoFormErrors()
@@ -133,16 +131,14 @@ final class BasicSourceAcquisitionFlowTest extends TestCase
                     'role' => null,
                     'display_label' => 'Jan',
                     'raw_data_json' => null,
+                    'claims' => [[
+                        'claim_id' => null,
+                        'field_key' => PredicateKey::PersonOccupation->value,
+                        'value_raw' => 'rolnik',
+                        'transcription_certainty' => 'unspecified',
+                        'interpretation_certainty' => 'unspecified',
+                    ]],
                 ]],
-                'fields' => [[
-                    'claim_id' => null,
-                    'field_key' => PredicateKey::PersonOccupation->value,
-                    'subject_local_key' => 'person-1',
-                    'value_raw' => 'rolnik',
-                    'transcription_certainty' => 'unspecified',
-                    'interpretation_certainty' => 'unspecified',
-                ]],
-                'event_contexts' => [],
             ], 'evidenceForm')
             ->call('save')
             ->assertHasNoFormErrors()
@@ -171,7 +167,7 @@ final class BasicSourceAcquisitionFlowTest extends TestCase
         self::assertSame($evidenceStateCount, DB::table('evidence_states')->count());
     }
 
-    public function test_basic_flow_saves_repeated_fields_and_reified_event_context_in_one_evidence_state(): void
+    public function test_basic_flow_saves_repeated_claims_and_event_mention_in_one_evidence_state(): void
     {
         Livewire::test(SourceEditor::class)
             ->fillForm([
@@ -183,6 +179,7 @@ final class BasicSourceAcquisitionFlowTest extends TestCase
                         'role' => 'child',
                         'display_label' => 'Józef Gajda',
                         'raw_data_json' => null,
+                        'claims' => [],
                     ],
                     [
                         'id' => null,
@@ -191,51 +188,50 @@ final class BasicSourceAcquisitionFlowTest extends TestCase
                         'role' => 'father',
                         'display_label' => 'Jan Gajda',
                         'raw_data_json' => null,
-                    ],
-                ],
-                'fields' => [
-                    [
-                        'claim_id' => null,
-                        'field_key' => PredicateKey::PersonOccupation->value,
-                        'subject_local_key' => 'father',
-                        'value_raw' => 'rolnik',
-                        'transcription_certainty' => 'certain',
-                        'interpretation_certainty' => 'certain',
-                    ],
-                    [
-                        'claim_id' => null,
-                        'field_key' => PredicateKey::PersonOccupation->value,
-                        'subject_local_key' => 'father',
-                        'value_raw' => 'właściciel gospodarstwa',
-                        'transcription_certainty' => 'certain',
-                        'interpretation_certainty' => 'certain',
-                    ],
-                ],
-                'event_contexts' => [[
-                    'id' => null,
-                    'local_key' => 'birth-event',
-                    'role' => 'birth',
-                    'display_label' => 'Birth of Józef Gajda',
-                    'raw_data_json' => null,
-                    'claims' => [
-                        [
-                            'claim_id' => null,
-                            'field_key' => PredicateKey::EventDate->value,
-                            'value_raw' => '1853-04-12',
-                            'expression_kind' => 'exact',
-                            'value_from' => '1853-04-12',
-                            'transcription_certainty' => 'certain',
-                            'interpretation_certainty' => 'certain',
-                        ],
-                        [
-                            'claim_id' => null,
-                            'field_key' => PredicateKey::EventChild->value,
-                            'object_local_key' => 'child',
-                            'transcription_certainty' => 'certain',
-                            'interpretation_certainty' => 'certain',
+                        'claims' => [
+                            [
+                                'claim_id' => null,
+                                'field_key' => PredicateKey::PersonOccupation->value,
+                                'value_raw' => 'rolnik',
+                                'transcription_certainty' => 'certain',
+                                'interpretation_certainty' => 'certain',
+                            ],
+                            [
+                                'claim_id' => null,
+                                'field_key' => PredicateKey::PersonOccupation->value,
+                                'value_raw' => 'właściciel gospodarstwa',
+                                'transcription_certainty' => 'certain',
+                                'interpretation_certainty' => 'certain',
+                            ],
                         ],
                     ],
-                ]],
+                    [
+                        'id' => null,
+                        'kind' => 'event',
+                        'local_key' => 'birth-event',
+                        'role' => 'birth',
+                        'display_label' => 'Birth of Józef Gajda',
+                        'raw_data_json' => null,
+                        'claims' => [
+                            [
+                                'claim_id' => null,
+                                'field_key' => PredicateKey::EventDate->value,
+                                'value_raw' => '1853-04-12',
+                                'expression_kind' => 'exact',
+                                'value_from' => '1853-04-12',
+                                'transcription_certainty' => 'certain',
+                                'interpretation_certainty' => 'certain',
+                            ],
+                            [
+                                'claim_id' => null,
+                                'field_key' => PredicateKey::EventChild->value,
+                                'object_local_key' => 'child',
+                                'transcription_certainty' => 'certain',
+                                'interpretation_certainty' => 'certain',
+                            ],
+                        ],
+                    ],
+                ],
             ], 'evidenceForm')
             ->call('save')
             ->assertHasNoFormErrors()
@@ -268,17 +264,24 @@ final class BasicSourceAcquisitionFlowTest extends TestCase
     {
         Livewire::test(SourceEditor::class)
             ->fillForm([
-                'fields' => [[
-                    'claim_id' => null,
-                    'field_key' => PredicateKey::PersonOccupation->value,
-                    'subject_local_key' => 'missing-person',
-                    'value_raw' => 'rolnik',
-                    'transcription_certainty' => 'unspecified',
-                    'interpretation_certainty' => 'unspecified',
+                'mentions' => [[
+                    'id' => null,
+                    'kind' => 'place',
+                    'local_key' => 'place-1',
+                    'role' => null,
+                    'display_label' => 'Place 1',
+                    'raw_data_json' => null,
+                    'claims' => [[
+                        'claim_id' => null,
+                        'field_key' => PredicateKey::PersonOccupation->value,
+                        'value_raw' => 'rolnik',
+                        'transcription_certainty' => 'unspecified',
+                        'interpretation_certainty' => 'unspecified',
+                    ]],
                 ]],
             ], 'evidenceForm')
             ->call('save')
-            ->assertHasErrors(['evidenceData.fields.0.subject_local_key'])
+            ->assertHasErrors(['evidenceData.mentions.0.claims.0'])
             ->assertHasNoErrors(['data']);
 
         $this->assertDatabaseCount('sources', 0);
