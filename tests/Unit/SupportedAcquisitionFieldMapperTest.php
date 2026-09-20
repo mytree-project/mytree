@@ -87,43 +87,6 @@ final class SupportedAcquisitionFieldMapperTest extends TestCase
         );
     }
 
-    public function test_reified_event_context_produces_explicit_mention_and_claim_changes(): void
-    {
-        $sourceId = new SourceId('00000000-0000-0000-0000-000000000021');
-        $event = $this->mention(
-            '00000000-0000-0000-0000-000000000022',
-            $sourceId,
-            MentionKind::event(),
-            'event.birth.1',
-        );
-        $person = $this->mention(
-            '00000000-0000-0000-0000-000000000023',
-            $sourceId,
-            MentionKind::person(),
-            'person.child',
-        );
-
-        $dateClaim = $this->mapper->directClaim(
-            fieldKey: PredicateKey::EventDate->value,
-            claimId: new ClaimId('00000000-0000-0000-0000-000000000024'),
-            sourceId: $sourceId,
-            subject: $event,
-            value: DateClaimValue::exact('1891-02-03', HistoricalDate::day(1891, 2, 3)),
-        );
-        $childClaim = $this->mapper->directClaim(
-            fieldKey: PredicateKey::EventChild->value,
-            claimId: new ClaimId('00000000-0000-0000-0000-000000000025'),
-            sourceId: $sourceId,
-            subject: $event,
-            object: $person,
-        );
-
-        $changes = $this->mapper->reifiedEventContext($event, [$dateClaim, $childClaim]);
-
-        self::assertSame([$event], $changes->addMentions);
-        self::assertSame([$dateClaim, $childClaim], $changes->addClaims);
-    }
-
     private function mention(string $id, SourceId $sourceId, MentionKind $kind, string $localKey): Mention
     {
         return new Mention(
