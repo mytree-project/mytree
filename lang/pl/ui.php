@@ -24,6 +24,8 @@ return [
         'details_title' => 'Szczegóły źródła',
         'close_details' => 'Zamknij szczegóły',
         'id' => 'ID',
+        'details_loading' => 'Ładowanie szczegółów źródła…',
+        'evidence_graph_yaml' => 'Graf źródła (YAML)',
         'empty' => 'Brak źródeł pasujących do wyszukiwania.',
         'no_metadata' => 'Brak metadanych',
     ],
