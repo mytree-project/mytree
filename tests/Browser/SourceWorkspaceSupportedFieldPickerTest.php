@@ -2,53 +2,51 @@
 
 declare(strict_types=1);
 
+use App\Application\Acquisition\CreateClaim;
+use App\Application\Acquisition\CreateMention;
 use App\Application\Acquisition\CreateSource;
+use App\Domain\Acquisition\DateClaimValue;
+use App\Domain\Acquisition\HistoricalDate;
+use App\Domain\Acquisition\MentionKind;
+use App\Domain\Acquisition\PredicateKey;
+use App\Domain\Acquisition\PredicateVocabulary;
 use App\Domain\Acquisition\SourceType;
+use App\Domain\Acquisition\TextClaimValue;
 use App\Infrastructure\Persistence\Eloquent\Models\User;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
 use Pest\Browser\Api\AwaitableWebpage;
 
-function authenticateSupportedFieldPickerBrowserTestUser(): void
+function authenticateMentionOwnedPickerBrowserUser(): void
 {
     $guardName = config('auth.defaults.guard');
 
-    if (is_string($guardName) === false || $guardName === '') {
+    if (! is_string($guardName) || $guardName === '') {
         throw new RuntimeException('Default authentication guard is not configured.');
     }
 
     $auth = app(AuthFactory::class);
     $user = User::factory()->admin()->create([
-        'email' => 'supported-field-picker-admin@example.test',
+        'email' => 'mention-owned-picker-admin@example.test',
     ]);
 
     $auth->guard($guardName)->setUser($user);
     $auth->shouldUse($guardName);
 }
 
-function openSupportedFieldPickerWorkspace(string $sourceId): AwaitableWebpage
+function openMentionOwnedPickerWorkspace(string $sourceId): AwaitableWebpage
 {
     $pendingPage = visit('/admin/acquisition/source?source='.urlencode($sourceId));
-    $page = $pendingPage->__call('assertPresent', ['[data-supported-field-palette-name="add_supported_field"]']);
+    $page = $pendingPage->__call('assertPresent', ['[data-mentions-claims-editor]']);
 
-    if (($page instanceof AwaitableWebpage) === false) {
+    if (! $page instanceof AwaitableWebpage) {
         throw new RuntimeException('Browser visit did not resolve to an awaitable webpage.');
     }
 
     return $page;
 }
 
-function supportedFieldPaletteTrigger(string $name): string
+function mentionOwnedPickerItemSelector(AwaitableWebpage $page, string $summary): string
 {
-    return sprintf(
-        '[data-supported-field-palette-name=%s] [data-supported-field-palette-trigger]',
-        json_encode($name, JSON_THROW_ON_ERROR),
-    );
-}
-
-function expandSupportedFieldPickerClaim(
-    AwaitableWebpage $page,
-    string $summary,
-): void {
     $selector = $page->script(strtr(<<<'JS'
         (() => {
             const expectedSummary = __SUMMARY__;
@@ -60,11 +58,11 @@ function expandSupportedFieldPickerClaim(
             });
 
             if (! item) {
-                throw new Error('Claim repeater item was not found: ' + expectedSummary);
+                throw new Error('Repeater item was not found: ' + expectedSummary);
             }
 
             if (! item.id) {
-                item.id = 'supported-field-picker-claim-' + Math.random().toString(36).slice(2);
+                item.id = 'mention-owned-picker-item-' + Math.random().toString(36).slice(2);
             }
 
             return '#' + CSS.escape(item.id);
@@ -73,10 +71,15 @@ function expandSupportedFieldPickerClaim(
         '__SUMMARY__' => json_encode($summary, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
     ]));
 
-    if (is_string($selector) === false || $selector === '') {
-        throw new RuntimeException("Could not resolve Claim repeater item [$summary].");
+    if (! is_string($selector) || $selector === '') {
+        throw new RuntimeException("Could not resolve repeater item [$summary].");
     }
 
+    return $selector;
+}
+
+function expandMentionOwnedPickerItem(AwaitableWebpage $page, string $selector): void
+{
     $collapsed = $page->script(sprintf(
         'document.querySelector(%s)?.classList.contains("fi-collapsed") === true',
         json_encode($selector, JSON_THROW_ON_ERROR),
@@ -97,168 +100,117 @@ function expandSupportedFieldPickerClaim(
     );
 }
 
-function activeSupportedFieldPaletteOptionSelector(AwaitableWebpage $page, string $fieldKey): string
-{
-    $selector = $page->script(strtr(<<<'JS'
+function assertMentionOwnedPickerGroup(
+    AwaitableWebpage $page,
+    string $group,
+    bool $present,
+): void {
+    $page->assertScript(strtr(<<<'JS'
         (() => {
-            const fieldKey = __FIELD_KEY__;
+            const group = __GROUP__;
             const panel = Array.from(document.querySelectorAll('[data-supported-field-palette-panel]'))
                 .find((candidate) => candidate.offsetParent !== null);
 
-            if (! panel) {
-                throw new Error('No supported-field palette is open.');
-            }
-
-            const option = panel.querySelector(
-                '[data-supported-field-palette-option][data-supported-field-key="' + CSS.escape(fieldKey) + '"]',
-            );
-
-            if (! option) {
-                throw new Error('Supported field is not available in the active palette: ' + fieldKey);
-            }
-
-            if (! option.id) {
-                option.id = 'supported-field-palette-option-' + Math.random().toString(36).slice(2);
-            }
-
-            return '#' + CSS.escape(option.id);
+            return panel?.querySelector('[data-supported-field-palette-group="' + CSS.escape(group) + '"]') !== null;
         })()
         JS, [
-        '__FIELD_KEY__' => json_encode($fieldKey, JSON_THROW_ON_ERROR),
-    ]));
-
-    if (is_string($selector) === false || $selector === '') {
-        throw new RuntimeException(sprintf('Could not resolve picker option [%s].', $fieldKey));
-    }
-
-    return $selector;
+        '__GROUP__' => json_encode($group, JSON_THROW_ON_ERROR),
+    ]), $present);
 }
 
-function setActiveSupportedFieldPaletteSearch(AwaitableWebpage $page, string $query): void
-{
-    $page->script(strtr(<<<'JS'
-        (() => {
-            const query = __QUERY__;
-            const panel = Array.from(document.querySelectorAll('[data-supported-field-palette-panel]'))
-                .find((candidate) => candidate.offsetParent !== null);
-            const input = panel?.querySelector('[data-supported-field-palette-search]');
-
-            if (! (input instanceof HTMLInputElement)) {
-                throw new Error('Active supported-field palette search input was not found.');
-            }
-
-            const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-            setter?.call(input, query);
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-        })()
-        JS, [
-        '__QUERY__' => json_encode($query, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
-    ]));
-}
-
-function assertActiveSupportedFieldPaletteOptionVisible(
+function assertMentionOwnedPickerOption(
     AwaitableWebpage $page,
     string $fieldKey,
-    bool $visible,
+    bool $present,
 ): void {
     $page->assertScript(strtr(<<<'JS'
         (() => {
             const fieldKey = __FIELD_KEY__;
             const panel = Array.from(document.querySelectorAll('[data-supported-field-palette-panel]'))
                 .find((candidate) => candidate.offsetParent !== null);
-            const option = panel?.querySelector(
-                '[data-supported-field-palette-option][data-supported-field-key="' + CSS.escape(fieldKey) + '"]',
-            );
 
-            return option?.offsetParent !== null;
+            return panel?.querySelector(
+                '[data-supported-field-palette-option][data-supported-field-key="' + CSS.escape(fieldKey) + '"]',
+            ) !== null;
         })()
         JS, [
         '__FIELD_KEY__' => json_encode($fieldKey, JSON_THROW_ON_ERROR),
-    ]), $visible);
+    ]), $present);
 }
 
-function assertSingleSupportedFieldPaletteOpen(AwaitableWebpage $page): void
-{
-    $page->assertScript(
-        "Array.from(document.querySelectorAll('[data-supported-field-palette-panel]')).filter((candidate) => candidate.offsetParent !== null).length === 1",
-        true,
-    );
-}
-
-it('opens a multi-column categorized predicate palette and filters by label or canonical key', function (): void {
+it('filters the nested Claim palette by the containing Mention kind', function (): void {
     $source = app(CreateSource::class)->handle(SourceType::generic());
 
-    authenticateSupportedFieldPickerBrowserTestUser();
-    $page = openSupportedFieldPickerWorkspace($source->id->value);
-
-    $page->click(supportedFieldPaletteTrigger('add_supported_field'));
-    assertSingleSupportedFieldPaletteOpen($page);
-
-    $page
-        ->assertSee('Person · Basic information')
-        ->assertSee('Person · Relationships')
-        ->assertSee('Person · Places')
-        ->assertSee('Person · Occupation, status & titles')
-        ->assertSee('Event contexts')
-        ->assertSee('Event · General facts')
-        ->assertSee('Event · Participants & roles')
-        ->assertSee('Place')
-        ->assertScript(
-            "getComputedStyle(Array.from(document.querySelectorAll('[data-supported-field-palette-panel]')).find((candidate) => candidate.offsetParent !== null).querySelector('.supported-field-palette-columns')).gridTemplateColumns.split(' ').length > 1",
-            true,
-        );
-
-    $eventContext = activeSupportedFieldPaletteOptionSelector($page, 'event.context');
-    $page->assertScript(
-        sprintf(
-            'document.querySelector(%s).classList.contains("supported-field-palette-option-event-context")',
-            json_encode($eventContext, JSON_THROW_ON_ERROR),
-        ),
-        true,
+    $person = app(CreateMention::class)->handle(
+        sourceId: $source->id,
+        kind: MentionKind::person(),
+        localKey: 'person_jan',
+        displayLabel: 'Jan Kowalski',
+    );
+    app(CreateClaim::class)->handle(
+        sourceId: $source->id,
+        subjectMentionId: $person->id,
+        predicate: PredicateVocabulary::get(PredicateKey::PersonGivenName),
+        value: new TextClaimValue('Jan'),
     );
 
-    setActiveSupportedFieldPaletteSearch($page, 'Occupation');
-    assertActiveSupportedFieldPaletteOptionVisible($page, 'person.occupation', true);
-    assertActiveSupportedFieldPaletteOptionVisible($page, 'person.social_estate', false);
-
-    setActiveSupportedFieldPaletteSearch($page, 'person.social_estate');
-    assertActiveSupportedFieldPaletteOptionVisible($page, 'person.social_estate', true);
-    assertActiveSupportedFieldPaletteOptionVisible($page, 'person.occupation', false);
-
-    setActiveSupportedFieldPaletteSearch($page, '');
-    $occupation = activeSupportedFieldPaletteOptionSelector($page, 'person.occupation');
-
-    $page
-        ->click($occupation)
-        ->assertSee('Claim 1 · Occupation');
-
-    expandSupportedFieldPickerClaim($page, 'Claim 1 · Occupation');
-
-    $page
-        ->assertVisible(supportedFieldPaletteTrigger('field_key'))
-        ->click(supportedFieldPaletteTrigger('field_key'));
-    assertSingleSupportedFieldPaletteOpen($page);
-
-    $page->assertScript(
-        "(() => { const panel = Array.from(document.querySelectorAll('[data-supported-field-palette-panel]')).find((candidate) => candidate.offsetParent !== null); return panel.querySelector('[data-supported-field-palette-group=\"event_contexts\"]') === null && panel.querySelector('[data-supported-field-palette-group=\"event_general\"]') === null; })()",
-        true,
+    $event = app(CreateMention::class)->handle(
+        sourceId: $source->id,
+        kind: MentionKind::event(),
+        localKey: 'event_birth',
+        displayLabel: 'Birth of Jan',
+    );
+    app(CreateClaim::class)->handle(
+        sourceId: $source->id,
+        subjectMentionId: $event->id,
+        predicate: PredicateVocabulary::get(PredicateKey::EventDate),
+        value: DateClaimValue::exact('1891-02-03', HistoricalDate::day(1891, 2, 3)),
     );
 
-    $birthDate = activeSupportedFieldPaletteOptionSelector($page, 'person.birth_date');
+    authenticateMentionOwnedPickerBrowserUser();
+    $page = openMentionOwnedPickerWorkspace($source->id->value);
 
-    $page
-        ->click($birthDate)
-        ->assertSee('Claim 1 · Birth date')
-        ->assertSee('Expression');
+    $personItem = mentionOwnedPickerItemSelector(
+        $page,
+        'Mention 1 · person · Jan Kowalski · person_jan',
+    );
+    expandMentionOwnedPickerItem($page, $personItem);
 
-    $page->click(supportedFieldPaletteTrigger('add_supported_field'));
-    assertSingleSupportedFieldPaletteOpen($page);
+    $personClaim = mentionOwnedPickerItemSelector($page, 'Claim 1 · Given name · Jan');
+    expandMentionOwnedPickerItem($page, $personClaim);
 
-    assertActiveSupportedFieldPaletteOptionVisible($page, 'person.occupation', true);
-    $secondOccupation = activeSupportedFieldPaletteOptionSelector($page, 'person.occupation');
+    $page->click(
+        $personClaim.' [data-supported-field-palette-name="field_key"] [data-supported-field-palette-trigger]',
+    );
 
-    $page
-        ->click($secondOccupation)
-        ->assertSee('Claim 2 · Occupation')
-        ->assertNoJavaScriptErrors();
+    assertMentionOwnedPickerGroup($page, 'person_general', true);
+    assertMentionOwnedPickerGroup($page, 'person_relationships', true);
+    assertMentionOwnedPickerGroup($page, 'event_general', false);
+    assertMentionOwnedPickerOption($page, PredicateKey::PersonSpouse->value, true);
+    assertMentionOwnedPickerOption($page, PredicateKey::EventDate->value, false);
+
+    $page->script(
+        "document.activeElement?.blur(); document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));",
+    );
+
+    $eventItem = mentionOwnedPickerItemSelector(
+        $page,
+        'Mention 2 · event · Birth of Jan · event_birth',
+    );
+    expandMentionOwnedPickerItem($page, $eventItem);
+
+    $eventClaim = mentionOwnedPickerItemSelector($page, 'Claim 1 · Event date · 1891-02-03');
+    expandMentionOwnedPickerItem($page, $eventClaim);
+
+    $page->click(
+        $eventClaim.' [data-supported-field-palette-name="field_key"] [data-supported-field-palette-trigger]',
+    );
+
+    assertMentionOwnedPickerGroup($page, 'event_general', true);
+    assertMentionOwnedPickerGroup($page, 'event_roles', true);
+    assertMentionOwnedPickerGroup($page, 'person_general', false);
+    assertMentionOwnedPickerOption($page, PredicateKey::EventSpouse->value, true);
+    assertMentionOwnedPickerOption($page, PredicateKey::PersonSpouse->value, false);
+
+    $page->assertNoJavaScriptErrors();
 });
