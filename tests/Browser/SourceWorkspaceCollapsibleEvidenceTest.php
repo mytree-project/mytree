@@ -310,6 +310,7 @@ it('collapses Mention cards and their nested Claims while preserving unsaved sta
     assertCollapsibleEvidenceItemState($page, $personSelector, true);
     toggleCollapsibleEvidenceItem($page, $personSelector);
     assertCollapsibleEvidenceItemState($page, $personSelector, false);
+    $displayLabelSelector = collapsibleEvidenceFieldSelectorByLabel($page, 'Display label');
     $page->assertValue($displayLabelSelector, 'Valentin Updated');
 
     toggleCollapsibleEvidenceItem($page, $eventSelector);
