@@ -357,6 +357,36 @@ function fillSourceWorkspaceBrowserField(
     $selector = sourceWorkspaceBrowserFieldSelectorByLabel($page, $label, $scopeSelector);
     sourceWorkspaceBrowserDebugCheckpoint("fill:$label:resolve-selector:after");
 
+    $fieldState = $page->script(strtr(<<<'JS'
+        (() => {
+            const selector = __SELECTOR__;
+            const control = document.querySelector(selector);
+
+            if (! control) {
+                return { present: false };
+            }
+
+            const rect = control.getBoundingClientRect();
+            const style = window.getComputedStyle(control);
+
+            return {
+                present: true,
+                disabled: Boolean(control.disabled),
+                readOnly: Boolean(control.readOnly),
+                display: style.display,
+                visibility: style.visibility,
+                width: rect.width,
+                height: rect.height,
+                offsetParent: control.offsetParent !== null,
+            };
+        })()
+        JS, [
+        '__SELECTOR__' => json_encode($selector, JSON_THROW_ON_ERROR),
+    ]));
+    sourceWorkspaceBrowserDebugCheckpoint(
+        "fill:$label:control-state:".json_encode($fieldState, JSON_THROW_ON_ERROR),
+    );
+
     sourceWorkspaceBrowserDebugCheckpoint("fill:$label:fill:before");
     $page->fill($selector, $value);
     sourceWorkspaceBrowserDebugCheckpoint("fill:$label:fill:after");
@@ -514,7 +544,10 @@ it('keeps a nested Claim attached when its containing Mention local key is renam
 });
 
 it('marks a failing nested event Claim while treating the Event as an ordinary Mention', function (): void {
+    sourceWorkspaceBrowserDebugCheckpoint('test:event-claim:start');
+
     $source = app(CreateSource::class)->handle(SourceType::generic());
+    sourceWorkspaceBrowserDebugCheckpoint('test:event-claim:source-created');
     $place = app(CreateMention::class)->handle(
         sourceId: $source->id,
         kind: MentionKind::place(),
@@ -549,6 +582,10 @@ it('marks a failing nested event Claim while treating the Event as an ordinary M
     );
 
     expandSourceWorkspaceEvidenceItem($page, 'place_original');
+    sourceWorkspaceBrowserDebugCheckpoint('place-after-expand:resolve-fresh:before');
+    $placeMention = sourceWorkspaceEvidenceItemBySummary($page, 'mentions', 'place_original');
+    sourceWorkspaceBrowserDebugCheckpoint('place-after-expand:resolve-fresh:after');
+
     fillSourceWorkspaceBrowserField(
         $page,
         'Local key',
