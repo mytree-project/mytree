@@ -637,6 +637,7 @@ it('keeps an event Claim object reference attached when its target Mention local
 
     sourceWorkspaceBrowserDebugCheckpoint('test:event-claim:completed');
 });
+
 it('routes metadata value errors to Source details instead of Mentions and Claims', function (): void {
     $source = app(CreateSource::class)->handle(
         SourceType::generic(),
