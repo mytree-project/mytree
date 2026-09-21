@@ -33,7 +33,7 @@ final class SourceWorkspaceStructuredFieldsTest extends TestCase
         $this->actingAs(User::factory()->admin()->create());
     }
 
-    public function test_structured_fields_round_trip_mentions_typed_claims_effective_time_and_event_context(): void
+    public function test_structured_fields_round_trip_mentions_typed_claims_and_event_claims_through_one_nested_editor(): void
     {
         $source = app(CreateSource::class)->handle(new SourceType('civil.birth'));
 
@@ -47,6 +47,25 @@ final class SourceWorkspaceStructuredFieldsTest extends TestCase
                         'role' => 'child',
                         'display_label' => 'Jan Kowalski',
                         'raw_data_json' => '{"descriptor":"włościanin ze wsi X"}',
+                        'claims' => [
+                            $this->literalRow(
+                                PredicateKey::PersonOccupation->value,
+                                'włościanin',
+                                effectiveTime: [
+                                    'raw' => '1890–1895',
+                                    'kind' => 'range',
+                                    'from' => '1890',
+                                    'to' => '1895',
+                                ],
+                            ),
+                            $this->literalRow(
+                                PredicateKey::PersonBirthDate->value,
+                                '3 II 1891',
+                                expressionKind: 'exact',
+                                from: '1891-02-03',
+                            ),
+                            $this->objectRow(PredicateKey::PersonResidence->value, 'place.birth'),
+                        ],
                     ],
                     [
                         'id' => null,
@@ -55,6 +74,7 @@ final class SourceWorkspaceStructuredFieldsTest extends TestCase
                         'role' => 'witness',
                         'display_label' => 'Piotr Nowak',
                         'raw_data_json' => '{}',
+                        'claims' => [],
                     ],
                     [
                         'id' => null,
@@ -63,36 +83,11 @@ final class SourceWorkspaceStructuredFieldsTest extends TestCase
                         'role' => null,
                         'display_label' => 'Wieś X',
                         'raw_data_json' => '{}',
+                        'claims' => [],
                     ],
-                ],
-                'fields' => [
-                    $this->literalRow(
-                        PredicateKey::PersonOccupation->value,
-                        'person.child',
-                        'włościanin',
-                        effectiveTime: [
-                            'raw' => '1890–1895',
-                            'kind' => 'range',
-                            'from' => '1890',
-                            'to' => '1895',
-                        ],
-                    ),
-                    $this->literalRow(
-                        PredicateKey::PersonBirthDate->value,
-                        'person.child',
-                        '3 II 1891',
-                        expressionKind: 'exact',
-                        from: '1891-02-03',
-                    ),
-                    $this->objectRow(
-                        PredicateKey::PersonResidence->value,
-                        'person.child',
-                        'place.birth',
-                    ),
-                ],
-                'event_contexts' => [
                     [
                         'id' => null,
+                        'kind' => MentionKind::EVENT,
                         'local_key' => 'event.birth.1',
                         'role' => 'birth',
                         'display_label' => 'Birth record event',
@@ -100,14 +95,13 @@ final class SourceWorkspaceStructuredFieldsTest extends TestCase
                         'claims' => [
                             $this->literalRow(
                                 PredicateKey::EventDate->value,
-                                null,
                                 '3 II 1891',
                                 expressionKind: 'exact',
                                 from: '1891-02-03',
                             ),
-                            $this->objectRow(PredicateKey::EventPlace->value, null, 'place.birth'),
-                            $this->objectRow(PredicateKey::EventChild->value, null, 'person.child'),
-                            $this->objectRow(PredicateKey::EventWitness->value, null, 'person.witness'),
+                            $this->objectRow(PredicateKey::EventPlace->value, 'place.birth'),
+                            $this->objectRow(PredicateKey::EventChild->value, 'person.child'),
+                            $this->objectRow(PredicateKey::EventWitness->value, 'person.witness'),
                         ],
                     ],
                 ],
@@ -144,7 +138,7 @@ final class SourceWorkspaceStructuredFieldsTest extends TestCase
         $this->assertDatabaseCount('evidence_states', 1);
     }
 
-    public function test_repeatable_fields_can_coexist_and_one_can_be_removed_without_touching_mention_raw_data(): void
+    public function test_repeatable_claims_can_be_removed_inside_one_mention_without_touching_mention_raw_data(): void
     {
         $source = app(CreateSource::class)->handle(SourceType::generic());
 
@@ -157,12 +151,11 @@ final class SourceWorkspaceStructuredFieldsTest extends TestCase
                     'role' => null,
                     'display_label' => 'Person 1',
                     'raw_data_json' => '{"unclassified_descriptor":"однодворец"}',
+                    'claims' => [
+                        $this->literalRow(PredicateKey::PersonOccupation->value, 'rolnik'),
+                        $this->literalRow(PredicateKey::PersonOccupation->value, 'kowal'),
+                    ],
                 ]],
-                'fields' => [
-                    $this->literalRow(PredicateKey::PersonOccupation->value, 'person.1', 'rolnik'),
-                    $this->literalRow(PredicateKey::PersonOccupation->value, 'person.1', 'kowal'),
-                ],
-                'event_contexts' => [],
             ], 'evidenceForm')
             ->call('save')
             ->assertHasNoFormErrors();
@@ -173,12 +166,24 @@ final class SourceWorkspaceStructuredFieldsTest extends TestCase
             static fn (Claim $claim): bool => $claim->predicate->key === PredicateKey::PersonOccupation,
         ));
         self::assertCount(2, $occupations);
+        $person = $this->mentionByLocalKey($draft->current->mentions, 'person.1');
 
         Livewire::test(SourceEditor::class, ['source' => $source->id->value])
             ->fillForm([
-                'fields' => [[
-                    ...$this->literalRow(PredicateKey::PersonOccupation->value, 'person.1', $occupations[0]->value?->raw() ?? 'rolnik'),
-                    'claim_id' => $occupations[0]->id->value,
+                'mentions' => [[
+                    'id' => $person->id->value,
+                    'kind' => MentionKind::PERSON,
+                    'local_key' => 'person.1',
+                    'role' => null,
+                    'display_label' => 'Person 1',
+                    'raw_data_json' => '{"unclassified_descriptor":"однодворец"}',
+                    'claims' => [[
+                        ...$this->literalRow(
+                            PredicateKey::PersonOccupation->value,
+                            $occupations[0]->value?->raw() ?? 'rolnik',
+                        ),
+                        'claim_id' => $occupations[0]->id->value,
+                    ]],
                 ]],
             ], 'evidenceForm')
             ->call('save')
@@ -208,18 +213,16 @@ final class SourceWorkspaceStructuredFieldsTest extends TestCase
                     'role' => null,
                     'display_label' => null,
                     'raw_data_json' => '{}',
+                    'claims' => [[
+                        ...$this->literalRow(
+                            PredicateKey::PersonAge->value,
+                            'około 40 lat',
+                            expressionKind: 'approximate',
+                            from: '40',
+                        ),
+                        'age_unit' => 'years',
+                    ]],
                 ]],
-                'fields' => [[
-                    ...$this->literalRow(
-                        PredicateKey::PersonAge->value,
-                        'person.1',
-                        'około 40 lat',
-                        expressionKind: 'approximate',
-                        from: '40',
-                    ),
-                    'age_unit' => 'years',
-                ]],
-                'event_contexts' => [],
             ], 'evidenceForm')
             ->call('save')
             ->assertHasNoFormErrors();
@@ -234,13 +237,57 @@ final class SourceWorkspaceStructuredFieldsTest extends TestCase
         self::assertSame('około 40 lat', $claim->value->raw());
     }
 
+    public function test_one_spouse_claim_is_not_duplicated_for_the_object_mention(): void
+    {
+        $source = app(CreateSource::class)->handle(SourceType::generic());
+
+        Livewire::test(SourceEditor::class, ['source' => $source->id->value])
+            ->fillForm([
+                'mentions' => [
+                    [
+                        'id' => null,
+                        'kind' => MentionKind::PERSON,
+                        'local_key' => 'person.jan',
+                        'role' => null,
+                        'display_label' => 'Jan',
+                        'raw_data_json' => '{}',
+                        'claims' => [
+                            $this->objectRow(PredicateKey::PersonSpouse->value, 'person.anna'),
+                        ],
+                    ],
+                    [
+                        'id' => null,
+                        'kind' => MentionKind::PERSON,
+                        'local_key' => 'person.anna',
+                        'role' => null,
+                        'display_label' => 'Anna',
+                        'raw_data_json' => '{}',
+                        'claims' => [],
+                    ],
+                ],
+            ], 'evidenceForm')
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $draft = app(LoadSourceDraft::class)->handle($source->id);
+        $spouseClaims = array_values(array_filter(
+            $draft->current->claims,
+            static fn (Claim $claim): bool => $claim->predicate->key === PredicateKey::PersonSpouse,
+        ));
+
+        self::assertCount(1, $spouseClaims);
+
+        Livewire::test(SourceEditor::class, ['source' => $source->id->value])
+            ->assertSee('Incoming relationship references')
+            ->assertSee('Spouse ← Jan');
+    }
+
     /**
      * @param  array{raw: string, kind: string, from: string, to?: string}|null  $effectiveTime
      * @return array<string, mixed>
      */
     private function literalRow(
         string $fieldKey,
-        ?string $subjectLocalKey,
         string $raw,
         ?string $expressionKind = null,
         string|int|null $from = null,
@@ -250,7 +297,6 @@ final class SourceWorkspaceStructuredFieldsTest extends TestCase
         return [
             'claim_id' => null,
             'field_key' => $fieldKey,
-            'subject_local_key' => $subjectLocalKey,
             'object_local_key' => null,
             'value_raw' => $raw,
             'expression_kind' => $expressionKind,
@@ -271,10 +317,10 @@ final class SourceWorkspaceStructuredFieldsTest extends TestCase
     }
 
     /** @return array<string, mixed> */
-    private function objectRow(string $fieldKey, ?string $subjectLocalKey, string $objectLocalKey): array
+    private function objectRow(string $fieldKey, string $objectLocalKey): array
     {
         return [
-            ...$this->literalRow($fieldKey, $subjectLocalKey, 'unused'),
+            ...$this->literalRow($fieldKey, 'unused'),
             'value_raw' => null,
             'object_local_key' => $objectLocalKey,
         ];

@@ -14,7 +14,7 @@ return [
         'add' => 'Dodaj',
         'add_field' => 'Dodaj: :label',
         'repeatable' => 'Powtarzalne',
-        'event_context' => 'Grupa zdarzenia',
+        'event_context' => 'Preset wzmianki',
         'canonical_key' => 'Klucz kanoniczny: :key',
         'empty' => 'Brak obsługiwanych pól pasujących do wyszukiwania.',
     ],
@@ -23,7 +23,7 @@ return [
         'person_relationships' => 'Osoba · Relacje',
         'person_places' => 'Osoba · Miejsca',
         'person_status' => 'Osoba · Zawód, status i tytuły',
-        'event_contexts' => 'Konteksty zdarzeń',
+        'event_contexts' => 'Presety wzmianek',
         'event_general' => 'Zdarzenie · Informacje ogólne',
         'event_roles' => 'Zdarzenie · Uczestnicy i role',
         'place_general' => 'Miejsce',
@@ -81,8 +81,8 @@ return [
         ],
         'event' => [
             'context' => [
-                'label' => 'Kontekst zdarzenia',
-                'help' => 'Grupuje jedną wzmiankę o zdarzeniu z atomowymi twierdzeniami o dacie, miejscu, rolach uczestników i przyczynie.',
+                'label' => 'Preset wzmianki o zdarzeniu',
+                'help' => 'Wyłącznie prezentacyjny preset szablonu dla zwykłej wzmianki o zdarzeniu i jej twierdzeń.',
             ],
             'date' => ['label' => 'Data zdarzenia'],
             'place' => ['label' => 'Miejsce zdarzenia'],

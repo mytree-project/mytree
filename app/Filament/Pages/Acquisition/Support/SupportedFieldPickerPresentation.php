@@ -84,6 +84,37 @@ final readonly class SupportedFieldPickerPresentation
     }
 
     /**
+     * Picker used inside one Mention card. Only predicates whose controlled
+     * subject kind matches that Mention are offered.
+     *
+     * @return list<array{
+     *     key: string,
+     *     label: string,
+     *     fields: list<array{
+     *         key: string,
+     *         label: string,
+     *         help: ?string,
+     *         repeatable: bool,
+     *         event_context: bool
+     *     }>
+     * }>
+     */
+    public function claimGroupsForMentionKind(mixed $mentionKind): array
+    {
+        if (! is_string($mentionKind)) {
+            return [];
+        }
+
+        $descriptors = array_values(array_filter(
+            $this->catalog->all(),
+            static fn (SupportedAcquisitionFieldDescriptor $descriptor): bool => $descriptor->isDirectClaim()
+                && $descriptor->subjectMentionKind === $mentionKind,
+        ));
+
+        return $this->groups($descriptors);
+    }
+
+    /**
      * @param  list<SupportedAcquisitionFieldDescriptor>  $descriptors
      * @return list<array{
      *     key: string,
@@ -158,7 +189,7 @@ final readonly class SupportedFieldPickerPresentation
 
     private function groupKey(SupportedAcquisitionFieldDescriptor $descriptor): string
     {
-        if ($descriptor->editorKind === SupportedAcquisitionFieldEditorKind::EventContext) {
+        if ($descriptor->editorKind === SupportedAcquisitionFieldEditorKind::MentionPreset) {
             return 'event_contexts';
         }
 
@@ -233,7 +264,7 @@ final readonly class SupportedFieldPickerPresentation
                 ? null
                 : $this->translation($helpKey, $descriptor->helpText),
             'repeatable' => $descriptor->repeatable,
-            'event_context' => $descriptor->editorKind === SupportedAcquisitionFieldEditorKind::EventContext,
+            'event_context' => $descriptor->editorKind === SupportedAcquisitionFieldEditorKind::MentionPreset,
         ];
     }
 

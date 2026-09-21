@@ -13,5 +13,5 @@ enum SupportedAcquisitionFieldEditorKind: string
     case Boolean = 'boolean';
     case Enum = 'enum';
     case MentionReference = 'mention_reference';
-    case EventContext = 'event_context';
+    case MentionPreset = 'mention_preset';
 }

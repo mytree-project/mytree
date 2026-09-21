@@ -14,7 +14,7 @@ return [
         'add' => 'Add',
         'add_field' => 'Add :label',
         'repeatable' => 'Repeatable',
-        'event_context' => 'Event group',
+        'event_context' => 'Mention preset',
         'canonical_key' => 'Canonical key: :key',
         'empty' => 'No supported fields match this search.',
     ],
@@ -23,7 +23,7 @@ return [
         'person_relationships' => 'Person · Relationships',
         'person_places' => 'Person · Places',
         'person_status' => 'Person · Occupation, status & titles',
-        'event_contexts' => 'Event contexts',
+        'event_contexts' => 'Mention presets',
         'event_general' => 'Event · General facts',
         'event_roles' => 'Event · Participants & roles',
         'place_general' => 'Place',
@@ -81,8 +81,8 @@ return [
         ],
         'event' => [
             'context' => [
-                'label' => 'Event context',
-                'help' => 'Groups one source-local event Mention with atomic date, place, participant-role and reason Claims.',
+                'label' => 'Event Mention preset',
+                'help' => 'Presentation-only template preset for one ordinary event Mention and its event Claims.',
             ],
             'date' => ['label' => 'Event date'],
             'place' => ['label' => 'Event place'],

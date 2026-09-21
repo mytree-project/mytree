@@ -25,9 +25,9 @@ final class SourceEditor extends SourceWorkspacePage
 
     /**
      * @var list<array{
-     *     type: 'mention'|'claim'|'event'|'event_claim',
+     *     type: 'mention'|'claim',
      *     index?: int,
-     *     event_index?: int,
+     *     mention_index?: int,
      *     claim_index?: int
      * }>
      */
@@ -148,39 +148,25 @@ final class SourceEditor extends SourceWorkspacePage
 
     /**
      * @return array{
-     *     type: 'mention'|'claim'|'event'|'event_claim',
+     *     type: 'mention'|'claim',
      *     index?: int,
-     *     event_index?: int,
+     *     mention_index?: int,
      *     claim_index?: int
      * }|null
      */
     private function workspaceValidationTarget(string $path): ?array
     {
-        if (preg_match('/^evidenceData\.event_contexts\.(\d+)\.claims\.(\d+)(?:\.|$)/', $path, $matches) === 1) {
+        if (preg_match('/^evidenceData\.mentions\.(\d+)\.claims\.(\d+)(?:\.|$)/', $path, $matches) === 1) {
             return [
-                'type' => 'event_claim',
-                'event_index' => (int) $matches[1],
+                'type' => 'claim',
+                'mention_index' => (int) $matches[1],
                 'claim_index' => (int) $matches[2],
-            ];
-        }
-
-        if (preg_match('/^evidenceData\.event_contexts\.(\d+)(?:\.|$)/', $path, $matches) === 1) {
-            return [
-                'type' => 'event',
-                'index' => (int) $matches[1],
             ];
         }
 
         if (preg_match('/^evidenceData\.mentions\.(\d+)(?:\.|$)/', $path, $matches) === 1) {
             return [
                 'type' => 'mention',
-                'index' => (int) $matches[1],
-            ];
-        }
-
-        if (preg_match('/^evidenceData\.fields\.(\d+)(?:\.|$)/', $path, $matches) === 1) {
-            return [
-                'type' => 'claim',
                 'index' => (int) $matches[1],
             ];
         }
@@ -192,8 +178,6 @@ final class SourceEditor extends SourceWorkspacePage
     {
         foreach ([
             'data.mentions' => 'evidenceData.mentions',
-            'data.fields' => 'evidenceData.fields',
-            'data.event_contexts' => 'evidenceData.event_contexts',
         ] as $sourcePath => $workspacePath) {
             if ($path === $sourcePath) {
                 return $workspacePath;
@@ -222,9 +206,9 @@ final class SourceEditor extends SourceWorkspacePage
         }
 
         if (preg_match('/^Subject Mention local key "([^"]+)" does not exist in this Source\.$/', $diagnosticMessage, $matches) === 1) {
-            $index = $this->directClaimIndexBy('subject_local_key', $matches[1]);
+            $index = $this->mentionPresentationIndex($matches[1]);
 
-            return $index === null ? 'evidenceData' : "evidenceData.fields.$index.subject_local_key";
+            return $index === null ? 'evidenceData' : "evidenceData.mentions.$index.local_key";
         }
 
         if (preg_match('/^Object Mention local key "([^"]+)" does not exist in this Source\.$/', $diagnosticMessage, $matches) === 1) {
@@ -240,12 +224,12 @@ final class SourceEditor extends SourceWorkspacePage
         }
 
         if (preg_match('/^Predicate "([^"]+)" requires a "[^"]+" (subject|object) Mention\.$/', $diagnosticMessage, $matches) === 1) {
-            $field = $matches[2] === 'subject' ? 'subject_local_key' : 'object_local_key';
+            $field = $matches[2] === 'object' ? 'object_local_key' : null;
 
             return $this->claimValidationPathBy('field_key', $matches[1], $field) ?? 'evidenceData';
         }
 
-        if ($diagnosticMessage === 'Structured editor state must contain lists.') {
+        if ($diagnosticMessage === 'Structured editor state must contain a Mention list.') {
             return 'evidenceData';
         }
 
@@ -253,8 +237,7 @@ final class SourceEditor extends SourceWorkspacePage
             return 'evidenceData.mentions';
         }
 
-        if ($diagnosticMessage === 'Claim identity is invalid for this SourceDraft.'
-            || $diagnosticMessage === 'Event context Claim subject must be the context event Mention.') {
+        if ($diagnosticMessage === 'Claim identity is invalid for this SourceDraft.') {
             return 'evidenceData';
         }
 
@@ -281,23 +264,16 @@ final class SourceEditor extends SourceWorkspacePage
             return __('ui.workspace.changed_elsewhere_body');
         }
 
+        if (preg_match('/^evidenceData\.mentions\.(\d+)\.claims\.(\d+)(?:\.(.+))?$/', $path, $matches) === 1) {
+            return $this->claimValidationMessage(
+                (int) $matches[2],
+                $matches[3] ?? null,
+                $diagnosticMessage,
+            );
+        }
+
         if (preg_match('/^evidenceData\.mentions\.(\d+)(?:\.(.+))?$/', $path, $matches) === 1) {
             return $this->mentionValidationMessage((int) $matches[1], $matches[2] ?? null, $diagnosticMessage);
-        }
-
-        if (preg_match('/^evidenceData\.fields\.(\d+)(?:\.(.+))?$/', $path, $matches) === 1) {
-            return $this->claimValidationMessage((int) $matches[1], $matches[2] ?? null, $diagnosticMessage);
-        }
-
-        if (preg_match('/^evidenceData\.event_contexts\.(\d+)\.claims\.(\d+)(?:\.(.+))?$/', $path, $matches) === 1) {
-            return __('workspace_validation.event_claim_invalid', [
-                'event_number' => (int) $matches[1] + 1,
-                'claim_number' => (int) $matches[2] + 1,
-            ]);
-        }
-
-        if (preg_match('/^evidenceData\.event_contexts\.(\d+)(?:\.(.+))?$/', $path, $matches) === 1) {
-            return $this->eventValidationMessage((int) $matches[1], $matches[2] ?? null, $diagnosticMessage);
         }
 
         if (preg_match('/^data\.metadata\.(\d+)(?:\.(.+))?$/', $path, $matches) === 1) {
@@ -401,34 +377,6 @@ final class SourceEditor extends SourceWorkspacePage
         return __('workspace_validation.claim_invalid', ['number' => $index + 1]);
     }
 
-    private function eventValidationMessage(int $index, ?string $field, string $message): string
-    {
-        $event = $this->eventAtPresentationIndex($index);
-        $keySuffix = $this->localKeySuffix($event);
-
-        if ($field === 'raw_data_json') {
-            $rawData = $event['raw_data_json'] ?? null;
-            if (is_string($rawData) && trim($rawData) !== '' && ! json_validate($rawData)) {
-                return __('workspace_validation.event_json_syntax', [
-                    'number' => $index + 1,
-                    'key_suffix' => $keySuffix,
-                ]);
-            }
-
-            if ($message === 'Mention raw data must be a JSON object.') {
-                return __('workspace_validation.event_json_object', [
-                    'number' => $index + 1,
-                    'key_suffix' => $keySuffix,
-                ]);
-            }
-        }
-
-        return __('workspace_validation.event_invalid', [
-            'number' => $index + 1,
-            'key_suffix' => $keySuffix,
-        ]);
-    }
-
     private function metadataValidationMessage(int $index, ?string $field, string $message): string
     {
         if ($field === 'value') {
@@ -459,31 +407,24 @@ final class SourceEditor extends SourceWorkspacePage
             }
         }
 
-        if (preg_match('/^Subject Mention local key "([^"]+)" does not exist in this Source\.$/', $message, $matches) === 1) {
-            $index = $this->directClaimIndexBy('subject_local_key', $matches[1]);
-            if ($index !== null) {
-                return __('workspace_validation.claim_subject_missing', ['number' => $index + 1]);
-            }
-        }
-
         if (preg_match('/^Object Mention local key "([^"]+)" does not exist in this Source\.$/', $message, $matches) === 1) {
-            $index = $this->directClaimIndexBy('object_local_key', $matches[1]);
+            $index = $this->claimIndexBy('object_local_key', $matches[1]);
             if ($index !== null) {
-                return __('workspace_validation.claim_object_missing', ['number' => $index + 1]);
+                return __('workspace_validation.claim_object_missing', ['number' => $index[1] + 1]);
             }
         }
 
         if (preg_match('/^Supported acquisition field "([^"]+)" requires an object Mention local key\.$/', $message, $matches) === 1) {
-            $index = $this->directClaimIndexBy('field_key', $matches[1]);
+            $index = $this->claimIndexBy('field_key', $matches[1]);
             if ($index !== null) {
-                return __('workspace_validation.claim_object_required', ['number' => $index + 1]);
+                return __('workspace_validation.claim_object_required', ['number' => $index[1] + 1]);
             }
         }
 
         if (preg_match('/^Predicate "([^"]+)" requires a "[^"]+" (?:subject|object) Mention\.$/', $message, $matches) === 1) {
-            $index = $this->directClaimIndexBy('field_key', $matches[1]);
+            $index = $this->claimIndexBy('field_key', $matches[1]);
             if ($index !== null) {
-                return __('workspace_validation.claim_invalid', ['number' => $index + 1]);
+                return __('workspace_validation.claim_invalid', ['number' => $index[1] + 1]);
             }
         }
 
@@ -494,12 +435,6 @@ final class SourceEditor extends SourceWorkspacePage
     private function mentionAtPresentationIndex(int $index): ?array
     {
         return $this->evidenceRowAt('mentions', $index);
-    }
-
-    /** @return array<string, mixed>|null */
-    private function eventAtPresentationIndex(int $index): ?array
-    {
-        return $this->evidenceRowAt('event_contexts', $index);
     }
 
     /** @return array<string, mixed>|null */
@@ -548,17 +483,46 @@ final class SourceEditor extends SourceWorkspacePage
         return null;
     }
 
-    private function directClaimIndexBy(string $field, string $value): ?int
+    private function mentionPresentationIndex(string $localKey): ?int
     {
         $evidenceData = is_array($this->evidenceData) ? $this->evidenceData : [];
-        $fields = $evidenceData['fields'] ?? [];
-        if (! is_array($fields)) {
+        $mentions = $evidenceData['mentions'] ?? [];
+        if (! is_array($mentions)) {
             return null;
         }
 
-        foreach (array_values($fields) as $index => $claim) {
-            if (is_array($claim) && ($claim[$field] ?? null) === $value) {
+        foreach (array_values($mentions) as $index => $mention) {
+            if (is_array($mention) && ($mention['local_key'] ?? null) === $localKey) {
                 return $index;
+            }
+        }
+
+        return null;
+    }
+
+    /** @return array{0: int, 1: int}|null */
+    private function claimIndexBy(string $field, string $value): ?array
+    {
+        $evidenceData = is_array($this->evidenceData) ? $this->evidenceData : [];
+        $mentions = $evidenceData['mentions'] ?? [];
+        if (! is_array($mentions)) {
+            return null;
+        }
+
+        foreach (array_values($mentions) as $mentionIndex => $mention) {
+            if (! is_array($mention)) {
+                continue;
+            }
+
+            $claims = $mention['claims'] ?? [];
+            if (! is_array($claims)) {
+                continue;
+            }
+
+            foreach (array_values($claims) as $claimIndex => $claim) {
+                if (is_array($claim) && ($claim[$field] ?? null) === $value) {
+                    return [$mentionIndex, $claimIndex];
+                }
             }
         }
 
@@ -567,47 +531,14 @@ final class SourceEditor extends SourceWorkspacePage
 
     private function claimValidationPathBy(string $field, string $value, ?string $fieldSuffix = null): ?string
     {
-        $directIndex = $this->directClaimIndexBy($field, $value);
-        if ($directIndex !== null) {
-            return 'evidenceData.fields.'.$directIndex.($fieldSuffix === null ? '' : '.'.$fieldSuffix);
-        }
-
-        $eventClaim = $this->eventClaimIndexBy($field, $value);
-        if ($eventClaim === null) {
+        $index = $this->claimIndexBy($field, $value);
+        if ($index === null) {
             return null;
         }
 
-        [$eventIndex, $claimIndex] = $eventClaim;
+        [$mentionIndex, $claimIndex] = $index;
 
-        return 'evidenceData.event_contexts.'.$eventIndex.'.claims.'.$claimIndex.($fieldSuffix === null ? '' : '.'.$fieldSuffix);
-    }
-
-    /** @return array{0: int, 1: int}|null */
-    private function eventClaimIndexBy(string $field, string $value): ?array
-    {
-        $evidenceData = is_array($this->evidenceData) ? $this->evidenceData : [];
-        $events = $evidenceData['event_contexts'] ?? [];
-        if (! is_array($events)) {
-            return null;
-        }
-
-        foreach (array_values($events) as $eventIndex => $event) {
-            if (! is_array($event)) {
-                continue;
-            }
-
-            $claims = $event['claims'] ?? [];
-            if (! is_array($claims)) {
-                continue;
-            }
-
-            foreach (array_values($claims) as $claimIndex => $claim) {
-                if (is_array($claim) && ($claim[$field] ?? null) === $value) {
-                    return [$eventIndex, $claimIndex];
-                }
-            }
-        }
-
-        return null;
+        return 'evidenceData.mentions.'.$mentionIndex.'.claims.'.$claimIndex
+            .($fieldSuffix === null ? '' : '.'.$fieldSuffix);
     }
 }

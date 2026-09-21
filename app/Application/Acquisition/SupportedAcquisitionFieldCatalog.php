@@ -15,7 +15,10 @@ final class SupportedAcquisitionFieldCatalog
 {
     public const SCHEMA_VERSION = 1;
 
-    public const EVENT_CONTEXT_KEY = 'event.context';
+    public const EVENT_MENTION_PRESET_KEY = 'event.context';
+
+    /** @deprecated Stable alias kept for existing template definitions. */
+    public const EVENT_CONTEXT_KEY = self::EVENT_MENTION_PRESET_KEY;
 
     /** @var array<string, SupportedAcquisitionFieldDescriptor> */
     private array $descriptors;
@@ -30,14 +33,14 @@ final class SupportedAcquisitionFieldCatalog
         }
 
         $eventContext = new SupportedAcquisitionFieldDescriptor(
-            key: self::EVENT_CONTEXT_KEY,
-            label: 'Event context',
-            group: 'Event contexts',
-            editorKind: SupportedAcquisitionFieldEditorKind::EventContext,
+            key: self::EVENT_MENTION_PRESET_KEY,
+            label: 'Event Mention preset',
+            group: 'Mention presets',
+            editorKind: SupportedAcquisitionFieldEditorKind::MentionPreset,
             repeatable: true,
-            mappingKind: SupportedAcquisitionFieldMappingKind::ReifiedContext,
+            mappingKind: SupportedAcquisitionFieldMappingKind::MentionPreset,
             subjectMentionKind: MentionKind::EVENT,
-            helpText: 'Groups one source-local event Mention with atomic date, place, participant-role and reason Claims.',
+            helpText: 'Presentation-only template preset for an ordinary source-local event Mention and its event Claims.',
             contextPredicateKeys: [
                 PredicateKey::EventDate,
                 PredicateKey::EventPlace,

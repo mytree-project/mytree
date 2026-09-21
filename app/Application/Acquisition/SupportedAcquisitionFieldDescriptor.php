@@ -59,7 +59,7 @@ final readonly class SupportedAcquisitionFieldDescriptor
             }
         } else {
             if ($predicateKey !== null || $literalValueType !== null || $objectMentionKind !== null || $contextPredicateKeys === []) {
-                throw new InvalidArgumentException('Reified context fields require context Predicates and no direct Predicate contract.');
+                throw new InvalidArgumentException('Mention preset fields require context Predicates and no direct Predicate contract.');
             }
         }
 

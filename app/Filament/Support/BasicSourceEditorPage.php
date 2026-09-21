@@ -226,15 +226,6 @@ abstract class BasicSourceEditorPage extends Page
                     ->multiple()
                     ->storeFiles(false)
                     ->previewable(false),
-                Select::make('add_supported_field')
-                    ->label('Add supported structured field')
-                    ->helperText('The picker is independent of the selected template. Event predicates create an event context because their subject must be an event Mention.')
-                    ->placeholder('Choose a field to add')
-                    ->options(fn (): array => app(StructuredAcquisitionFormAdapter::class)->pickerOptions())
-                    ->live()
-                    ->afterStateUpdated(function (?string $state): void {
-                        $this->supportedFieldSelected($state);
-                    }),
                 ...app(StructuredAcquisitionFormAdapter::class)->components(),
             ])
             ->statePath('data');
@@ -285,26 +276,6 @@ abstract class BasicSourceEditorPage extends Page
             $template?->definition->defaultFieldKeys ?? [],
         );
         $state['template_id'] = $templateId;
-        $state['add_supported_field'] = null;
-        $this->data = $state;
-        $this->form->fill($state);
-    }
-
-    public function supportedFieldSelected(?string $fieldKey): void
-    {
-        $fieldKey = $this->optionalString($fieldKey);
-        if ($fieldKey === null) {
-            return;
-        }
-
-        $state = is_array($this->data) ? $this->data : [];
-        try {
-            $state = app(StructuredAcquisitionFormAdapter::class)->addSupportedField($state, $fieldKey);
-        } catch (ValidationException $exception) {
-            throw $exception;
-        }
-
-        $state['add_supported_field'] = null;
         $this->data = $state;
         $this->form->fill($state);
     }
@@ -728,7 +699,6 @@ abstract class BasicSourceEditorPage extends Page
             'texts' => $textRows,
             'detach_asset_ids' => [],
             'uploads' => [],
-            'add_supported_field' => null,
             ...$structuredState,
         ]);
     }

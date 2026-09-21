@@ -23,13 +23,11 @@ final class SourceWorkspaceClaimNumberingTest extends TestCase
     {
         parent::setUp();
 
-        $panel = Filament::getPanel('admin');
-        Filament::setCurrentPanel($panel);
-
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
         $this->actingAs(User::factory()->admin()->create());
     }
 
-    public function test_claim_summaries_follow_current_repeater_order_after_remove_and_add_rerenders(): void
+    public function test_claim_summaries_are_numbered_within_their_subject_mention(): void
     {
         app()->setLocale('en');
 
@@ -37,26 +35,26 @@ final class SourceWorkspaceClaimNumberingTest extends TestCase
         $claim = $this->claimRow();
 
         $component = Livewire::test(SourceEditor::class, ['source' => $source->id->value])
-            ->set('evidenceData.mentions', [$this->mentionRow()])
-            ->set('evidenceData.fields', [$claim, $claim, $claim])
-            ->assertSee('Claim 1 · Given name · person_jan · Jan')
-            ->assertSee('Claim 2 · Given name · person_jan · Jan')
-            ->assertSee('Claim 3 · Given name · person_jan · Jan');
+            ->set('evidenceData.mentions', [[
+                ...$this->mentionRow(),
+                'claims' => [$claim, $claim, $claim],
+            ]])
+            ->assertSee('Claim 1 · Given name · Jan')
+            ->assertSee('Claim 2 · Given name · Jan')
+            ->assertSee('Claim 3 · Given name · Jan');
 
         $component
-            ->set('evidenceData.fields', [$claim, $claim])
-            ->assertSee('Claim 1 · Given name · person_jan · Jan')
-            ->assertSee('Claim 2 · Given name · person_jan · Jan')
-            ->assertDontSee('Claim 3 · Given name · person_jan · Jan');
+            ->set('evidenceData.mentions.0.claims', [$claim, $claim])
+            ->assertSee('Claim 1 · Given name · Jan')
+            ->assertSee('Claim 2 · Given name · Jan')
+            ->assertDontSee('Claim 3 · Given name · Jan');
 
         $component
-            ->set('evidenceData.fields', [$claim, $claim, $claim])
-            ->assertSee('Claim 1 · Given name · person_jan · Jan')
-            ->assertSee('Claim 2 · Given name · person_jan · Jan')
-            ->assertSee('Claim 3 · Given name · person_jan · Jan');
+            ->set('evidenceData.mentions.0.claims', [$claim, $claim, $claim])
+            ->assertSee('Claim 3 · Given name · Jan');
     }
 
-    public function test_claim_summaries_use_the_same_sequential_indexes_in_polish(): void
+    public function test_claim_summaries_use_the_same_nested_indexes_in_polish(): void
     {
         app()->setLocale('pl');
 
@@ -64,11 +62,13 @@ final class SourceWorkspaceClaimNumberingTest extends TestCase
         $claim = $this->claimRow();
 
         Livewire::test(SourceEditor::class, ['source' => $source->id->value])
-            ->set('evidenceData.mentions', [$this->mentionRow()])
-            ->set('evidenceData.fields', [$claim, $claim, $claim])
-            ->assertSee('Twierdzenie 1 · Given name · person_jan · Jan')
-            ->assertSee('Twierdzenie 2 · Given name · person_jan · Jan')
-            ->assertSee('Twierdzenie 3 · Given name · person_jan · Jan');
+            ->set('evidenceData.mentions', [[
+                ...$this->mentionRow(),
+                'claims' => [$claim, $claim, $claim],
+            ]])
+            ->assertSee('Twierdzenie 1 · Given name · Jan')
+            ->assertSee('Twierdzenie 2 · Given name · Jan')
+            ->assertSee('Twierdzenie 3 · Given name · Jan');
     }
 
     /** @return array<string, mixed> */
@@ -91,7 +91,6 @@ final class SourceWorkspaceClaimNumberingTest extends TestCase
             'claim_id' => null,
             'presentation_origin' => null,
             'field_key' => PredicateKey::PersonGivenName->value,
-            'subject_local_key' => 'person_jan',
             'object_local_key' => null,
             'value_raw' => 'Jan',
             'transcription_certainty' => 'unspecified',
