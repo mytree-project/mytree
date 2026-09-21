@@ -87,6 +87,7 @@ final class SupportedAcquisitionFieldCatalogTest extends TestCase
         self::assertSame($sorted, $keys);
         self::assertSame($keys, array_values(array_unique($keys)));
     }
+
     public function test_source_recorded_sex_and_religious_affiliation_have_distinct_supported_field_contracts(): void
     {
         $catalog = new SupportedAcquisitionFieldCatalog;
@@ -103,5 +104,4 @@ final class SupportedAcquisitionFieldCatalogTest extends TestCase
         self::assertSame([], $religion->allowedEnumKeys);
         self::assertSame(MentionKind::PERSON, $religion->subjectMentionKind);
     }
-
 }

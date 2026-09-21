@@ -11,7 +11,7 @@ final readonly class Predicate
     /** @var list<string> */
     public array $allowedEnumKeys;
 
-    /** @param list<string> $allowedEnumKeys */
+    /** @param  list<string>  $allowedEnumKeys */
     public function __construct(
         public PredicateKey $key,
         public int $schemaVersion,

@@ -264,6 +264,7 @@ final class SourceTypeTemplateApplicationTest extends TestCase
 
         return $ids;
     }
+
     public function test_templates_can_reference_source_recorded_sex_and_religious_affiliation_fields(): void
     {
         $version = app(CreateSourceTypeTemplate::class)->handle(new SourceTypeTemplateDefinition(
@@ -280,5 +281,4 @@ final class SourceTypeTemplateApplicationTest extends TestCase
             $version->definition->defaultFieldKeys,
         );
     }
-
 }

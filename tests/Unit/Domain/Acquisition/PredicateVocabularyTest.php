@@ -123,6 +123,7 @@ final class PredicateVocabularyTest extends TestCase
             'schema_version' => 1,
         ], $predicate->identity());
     }
+
     public function test_source_recorded_sex_and_religious_affiliation_use_the_documented_literal_contracts(): void
     {
         $sex = PredicateVocabulary::get(PredicateKey::PersonSex);
@@ -144,5 +145,4 @@ final class PredicateVocabularyTest extends TestCase
         PredicateVocabulary::get(PredicateKey::PersonSex)
             ->assertLiteralValue(new EnumClaimValue('inne określenie', 'sex.unsupported'));
     }
-
 }

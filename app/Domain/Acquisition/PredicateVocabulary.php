@@ -157,7 +157,7 @@ final class PredicateVocabulary
     }
 
     /**
-     * @param list<string> $allowedEnumKeys
+     * @param  list<string>  $allowedEnumKeys
      */
     private static function literal(
         PredicateKey $key,

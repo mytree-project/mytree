@@ -203,6 +203,7 @@ final class StructuredAcquisitionFormAdapterTest extends TestCase
             ],
         ];
     }
+
     public function test_source_recorded_sex_keeps_raw_wording_separate_from_the_controlled_key(): void
     {
         $adapter = new StructuredAcquisitionFormAdapter(new SupportedAcquisitionFieldCatalog);
@@ -219,5 +220,4 @@ final class StructuredAcquisitionFormAdapterTest extends TestCase
         self::assertSame('chłopca', $value->rawValue);
         self::assertSame(SexClaimValueKey::Male->value, $value->enumKey);
     }
-
 }

@@ -293,6 +293,7 @@ final class BasicSourceAcquisitionFlowTest extends TestCase
         $this->assertDatabaseCount('claim_revisions', 0);
         $this->assertDatabaseCount('evidence_states', 0);
     }
+
     public function test_source_recorded_sex_and_religious_affiliation_persist_and_round_trip_through_workspace_history(): void
     {
         Livewire::test(SourceEditor::class)
@@ -406,5 +407,4 @@ final class BasicSourceAcquisitionFlowTest extends TestCase
         $this->assertDatabaseCount('claim_revisions', 4);
         $this->assertDatabaseCount('evidence_states', 2);
     }
-
 }
