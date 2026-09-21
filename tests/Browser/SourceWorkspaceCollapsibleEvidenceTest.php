@@ -18,6 +18,21 @@ use App\Infrastructure\Persistence\Eloquent\Models\User;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
 use Pest\Browser\Api\AwaitableWebpage;
 
+function debugCollapsibleEvidenceCheckpoint(string $step): void
+{
+    static $startedAt = null;
+
+    $now = microtime(true);
+    $startedAt ??= $now;
+
+    fwrite(STDERR, sprintf(
+        "[collapsible-evidence +%.3fs] %s\n",
+        $now - $startedAt,
+        $step,
+    ));
+    fflush(STDERR);
+}
+
 function authenticateCollapsibleEvidenceBrowserTestUser(): void
 {
     $guardName = config('auth.defaults.guard');
@@ -227,7 +242,10 @@ function assertCollapsibleEvidenceLabelPresent(
 }
 
 it('collapses Mention cards and their nested Claims while preserving unsaved state', function (): void {
+    debugCollapsibleEvidenceCheckpoint('test:start');
+
     $source = app(CreateSource::class)->handle(SourceType::generic());
+    debugCollapsibleEvidenceCheckpoint('fixture:source-created');
     $person = app(CreateMention::class)->handle(
         sourceId: $source->id,
         kind: MentionKind::person(),
@@ -235,6 +253,7 @@ it('collapses Mention cards and their nested Claims while preserving unsaved sta
         role: 'subject',
         displayLabel: 'Valentin Wiśniewski',
     );
+    debugCollapsibleEvidenceCheckpoint('fixture:person-created');
     $event = app(CreateMention::class)->handle(
         sourceId: $source->id,
         kind: MentionKind::event(),
@@ -242,6 +261,7 @@ it('collapses Mention cards and their nested Claims while preserving unsaved sta
         role: 'birth',
         displayLabel: 'Birth of Peter',
     );
+    debugCollapsibleEvidenceCheckpoint('fixture:event-created');
 
     app(CreateClaim::class)->handle(
         sourceId: $source->id,
@@ -249,82 +269,139 @@ it('collapses Mention cards and their nested Claims while preserving unsaved sta
         predicate: PredicateVocabulary::get(PredicateKey::PersonGivenName),
         value: new TextClaimValue('Valentin'),
     );
+    debugCollapsibleEvidenceCheckpoint('fixture:person-claim-created');
     app(CreateClaim::class)->handle(
         sourceId: $source->id,
         subjectMentionId: $event->id,
         predicate: PredicateVocabulary::get(PredicateKey::EventDate),
         value: DateClaimValue::exact('1904-06-29', HistoricalDate::day(1904, 6, 29)),
     );
+    debugCollapsibleEvidenceCheckpoint('fixture:event-claim-created');
 
     authenticateCollapsibleEvidenceBrowserTestUser();
-    $page = openCollapsibleEvidenceWorkspace($source->id->value);
+    debugCollapsibleEvidenceCheckpoint('browser:authenticated');
 
+    debugCollapsibleEvidenceCheckpoint('workspace:open:before');
+    $page = openCollapsibleEvidenceWorkspace($source->id->value);
+    debugCollapsibleEvidenceCheckpoint('workspace:open:after');
+
+    debugCollapsibleEvidenceCheckpoint('workspace:initial-assertions:before');
     $page
         ->assertSee('Mentions')
         ->assertSee('Add mention')
         ->assertSee('person · Valentin Wiśniewski · person_valentin')
         ->assertSee('event · Birth of Peter · event_birth');
+    debugCollapsibleEvidenceCheckpoint('workspace:initial-assertions:after');
 
+    debugCollapsibleEvidenceCheckpoint('selectors:mentions:before');
     $personSelector = collapsibleEvidenceItemSelectorBySummary(
         $page,
         'person · Valentin Wiśniewski · person_valentin',
     );
+    debugCollapsibleEvidenceCheckpoint('selectors:person:resolved');
     $eventSelector = collapsibleEvidenceItemSelectorBySummary(
         $page,
         'event · Birth of Peter · event_birth',
     );
+    debugCollapsibleEvidenceCheckpoint('selectors:event:resolved');
 
+    debugCollapsibleEvidenceCheckpoint('state:mentions-collapsed:before');
     assertCollapsibleEvidenceItemState($page, $personSelector, true);
     assertCollapsibleEvidenceItemState($page, $eventSelector, true);
+    debugCollapsibleEvidenceCheckpoint('state:mentions-collapsed:after');
 
+    debugCollapsibleEvidenceCheckpoint('person:expand:before');
     toggleCollapsibleEvidenceItem($page, $personSelector);
+    debugCollapsibleEvidenceCheckpoint('person:expand:click-returned');
     assertCollapsibleEvidenceItemState($page, $personSelector, false);
+    debugCollapsibleEvidenceCheckpoint('person:expand:asserted');
+    debugCollapsibleEvidenceCheckpoint('person:claim-ui:before');
     $page
         ->assertSee('Claims')
         ->assertSee('Add claim');
+    debugCollapsibleEvidenceCheckpoint('person:claim-ui:after');
 
+    debugCollapsibleEvidenceCheckpoint('person:claim-selector:before');
     $claimSelector = collapsibleEvidenceItemSelectorBySummary($page, 'Claim 1 · Given name · Valentin');
+    debugCollapsibleEvidenceCheckpoint('person:claim-selector:resolved');
     assertCollapsibleEvidenceItemState($page, $claimSelector, true);
+    debugCollapsibleEvidenceCheckpoint('person:claim-collapsed:asserted');
 
+    debugCollapsibleEvidenceCheckpoint('person:display-label:update:before');
     $displayLabelSelector = setCollapsibleEvidenceField($page, 'Display label', 'Valentin Updated');
+    debugCollapsibleEvidenceCheckpoint('person:display-label:update:return');
     $page->assertSee('person · Valentin Updated · person_valentin');
+    debugCollapsibleEvidenceCheckpoint('person:display-label:update:asserted');
 
     // Display label is live-on-blur, so Livewire may replace the repeater DOM.
     // Re-resolve temporary DOM selectors before interacting with those cards again.
+    debugCollapsibleEvidenceCheckpoint('selectors:refresh-after-livewire:before');
     $personSelector = collapsibleEvidenceItemSelectorBySummary(
         $page,
         'person · Valentin Updated · person_valentin',
     );
+    debugCollapsibleEvidenceCheckpoint('selectors:refresh:person');
     $claimSelector = collapsibleEvidenceItemSelectorBySummary($page, 'Claim 1 · Given name · Valentin');
+    debugCollapsibleEvidenceCheckpoint('selectors:refresh:claim');
     $eventSelector = collapsibleEvidenceItemSelectorBySummary(
         $page,
         'event · Birth of Peter · event_birth',
     );
+    debugCollapsibleEvidenceCheckpoint('selectors:refresh:event');
 
+    debugCollapsibleEvidenceCheckpoint('person:claim-expand:before');
     toggleCollapsibleEvidenceItem($page, $claimSelector);
+    debugCollapsibleEvidenceCheckpoint('person:claim-expand:click-returned');
     assertCollapsibleEvidenceItemState($page, $claimSelector, false);
-    toggleCollapsibleEvidenceItem($page, $claimSelector);
-    assertCollapsibleEvidenceItemState($page, $claimSelector, true);
+    debugCollapsibleEvidenceCheckpoint('person:claim-expand:asserted');
 
+    debugCollapsibleEvidenceCheckpoint('person:claim-collapse:before');
+    toggleCollapsibleEvidenceItem($page, $claimSelector);
+    debugCollapsibleEvidenceCheckpoint('person:claim-collapse:click-returned');
+    assertCollapsibleEvidenceItemState($page, $claimSelector, true);
+    debugCollapsibleEvidenceCheckpoint('person:claim-collapse:asserted');
+
+    debugCollapsibleEvidenceCheckpoint('person:collapse:before');
     toggleCollapsibleEvidenceItem($page, $personSelector);
+    debugCollapsibleEvidenceCheckpoint('person:collapse:click-returned');
     assertCollapsibleEvidenceItemState($page, $personSelector, true);
+    debugCollapsibleEvidenceCheckpoint('person:collapse:asserted');
+
+    debugCollapsibleEvidenceCheckpoint('person:re-expand:before');
     toggleCollapsibleEvidenceItem($page, $personSelector);
+    debugCollapsibleEvidenceCheckpoint('person:re-expand:click-returned');
     assertCollapsibleEvidenceItemState($page, $personSelector, false);
+    debugCollapsibleEvidenceCheckpoint('person:re-expand:asserted');
+
+    debugCollapsibleEvidenceCheckpoint('person:display-label:verify:before');
     $displayLabelSelector = collapsibleEvidenceFieldSelectorByLabel($page, 'Display label');
     $page->assertValue($displayLabelSelector, 'Valentin Updated');
+    debugCollapsibleEvidenceCheckpoint('person:display-label:verify:after');
 
+    debugCollapsibleEvidenceCheckpoint('event:expand:before');
     toggleCollapsibleEvidenceItem($page, $eventSelector);
+    debugCollapsibleEvidenceCheckpoint('event:expand:click-returned');
     assertCollapsibleEvidenceItemState($page, $eventSelector, false);
+    debugCollapsibleEvidenceCheckpoint('event:expand:asserted');
 
+    debugCollapsibleEvidenceCheckpoint('event:claim-selector:before');
     $eventClaimSelector = collapsibleEvidenceItemSelectorBySummary(
         $page,
         'Claim 1 · Event date · 1904-06-29',
     );
+    debugCollapsibleEvidenceCheckpoint('event:claim-selector:resolved');
     assertCollapsibleEvidenceItemState($page, $eventClaimSelector, true);
-    toggleCollapsibleEvidenceItem($page, $eventClaimSelector);
-    assertCollapsibleEvidenceItemState($page, $eventClaimSelector, false);
+    debugCollapsibleEvidenceCheckpoint('event:claim-collapsed:asserted');
 
+    debugCollapsibleEvidenceCheckpoint('event:claim-expand:before');
+    toggleCollapsibleEvidenceItem($page, $eventClaimSelector);
+    debugCollapsibleEvidenceCheckpoint('event:claim-expand:click-returned');
+    assertCollapsibleEvidenceItemState($page, $eventClaimSelector, false);
+    debugCollapsibleEvidenceCheckpoint('event:claim-expand:asserted');
+
+    debugCollapsibleEvidenceCheckpoint('javascript-errors:before');
     $page->assertNoJavaScriptErrors();
+    debugCollapsibleEvidenceCheckpoint('test:complete');
 });
 
 it('preserves unrelated details state when a nested Claim predicate reacts', function (): void {
