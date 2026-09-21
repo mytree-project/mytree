@@ -12,6 +12,7 @@ use App\Domain\Acquisition\ClaimValueType;
 use App\Domain\Acquisition\MentionKind;
 use App\Domain\Acquisition\PredicateKey;
 use App\Domain\Acquisition\PredicateVocabulary;
+use App\Domain\Acquisition\SexClaimValueKey;
 use PHPUnit\Framework\TestCase;
 
 final class SupportedAcquisitionFieldCatalogTest extends TestCase
@@ -86,4 +87,21 @@ final class SupportedAcquisitionFieldCatalogTest extends TestCase
         self::assertSame($sorted, $keys);
         self::assertSame($keys, array_values(array_unique($keys)));
     }
+    public function test_source_recorded_sex_and_religious_affiliation_have_distinct_supported_field_contracts(): void
+    {
+        $catalog = new SupportedAcquisitionFieldCatalog;
+
+        $sex = $catalog->get(PredicateKey::PersonSex->value);
+        self::assertSame(SupportedAcquisitionFieldEditorKind::Enum, $sex->editorKind);
+        self::assertSame(ClaimValueType::Enum, $sex->literalValueType);
+        self::assertSame(SexClaimValueKey::values(), $sex->allowedEnumKeys);
+        self::assertSame(MentionKind::PERSON, $sex->subjectMentionKind);
+
+        $religion = $catalog->get(PredicateKey::PersonReligiousAffiliation->value);
+        self::assertSame(SupportedAcquisitionFieldEditorKind::Text, $religion->editorKind);
+        self::assertSame(ClaimValueType::Text, $religion->literalValueType);
+        self::assertSame([], $religion->allowedEnumKeys);
+        self::assertSame(MentionKind::PERSON, $religion->subjectMentionKind);
+    }
+
 }

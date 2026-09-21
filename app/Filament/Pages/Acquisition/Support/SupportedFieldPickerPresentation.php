@@ -17,6 +17,8 @@ final readonly class SupportedFieldPickerPresentation
     private const PERSON_GENERAL_ORDER = [
         'person.given_name',
         'person.surname',
+        'person.sex',
+        'person.religious_affiliation',
         'person.age',
         'person.birth_date',
         'person.death_date',
@@ -196,6 +198,8 @@ final readonly class SupportedFieldPickerPresentation
         return match ($descriptor->predicateKey) {
             PredicateKey::PersonGivenName,
             PredicateKey::PersonSurname,
+            PredicateKey::PersonSex,
+            PredicateKey::PersonReligiousAffiliation,
             PredicateKey::PersonAge,
             PredicateKey::PersonBirthDate,
             PredicateKey::PersonDeathDate => 'person_general',

@@ -14,8 +14,12 @@ final readonly class SupportedAcquisitionFieldDescriptor
     /** @var list<PredicateKey> */
     public array $contextPredicateKeys;
 
+    /** @var list<string> */
+    public array $allowedEnumKeys;
+
     /**
      * @param  list<PredicateKey>  $contextPredicateKeys
+     * @param  list<string>  $allowedEnumKeys
      */
     public function __construct(
         public string $key,
@@ -30,6 +34,7 @@ final readonly class SupportedAcquisitionFieldDescriptor
         public ?string $objectMentionKind = null,
         public ?string $helpText = null,
         array $contextPredicateKeys = [],
+        array $allowedEnumKeys = [],
     ) {
         if (preg_match('/^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/D', $key) !== 1) {
             throw new InvalidArgumentException('Supported acquisition field key must be a stable dotted lowercase identifier.');
@@ -57,13 +62,18 @@ final readonly class SupportedAcquisitionFieldDescriptor
             if (($literalValueType === null) === ($objectMentionKind === null)) {
                 throw new InvalidArgumentException('Direct Claim fields require exactly one literal or Mention-object contract.');
             }
+
+            if ($allowedEnumKeys !== [] && $literalValueType !== ClaimValueType::Enum) {
+                throw new InvalidArgumentException('Direct Claim enum keys require an Enum literal value type.');
+            }
         } else {
-            if ($predicateKey !== null || $literalValueType !== null || $objectMentionKind !== null || $contextPredicateKeys === []) {
+            if ($predicateKey !== null || $literalValueType !== null || $objectMentionKind !== null || $contextPredicateKeys === [] || $allowedEnumKeys !== []) {
                 throw new InvalidArgumentException('Mention preset fields require context Predicates and no direct Predicate contract.');
             }
         }
 
         $this->contextPredicateKeys = $contextPredicateKeys;
+        $this->allowedEnumKeys = array_values($allowedEnumKeys);
     }
 
     public function isDirectClaim(): bool

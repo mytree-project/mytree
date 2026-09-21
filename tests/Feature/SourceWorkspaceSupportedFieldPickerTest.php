@@ -35,6 +35,37 @@ final class SourceWorkspaceSupportedFieldPickerTest extends TestCase
             array_column($this->group($personGroups, 'person_relationships')['fields'], 'key'),
         );
 
+        $personGeneralFields = $this->group($personGroups, 'person_general')['fields'];
+        self::assertContains(PredicateKey::PersonSex->value, array_column($personGeneralFields, 'key'));
+        self::assertContains(PredicateKey::PersonReligiousAffiliation->value, array_column($personGeneralFields, 'key'));
+        self::assertSame(
+            'Płeć zapisana w źródle',
+            array_column($personGeneralFields, 'label', 'key')[PredicateKey::PersonSex->value],
+        );
+        self::assertSame(
+            'Wyznanie / przynależność religijna',
+            array_column($personGeneralFields, 'label', 'key')[PredicateKey::PersonReligiousAffiliation->value],
+        );
+        self::assertStringContainsString(
+            'nie wnioskuj',
+            (string) array_column($personGeneralFields, 'help', 'key')[PredicateKey::PersonSex->value],
+        );
+
+        app()->setLocale('en');
+        $englishPersonFields = $this->group(
+            $presentation->claimGroupsForMentionKind(MentionKind::PERSON),
+            'person_general',
+        )['fields'];
+        self::assertSame(
+            'Source-recorded sex',
+            array_column($englishPersonFields, 'label', 'key')[PredicateKey::PersonSex->value],
+        );
+        self::assertSame(
+            'Religious affiliation',
+            array_column($englishPersonFields, 'label', 'key')[PredicateKey::PersonReligiousAffiliation->value],
+        );
+
+        app()->setLocale('pl');
         $eventGroups = $presentation->claimGroupsForMentionKind(MentionKind::EVENT);
         self::assertSame(
             ['event_general', 'event_roles'],

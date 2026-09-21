@@ -108,6 +108,7 @@ final class SupportedAcquisitionFieldCatalog
             literalValueType: $predicate->literalValueType,
             objectMentionKind: $predicate->objectMentionKind,
             helpText: $this->helpText($predicate->key),
+            allowedEnumKeys: $predicate->allowedEnumKeys,
         );
     }
 
@@ -138,6 +139,8 @@ final class SupportedAcquisitionFieldCatalog
         return match ($key) {
             PredicateKey::PersonGivenName => 'Given name',
             PredicateKey::PersonSurname => 'Surname',
+            PredicateKey::PersonSex => 'Source-recorded sex',
+            PredicateKey::PersonReligiousAffiliation => 'Religious affiliation',
             PredicateKey::PersonAge => 'Age',
             PredicateKey::PersonBirthDate => 'Birth date',
             PredicateKey::PersonDeathDate => 'Death date',
@@ -181,6 +184,8 @@ final class SupportedAcquisitionFieldCatalog
     private function helpText(PredicateKey $key): ?string
     {
         return match ($key) {
+            PredicateKey::PersonSex => 'Sex classification explicitly recorded by the Source; preserve the exact source wording and choose the controlled key without inferring from name, grammar or role.',
+            PredicateKey::PersonReligiousAffiliation => 'Religion, denomination, confession or comparable affiliation explicitly recorded by the Source; preserve the exact source wording.',
             PredicateKey::PersonOccupation => 'Work or profession actually performed; do not use for estate, office, rank, title or degree.',
             PredicateKey::PersonSocialStatus => 'Source-recorded social position that is not adequately represented as a formal estate.',
             PredicateKey::PersonSocialEstate => 'Explicit formal or historically specific social/legal estate.',

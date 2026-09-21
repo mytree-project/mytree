@@ -8,6 +8,7 @@ use App\Application\Acquisition\CreateSourceTypeTemplate;
 use App\Application\Acquisition\LoadSourceDraft;
 use App\Application\Acquisition\SourceTypeTemplateDefinition;
 use App\Domain\Acquisition\PredicateKey;
+use App\Domain\Acquisition\SexClaimValueKey;
 use App\Domain\Acquisition\SourceId;
 use App\Domain\Acquisition\SourceType;
 use App\Filament\Pages\Acquisition\SourceEditor;
@@ -292,4 +293,118 @@ final class BasicSourceAcquisitionFlowTest extends TestCase
         $this->assertDatabaseCount('claim_revisions', 0);
         $this->assertDatabaseCount('evidence_states', 0);
     }
+    public function test_source_recorded_sex_and_religious_affiliation_persist_and_round_trip_through_workspace_history(): void
+    {
+        Livewire::test(SourceEditor::class)
+            ->fillForm([
+                'mentions' => [[
+                    'id' => null,
+                    'kind' => 'person',
+                    'local_key' => 'child',
+                    'role' => 'child',
+                    'display_label' => 'Józef Gajda',
+                    'raw_data_json' => null,
+                    'claims' => [
+                        [
+                            'claim_id' => null,
+                            'field_key' => PredicateKey::PersonSex->value,
+                            'value_raw' => 'chłopca',
+                            'enum_key' => SexClaimValueKey::Male->value,
+                            'raw_text' => 'urodziła chłopca',
+                            'transcription_certainty' => 'certain',
+                            'interpretation_certainty' => 'certain',
+                        ],
+                        [
+                            'claim_id' => null,
+                            'field_key' => PredicateKey::PersonReligiousAffiliation->value,
+                            'value_raw' => 'wyznania katolickiego',
+                            'raw_text' => 'oboje wyznania katolickiego',
+                            'transcription_certainty' => 'certain',
+                            'interpretation_certainty' => 'certain',
+                        ],
+                    ],
+                ]],
+            ], 'evidenceForm')
+            ->call('save')
+            ->assertHasNoFormErrors()
+            ->assertRedirect();
+
+        $sourceId = (string) DB::table('sources')->value('id');
+        $draft = app(LoadSourceDraft::class)->handle(new SourceId($sourceId));
+        self::assertCount(1, $draft->current->mentions);
+        self::assertCount(2, $draft->current->claims);
+
+        $claims = [];
+        foreach ($draft->current->claims as $claim) {
+            $claims[$claim->predicate->key->value] = $claim;
+        }
+
+        $sex = $claims[PredicateKey::PersonSex->value];
+        $religion = $claims[PredicateKey::PersonReligiousAffiliation->value];
+
+        self::assertSame('chłopca', $sex->value?->raw());
+        self::assertSame(SexClaimValueKey::Male->value, $sex->value?->data()['key'] ?? null);
+        self::assertSame('wyznania katolickiego', $religion->value?->raw());
+        self::assertSame('urodziła chłopca', $sex->rawText);
+        self::assertSame('oboje wyznania katolickiego', $religion->rawText);
+        $this->assertDatabaseCount('claim_revisions', 2);
+        $this->assertDatabaseCount('evidence_states', 1);
+
+        $mention = $draft->current->mentions[0];
+
+        Livewire::test(SourceEditor::class, ['source' => $sourceId])
+            ->fillForm([
+                'mentions' => [[
+                    'id' => $mention->id->value,
+                    'kind' => 'person',
+                    'local_key' => 'child',
+                    'role' => 'child',
+                    'display_label' => 'Józef Gajda',
+                    'raw_data_json' => null,
+                    'claims' => [
+                        [
+                            'claim_id' => $sex->id->value,
+                            'field_key' => PredicateKey::PersonSex->value,
+                            'value_raw' => 'syn',
+                            'enum_key' => SexClaimValueKey::Male->value,
+                            'raw_text' => 'urodziła syna',
+                            'transcription_certainty' => 'certain',
+                            'interpretation_certainty' => 'certain',
+                        ],
+                        [
+                            'claim_id' => $religion->id->value,
+                            'field_key' => PredicateKey::PersonReligiousAffiliation->value,
+                            'value_raw' => 'religii katolickiej',
+                            'raw_text' => 'oboje religii katolickiej',
+                            'transcription_certainty' => 'certain',
+                            'interpretation_certainty' => 'certain',
+                        ],
+                    ],
+                ]],
+            ], 'evidenceForm')
+            ->call('save')
+            ->assertHasNoFormErrors()
+            ->assertRedirect();
+
+        $afterEdit = app(LoadSourceDraft::class)->handle(new SourceId($sourceId));
+        $afterEditClaims = [];
+        foreach ($afterEdit->current->claims as $claim) {
+            $afterEditClaims[$claim->predicate->key->value] = $claim;
+        }
+
+        self::assertSame($sex->id->value, $afterEditClaims[PredicateKey::PersonSex->value]->id->value);
+        self::assertSame('syn', $afterEditClaims[PredicateKey::PersonSex->value]->value?->raw());
+        self::assertSame(
+            SexClaimValueKey::Male->value,
+            $afterEditClaims[PredicateKey::PersonSex->value]->value?->data()['key'] ?? null,
+        );
+        self::assertSame($religion->id->value, $afterEditClaims[PredicateKey::PersonReligiousAffiliation->value]->id->value);
+        self::assertSame(
+            'religii katolickiej',
+            $afterEditClaims[PredicateKey::PersonReligiousAffiliation->value]->value?->raw(),
+        );
+        $this->assertDatabaseCount('claim_revisions', 4);
+        $this->assertDatabaseCount('evidence_states', 2);
+    }
+
 }

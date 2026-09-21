@@ -7,6 +7,7 @@ namespace Tests\Unit\Filament;
 use App\Application\Acquisition\SupportedAcquisitionFieldCatalog;
 use App\Domain\Acquisition\MentionKind;
 use App\Domain\Acquisition\PredicateKey;
+use App\Domain\Acquisition\SexClaimValueKey;
 use App\Filament\Pages\Acquisition\Support\StructuredAcquisitionFormAdapter;
 use PHPUnit\Framework\TestCase;
 
@@ -202,4 +203,21 @@ final class StructuredAcquisitionFormAdapterTest extends TestCase
             ],
         ];
     }
+    public function test_source_recorded_sex_keeps_raw_wording_separate_from_the_controlled_key(): void
+    {
+        $adapter = new StructuredAcquisitionFormAdapter(new SupportedAcquisitionFieldCatalog);
+        $state = $this->state();
+        $state['mentions'][0]['claims'] = [[
+            'field_key' => PredicateKey::PersonSex->value,
+            'value_raw' => 'chłopca',
+            'enum_key' => SexClaimValueKey::Male->value,
+        ]];
+
+        $value = $adapter->editInput($state)->fields[0]->value;
+
+        self::assertNotNull($value);
+        self::assertSame('chłopca', $value->rawValue);
+        self::assertSame(SexClaimValueKey::Male->value, $value->enumKey);
+    }
+
 }
