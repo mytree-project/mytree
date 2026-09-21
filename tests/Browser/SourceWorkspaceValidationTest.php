@@ -332,56 +332,49 @@ function toggleSourceWorkspaceEvidenceItem(
 function expandSourceWorkspaceEvidenceItem(
     AwaitableWebpage $page,
     string $summaryFragment,
+    string $repeaterName = 'mentions',
+    ?string $scopeSelector = null,
 ): void {
-    sourceWorkspaceBrowserDebugCheckpoint("expand:$summaryFragment:resolve-item:before");
+    sourceWorkspaceBrowserDebugCheckpoint(
+        "expand:$repeaterName:$summaryFragment:resolve-item:before",
+    );
+    $item = sourceWorkspaceEvidenceItemBySummary(
+        $page,
+        $repeaterName,
+        $summaryFragment,
+        $scopeSelector,
+    );
+    $itemSelector = $item['selector'];
+    sourceWorkspaceBrowserDebugCheckpoint(
+        "expand:$repeaterName:$summaryFragment:resolve-item:after",
+    );
 
-    $script = strtr(<<<'JS'
-        (() => {
-            const expectedSummary = __SUMMARY__;
-            const normalize = (value) => value.replace(/\s+/g, ' ').trim();
-            const item = Array.from(document.querySelectorAll('.fi-fo-repeater-item')).find((candidate) => {
-                const label = candidate.querySelector(':scope > .fi-fo-repeater-item-header .fi-fo-repeater-item-header-label');
-
-                return label && normalize(label.textContent ?? '').includes(expectedSummary);
-            });
-
-            if (! item) {
-                throw new Error(`Repeater item ${expectedSummary} was not found.`);
-            }
-
-            if (! item.id) {
-                item.id = `source-workspace-validation-item-${Math.random().toString(36).slice(2)}`;
-            }
-
-            return `#${CSS.escape(item.id)}`;
-        })()
-        JS, [
-        '__SUMMARY__' => json_encode($summaryFragment, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
-    ]);
-
-    $itemSelector = $page->script($script);
-    sourceWorkspaceBrowserDebugCheckpoint("expand:$summaryFragment:resolve-item:after");
-
-    if (! is_string($itemSelector) || $itemSelector === '') {
-        throw new RuntimeException("Could not resolve evidence item selector for [$summaryFragment].");
-    }
-
-    sourceWorkspaceBrowserDebugCheckpoint("expand:$summaryFragment:collapsed-check:before");
+    sourceWorkspaceBrowserDebugCheckpoint(
+        "expand:$repeaterName:$summaryFragment:collapsed-check:before",
+    );
     $isCollapsed = $page->script(sprintf(
         'document.querySelector(%s)?.classList.contains("fi-collapsed") ?? false',
         json_encode($itemSelector, JSON_THROW_ON_ERROR),
     ));
-    sourceWorkspaceBrowserDebugCheckpoint("expand:$summaryFragment:collapsed-check:after");
+    sourceWorkspaceBrowserDebugCheckpoint(
+        "expand:$repeaterName:$summaryFragment:collapsed-check:after",
+    );
 
     if ($isCollapsed !== true) {
-        sourceWorkspaceBrowserDebugCheckpoint("expand:$summaryFragment:already-expanded");
+        sourceWorkspaceBrowserDebugCheckpoint(
+            "expand:$repeaterName:$summaryFragment:already-expanded",
+        );
 
         return;
     }
 
-    sourceWorkspaceBrowserDebugCheckpoint("expand:$summaryFragment:toggle:before");
+    sourceWorkspaceBrowserDebugCheckpoint(
+        "expand:$repeaterName:$summaryFragment:toggle:before",
+    );
     toggleSourceWorkspaceEvidenceItem($page, $itemSelector);
-    sourceWorkspaceBrowserDebugCheckpoint("expand:$summaryFragment:toggle:after");
+    sourceWorkspaceBrowserDebugCheckpoint(
+        "expand:$repeaterName:$summaryFragment:toggle:after",
+    );
     $page->assertScript(
         sprintf(
             '!document.querySelector(%s).classList.contains("fi-collapsed")',
@@ -389,7 +382,9 @@ function expandSourceWorkspaceEvidenceItem(
         ),
         true,
     );
-    sourceWorkspaceBrowserDebugCheckpoint("expand:$summaryFragment:expanded");
+    sourceWorkspaceBrowserDebugCheckpoint(
+        "expand:$repeaterName:$summaryFragment:expanded",
+    );
 }
 
 function fillSourceWorkspaceBrowserField(
