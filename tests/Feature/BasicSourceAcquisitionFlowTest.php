@@ -335,17 +335,25 @@ final class BasicSourceAcquisitionFlowTest extends TestCase
         self::assertCount(1, $draft->current->mentions);
         self::assertCount(2, $draft->current->claims);
 
-        $claims = [];
+        $sex = null;
+        $religion = null;
         foreach ($draft->current->claims as $claim) {
-            $claims[$claim->predicate->key->value] = $claim;
+            if ($claim->predicate->key === PredicateKey::PersonSex) {
+                $sex = $claim;
+            }
+            if ($claim->predicate->key === PredicateKey::PersonReligiousAffiliation) {
+                $religion = $claim;
+            }
         }
 
-        $sex = $claims[PredicateKey::PersonSex->value];
-        $religion = $claims[PredicateKey::PersonReligiousAffiliation->value];
+        self::assertNotNull($sex);
+        self::assertNotNull($religion);
+        self::assertNotNull($sex->value);
+        self::assertNotNull($religion->value);
 
-        self::assertSame('chłopca', $sex->value?->raw());
-        self::assertSame(SexClaimValueKey::Male->value, $sex->value?->data()['key'] ?? null);
-        self::assertSame('wyznania katolickiego', $religion->value?->raw());
+        self::assertSame('chłopca', $sex->value->raw());
+        self::assertSame(SexClaimValueKey::Male->value, $sex->value->data()['key'] ?? null);
+        self::assertSame('wyznania katolickiego', $religion->value->raw());
         self::assertSame('urodziła chłopca', $sex->rawText);
         self::assertSame('oboje wyznania katolickiego', $religion->rawText);
         $this->assertDatabaseCount('claim_revisions', 2);
@@ -388,21 +396,32 @@ final class BasicSourceAcquisitionFlowTest extends TestCase
             ->assertRedirect();
 
         $afterEdit = app(LoadSourceDraft::class)->handle(new SourceId($sourceId));
-        $afterEditClaims = [];
+        $afterEditSex = null;
+        $afterEditReligion = null;
         foreach ($afterEdit->current->claims as $claim) {
-            $afterEditClaims[$claim->predicate->key->value] = $claim;
+            if ($claim->predicate->key === PredicateKey::PersonSex) {
+                $afterEditSex = $claim;
+            }
+            if ($claim->predicate->key === PredicateKey::PersonReligiousAffiliation) {
+                $afterEditReligion = $claim;
+            }
         }
 
-        self::assertSame($sex->id->value, $afterEditClaims[PredicateKey::PersonSex->value]->id->value);
-        self::assertSame('syn', $afterEditClaims[PredicateKey::PersonSex->value]->value?->raw());
+        self::assertNotNull($afterEditSex);
+        self::assertNotNull($afterEditReligion);
+        self::assertNotNull($afterEditSex->value);
+        self::assertNotNull($afterEditReligion->value);
+
+        self::assertSame($sex->id->value, $afterEditSex->id->value);
+        self::assertSame('syn', $afterEditSex->value->raw());
         self::assertSame(
             SexClaimValueKey::Male->value,
-            $afterEditClaims[PredicateKey::PersonSex->value]->value?->data()['key'] ?? null,
+            $afterEditSex->value->data()['key'] ?? null,
         );
-        self::assertSame($religion->id->value, $afterEditClaims[PredicateKey::PersonReligiousAffiliation->value]->id->value);
+        self::assertSame($religion->id->value, $afterEditReligion->id->value);
         self::assertSame(
             'religii katolickiej',
-            $afterEditClaims[PredicateKey::PersonReligiousAffiliation->value]->value?->raw(),
+            $afterEditReligion->value->raw(),
         );
         $this->assertDatabaseCount('claim_revisions', 4);
         $this->assertDatabaseCount('evidence_states', 2);

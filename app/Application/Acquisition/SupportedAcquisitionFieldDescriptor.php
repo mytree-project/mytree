@@ -73,7 +73,7 @@ final readonly class SupportedAcquisitionFieldDescriptor
         }
 
         $this->contextPredicateKeys = $contextPredicateKeys;
-        $this->allowedEnumKeys = array_values($allowedEnumKeys);
+        $this->allowedEnumKeys = $allowedEnumKeys;
     }
 
     public function isDirectClaim(): bool
