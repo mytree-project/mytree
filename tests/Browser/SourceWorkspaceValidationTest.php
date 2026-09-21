@@ -161,14 +161,49 @@ function sourceWorkspaceEvidenceItemSelector(
     ?string $scopeSelector = null,
 ): string {
     $scopeSelector ??= '[data-mentions-claims-editor]';
-    $selector = sprintf(
-        '%s [data-evidence-repeater="%s"] > .fi-fo-repeater-items > .fi-fo-repeater-item:nth-of-type(%d)',
-        $scopeSelector,
-        $repeaterName,
-        $index + 1,
-    );
+
+    $script = strtr(<<<'JS'
+        (() => {
+            const scopeSelector = __SCOPE__;
+            const repeaterName = __REPEATER__;
+            const index = __INDEX__;
+            const scope = document.querySelector(scopeSelector);
+
+            if (! scope) {
+                throw new Error(`Evidence scope ${scopeSelector} was not found.`);
+            }
+
+            const repeater = scope.querySelector(`[data-evidence-repeater="${repeaterName}"]`);
+            const list = repeater?.querySelector(':scope > .fi-fo-repeater-items');
+            const items = list
+                ? Array.from(list.children).filter((child) => child.classList.contains('fi-fo-repeater-item'))
+                : [];
+            const item = items[index];
+
+            if (! item) {
+                throw new Error(`Evidence item ${repeaterName} at index ${index} was not found.`);
+            }
+
+            if (! item.id) {
+                item.id = `source-workspace-evidence-${Math.random().toString(36).slice(2)}`;
+            }
+
+            return `#${CSS.escape(item.id)}`;
+        })()
+        JS, [
+        '__SCOPE__' => json_encode($scopeSelector, JSON_THROW_ON_ERROR),
+        '__REPEATER__' => json_encode($repeaterName, JSON_THROW_ON_ERROR),
+        '__INDEX__' => (string) $index,
+    ]);
 
     sourceWorkspaceBrowserDebugCheckpoint("selector:$repeaterName:$index:before");
+    $selector = $page->script($script);
+    sourceWorkspaceBrowserDebugCheckpoint("selector:$repeaterName:$index:after");
+
+    if (! is_string($selector) || $selector === '') {
+        throw new RuntimeException("Could not resolve evidence item [$repeaterName] at index [$index].");
+    }
+
     $page->assertPresent($selector);
     sourceWorkspaceBrowserDebugCheckpoint("selector:$repeaterName:$index:present");
 
@@ -213,7 +248,15 @@ function sourceWorkspaceEvidenceItemBySummary(
                 throw new Error(`Evidence item ${repeaterName} containing ${expectedSummary} was not found.`);
             }
 
-            return index;
+            const item = items[index];
+            if (! item.id) {
+                item.id = `source-workspace-evidence-${Math.random().toString(36).slice(2)}`;
+            }
+
+            return JSON.stringify({
+                selector: `#${CSS.escape(item.id)}`,
+                number: index + 1,
+            });
         })()
         JS, [
         '__SCOPE__' => json_encode($scopeSelector, JSON_THROW_ON_ERROR),
@@ -222,21 +265,23 @@ function sourceWorkspaceEvidenceItemBySummary(
     ]);
 
     sourceWorkspaceBrowserDebugCheckpoint("summary-selector:$repeaterName:$summaryFragment:before");
-    $index = $page->script($script);
+    $result = $page->script($script);
     sourceWorkspaceBrowserDebugCheckpoint("summary-selector:$repeaterName:$summaryFragment:after");
 
-    if (! is_int($index) || $index < 0) {
+    if (! is_string($result) || $result === '') {
         throw new RuntimeException("Could not resolve evidence item [$repeaterName] containing [$summaryFragment].");
     }
 
+    $decoded = json_decode($result, true, 512, JSON_THROW_ON_ERROR);
+    if (! is_array($decoded)
+        || ! is_string($decoded['selector'] ?? null)
+        || ! is_int($decoded['number'] ?? null)) {
+        throw new RuntimeException("Invalid evidence item selector payload for [$repeaterName] containing [$summaryFragment].");
+    }
+
     return [
-        'selector' => sprintf(
-            '%s [data-evidence-repeater="%s"] > .fi-fo-repeater-items > .fi-fo-repeater-item:nth-of-type(%d)',
-            $scopeSelector,
-            $repeaterName,
-            $index + 1,
-        ),
-        'number' => $index + 1,
+        'selector' => $decoded['selector'],
+        'number' => $decoded['number'],
     ];
 }
 
