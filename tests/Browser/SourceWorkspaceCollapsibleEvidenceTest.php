@@ -64,18 +64,28 @@ function openCollapsibleEvidenceWorkspace(string $sourceId): AwaitableWebpage
     return $page;
 }
 
-function collapsibleEvidenceFieldSelectorByLabel(AwaitableWebpage $page, string $label): string
-{
+function collapsibleEvidenceFieldSelectorByLabel(
+    AwaitableWebpage $page,
+    string $label,
+    ?string $scopeSelector = null,
+): string {
     $script = strtr(<<<'JS'
         (() => {
             const expectedLabel = __LABEL__;
+            const scopeSelector = __SCOPE_SELECTOR__;
             const normalize = (value) => value.replace(/\s+/g, ' ').trim();
-            const label = Array.from(document.querySelectorAll('label')).find(
+            const scope = scopeSelector === null ? document : document.querySelector(scopeSelector);
+
+            if (! scope) {
+                throw new Error(`Field scope ${scopeSelector} was not found.`);
+            }
+
+            const label = Array.from(scope.querySelectorAll('label')).find(
                 (candidate) => normalize(candidate.textContent ?? '').startsWith(expectedLabel),
             );
 
             if (! label) {
-                throw new Error(`Form label ${expectedLabel} was not found.`);
+                throw new Error(`Form label ${expectedLabel} was not found in the requested scope.`);
             }
 
             let control = label.htmlFor ? document.getElementById(label.htmlFor) : null;
@@ -94,6 +104,7 @@ function collapsibleEvidenceFieldSelectorByLabel(AwaitableWebpage $page, string 
         })()
         JS, [
         '__LABEL__' => json_encode($label, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+        '__SCOPE_SELECTOR__' => json_encode($scopeSelector, JSON_THROW_ON_ERROR),
     ]);
 
     $selector = $page->script($script);
@@ -140,12 +151,26 @@ function collapsibleEvidenceItemSelectorBySummary(AwaitableWebpage $page, string
     return $selector;
 }
 
-function setCollapsibleEvidenceField(AwaitableWebpage $page, string $label, string $value): string
-{
-    $selector = collapsibleEvidenceFieldSelectorByLabel($page, $label);
+function setCollapsibleEvidenceField(
+    AwaitableWebpage $page,
+    string $label,
+    string $value,
+    ?string $scopeSelector = null,
+): string {
+    debugCollapsibleEvidenceCheckpoint("field:$label:selector:before");
+    $selector = collapsibleEvidenceFieldSelectorByLabel($page, $label, $scopeSelector);
+    debugCollapsibleEvidenceCheckpoint("field:$label:selector:resolved");
 
-    $page->fill($selector, $value)->assertValue($selector, $value);
+    debugCollapsibleEvidenceCheckpoint("field:$label:fill:before");
+    $page->fill($selector, $value);
+    debugCollapsibleEvidenceCheckpoint("field:$label:fill:after");
+
+    $page->assertValue($selector, $value);
+    debugCollapsibleEvidenceCheckpoint("field:$label:value-asserted");
+
+    debugCollapsibleEvidenceCheckpoint("field:$label:blur:before");
     $page->script(sprintf('document.querySelector(%s)?.blur()', json_encode($selector, JSON_THROW_ON_ERROR)));
+    debugCollapsibleEvidenceCheckpoint("field:$label:blur:after");
 
     return $selector;
 }
@@ -328,7 +353,12 @@ it('collapses Mention cards and their nested Claims while preserving unsaved sta
     debugCollapsibleEvidenceCheckpoint('person:claim-collapsed:asserted');
 
     debugCollapsibleEvidenceCheckpoint('person:display-label:update:before');
-    $displayLabelSelector = setCollapsibleEvidenceField($page, 'Display label', 'Valentin Updated');
+    $displayLabelSelector = setCollapsibleEvidenceField(
+        $page,
+        'Display label',
+        'Valentin Updated',
+        $personSelector,
+    );
     debugCollapsibleEvidenceCheckpoint('person:display-label:update:return');
     $page->assertSee('person · Valentin Updated · person_valentin');
     debugCollapsibleEvidenceCheckpoint('person:display-label:update:asserted');
@@ -374,7 +404,11 @@ it('collapses Mention cards and their nested Claims while preserving unsaved sta
     debugCollapsibleEvidenceCheckpoint('person:re-expand:asserted');
 
     debugCollapsibleEvidenceCheckpoint('person:display-label:verify:before');
-    $displayLabelSelector = collapsibleEvidenceFieldSelectorByLabel($page, 'Display label');
+    $displayLabelSelector = collapsibleEvidenceFieldSelectorByLabel(
+        $page,
+        'Display label',
+        $personSelector,
+    );
     $page->assertValue($displayLabelSelector, 'Valentin Updated');
     debugCollapsibleEvidenceCheckpoint('person:display-label:verify:after');
 
