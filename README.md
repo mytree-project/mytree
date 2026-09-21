@@ -205,6 +205,24 @@ On a fresh checkout run `./ops/test.sh install` before the manual browser stage 
 
 GitHub Actions uses only `install`, `style`, `static` and `tests`. CI runs for pull requests and pushes to `main`; browser tests remain a local manual check and are never part of the automatic CI gate.
 
+### Manual Szukaj w Archiwach browser-session PoC
+
+Issue `mytree-project/mytree-project#169` tracks the current Imperva/Incapsula live-transport blocker for Szukaj w Archiwach. A manual Playwright/Chromium probe is available to test whether a normal ephemeral browser session can access an official direct scan URL without changing the reusable `scan-providers` package:
+
+```bash
+bash ops/szukajwarchiwach-browser-poc.sh
+```
+
+The default target is the real `/skan/-/skan/<token>` URL used during the issue investigation. Supply another current direct scan URL as the first argument when needed:
+
+```bash
+bash ops/szukajwarchiwach-browser-poc.sh "https://szukajwarchiwach.gov.pl/skan/-/skan/<TOKEN>"
+```
+
+Run `./ops/test.sh install` first on a fresh checkout. The probe uses the same Playwright dependency and Chromium installation already included for browser tests, but it is **not** part of the automated browser suite or CI because it deliberately exercises a live third-party portal.
+
+The probe creates an ephemeral headless `BrowserContext`, opens the portal first to establish normal browser session state, requests the scan through the context-shared HTTP client, then falls back to one normal browser navigation and one retry. It does not solve CAPTCHAs, disguise Chromium, or print cookie values. Diagnostic HTML, screenshots, a redacted JSON summary and any successfully downloaded image are written under `storage/app/private/szukajwarchiwach-poc` by default.
+
 ## Direct Compose commands
 
 The `ops/` scripts are the normal developer entry points. Direct Compose commands remain useful for debugging:
