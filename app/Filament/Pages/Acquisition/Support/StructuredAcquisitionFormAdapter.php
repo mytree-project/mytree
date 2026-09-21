@@ -108,6 +108,19 @@ final readonly class StructuredAcquisitionFormAdapter
                 ])
                 ->columns(2)
                 ->defaultItems(0)
+                ->afterStateUpdated(function (Repeater $component, mixed $old): void {
+                    $state = $component->getRawState();
+                    if (! is_array($state)) {
+                        return;
+                    }
+
+                    $component->rawState(
+                        app(MentionLocalKeyDraftSynchronizer::class)->synchronize(
+                            current: $state,
+                            previous: is_array($old) ? $old : [],
+                        ),
+                    );
+                })
                 ->addActionLabel('Add source-local Mention'),
         ];
     }

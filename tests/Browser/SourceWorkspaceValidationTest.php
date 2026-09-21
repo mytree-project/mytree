@@ -583,7 +583,7 @@ it('keeps a nested Claim attached when its containing Mention local key is renam
         ->assertNoJavaScriptErrors();
 });
 
-it('marks a failing nested event Claim while treating the Event as an ordinary Mention', function (): void {
+it('keeps an event Claim object reference attached when its target Mention local key is renamed', function (): void {
     sourceWorkspaceBrowserDebugCheckpoint('test:event-claim:start');
 
     $source = app(CreateSource::class)->handle(SourceType::generic());
@@ -611,16 +611,8 @@ it('marks a failing nested event Claim while treating the Event as an ordinary M
 
     $page = openSourceWorkspaceForBrowserTest($source->id->value);
     $placeMention = sourceWorkspaceEvidenceItemBySummary($page, 'mentions', 'place_original');
-    $eventMention = sourceWorkspaceEvidenceItemBySummary($page, 'mentions', 'event_birth');
 
     expandSourceWorkspaceEvidenceItem($page, 'event_birth');
-    $eventClaim = sourceWorkspaceEvidenceItemSelector(
-        $page,
-        'claims',
-        0,
-        $eventMention['selector'],
-    );
-
     expandSourceWorkspaceEvidenceItem($page, 'place_original');
     sourceWorkspaceBrowserDebugCheckpoint('place-after-expand:resolve-fresh:before');
     $placeMention = sourceWorkspaceEvidenceItemBySummary($page, 'mentions', 'place_original');
@@ -633,19 +625,17 @@ it('marks a failing nested event Claim while treating the Event as an ordinary M
         $placeMention['selector'],
     );
 
-    submitSourceWorkspaceBrowserForm($page)
-        ->assertSee('Twierdzenie nr 1 odwołuje się do nieistniejącej Wzmianki jako obiektu.')
-        ->assertVisible('[data-source-workspace-save-errors]')
+    submitSourceWorkspaceBrowserForm($page);
+
+    $page
+        ->assertDontSee('odwołuje się do nieistniejącej Wzmianki jako obiektu.')
         ->assertScript(
-            "document.querySelector('[data-mentions-claims-editor]').classList.contains('source-workspace-error-region')",
-            false,
-        );
+            "document.querySelector('[data-source-workspace-save-errors]') === null",
+            true,
+        )
+        ->assertNoJavaScriptErrors();
 
-    assertSourceWorkspaceEvidenceItemValidationState($page, $placeMention['selector'], hasError: false);
-    assertSourceWorkspaceEvidenceItemValidationState($page, $eventMention['selector'], hasError: false, collapsed: false);
-    assertSourceWorkspaceEvidenceItemValidationState($page, $eventClaim, hasError: true, collapsed: false);
-
-    $page->assertNoJavaScriptErrors();
+    sourceWorkspaceBrowserDebugCheckpoint('test:event-claim:completed');
 });
 
 it('routes metadata value errors to Source details instead of Mentions and Claims', function (): void {
