@@ -399,8 +399,9 @@ final readonly class StructuredAcquisitionFormAdapter
                     '0' => 'False',
                 ])
                 ->visible(fn (Get $get): bool => $this->editorKind($get('field_key')) === SupportedAcquisitionFieldEditorKind::Boolean),
-            TextInput::make('enum_key')
-                ->label('Controlled enum key')
+            Select::make('enum_key')
+                ->label('Controlled value')
+                ->options(fn (Get $get): array => $this->enumOptions($get('field_key')))
                 ->visible(fn (Get $get): bool => $this->editorKind($get('field_key')) === SupportedAcquisitionFieldEditorKind::Enum),
             Section::make('Context & provenance')
                 ->description('Optional source context and certainty metadata.')
@@ -452,6 +453,26 @@ final readonly class StructuredAcquisitionFormAdapter
         }
 
         return $this->catalog->get($fieldKey)->editorKind;
+    }
+
+    /** @return array<string, string> */
+    private function enumOptions(mixed $fieldKey): array
+    {
+        if (! is_string($fieldKey) || ! $this->catalog->has($fieldKey)) {
+            return [];
+        }
+
+        $options = [];
+        foreach ($this->catalog->get($fieldKey)->allowedEnumKeys as $enumKey) {
+            $translationKey = 'supported_fields.enum_values.'.$enumKey;
+            $translated = __($translationKey);
+
+            $options[$enumKey] = is_string($translated) && $translated !== $translationKey
+                ? $translated
+                : $enumKey;
+        }
+
+        return $options;
     }
 
     private function isLiteralEditor(mixed $fieldKey): bool

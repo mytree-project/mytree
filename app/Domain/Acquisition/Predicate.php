@@ -8,12 +8,17 @@ use InvalidArgumentException;
 
 final readonly class Predicate
 {
+    /** @var list<string> */
+    public array $allowedEnumKeys;
+
+    /** @param  list<string>  $allowedEnumKeys */
     public function __construct(
         public PredicateKey $key,
         public int $schemaVersion,
         public string $subjectMentionKind,
         public ?ClaimValueType $literalValueType = null,
         public ?string $objectMentionKind = null,
+        array $allowedEnumKeys = [],
     ) {
         if ($schemaVersion < 1) {
             throw new InvalidArgumentException('Predicate schema version must be at least 1.');
@@ -28,6 +33,25 @@ final readonly class Predicate
         if (($literalValueType === null) === ($objectMentionKind === null)) {
             throw new InvalidArgumentException('Predicate must define exactly one literal or Mention-object contract.');
         }
+
+        if ($allowedEnumKeys !== [] && $literalValueType !== ClaimValueType::Enum) {
+            throw new InvalidArgumentException('Predicate enum keys require an Enum literal value type.');
+        }
+
+        $normalizedEnumKeys = [];
+        foreach ($allowedEnumKeys as $enumKey) {
+            if (preg_match('/^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*$/D', $enumKey) !== 1) {
+                throw new InvalidArgumentException('Predicate enum keys must use lowercase dot-separated identifiers.');
+            }
+
+            $normalizedEnumKeys[] = $enumKey;
+        }
+
+        if (count($normalizedEnumKeys) !== count(array_unique($normalizedEnumKeys))) {
+            throw new InvalidArgumentException('Predicate enum keys must be unique.');
+        }
+
+        $this->allowedEnumKeys = $normalizedEnumKeys;
     }
 
     public function assertSubjectKind(MentionKind $kind): void
@@ -56,6 +80,15 @@ final readonly class Predicate
                 $this->key->value,
                 $this->literalValueType->value,
             ));
+        }
+
+        if ($this->allowedEnumKeys !== []) {
+            if (! $value instanceof EnumClaimValue || ! in_array($value->key, $this->allowedEnumKeys, true)) {
+                throw new InvalidArgumentException(sprintf(
+                    'Predicate "%s" does not accept the provided controlled enum key.',
+                    $this->key->value,
+                ));
+            }
         }
     }
 

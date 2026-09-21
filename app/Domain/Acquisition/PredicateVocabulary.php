@@ -48,6 +48,7 @@ final class PredicateVocabulary
         return match ($key) {
             PredicateKey::PersonGivenName,
             PredicateKey::PersonSurname,
+            PredicateKey::PersonReligiousAffiliation,
             PredicateKey::PersonAddress,
             PredicateKey::PersonOccupation,
             PredicateKey::PersonSocialStatus,
@@ -60,6 +61,14 @@ final class PredicateVocabulary
                 $schemaVersion,
                 MentionKind::PERSON,
                 ClaimValueType::Text,
+            ),
+
+            PredicateKey::PersonSex => self::literal(
+                $key,
+                $schemaVersion,
+                MentionKind::PERSON,
+                ClaimValueType::Enum,
+                SexClaimValueKey::values(),
             ),
 
             PredicateKey::PersonAge => self::literal(
@@ -147,17 +156,22 @@ final class PredicateVocabulary
         };
     }
 
+    /**
+     * @param  list<string>  $allowedEnumKeys
+     */
     private static function literal(
         PredicateKey $key,
         int $schemaVersion,
         string $subjectMentionKind,
         ClaimValueType $valueType,
+        array $allowedEnumKeys = [],
     ): Predicate {
         return new Predicate(
             key: $key,
             schemaVersion: $schemaVersion,
             subjectMentionKind: $subjectMentionKind,
             literalValueType: $valueType,
+            allowedEnumKeys: $allowedEnumKeys,
         );
     }
 

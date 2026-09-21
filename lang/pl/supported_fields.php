@@ -33,6 +33,14 @@ return [
         'person' => [
             'given_name' => ['label' => 'Imię'],
             'surname' => ['label' => 'Nazwisko'],
+            'sex' => [
+                'label' => 'Płeć zapisana w źródle',
+                'help' => 'Klasyfikacja płci jawnie zapisana w źródle. Zachowaj dokładne brzmienie źródłowe i nie wnioskuj na podstawie imienia, gramatyki ani roli.',
+            ],
+            'religious_affiliation' => [
+                'label' => 'Wyznanie / przynależność religijna',
+                'help' => 'Religia, wyznanie, konfesja lub porównywalna przynależność jawnie zapisana w źródle. Zachowaj dokładne brzmienie źródłowe.',
+            ],
             'age' => ['label' => 'Wiek'],
             'birth_date' => ['label' => 'Data urodzenia'],
             'death_date' => ['label' => 'Data śmierci'],
@@ -99,6 +107,14 @@ return [
         ],
         'place' => [
             'name' => ['label' => 'Nazwa miejsca'],
+        ],
+    ],
+    'enum_values' => [
+        'sex' => [
+            'male' => 'Płeć męska',
+            'female' => 'Płeć żeńska',
+            'unknown' => 'Nieznana / nieustalona w źródle',
+            'unmapped' => 'Nieodwzorowana klasyfikacja źródłowa',
         ],
     ],
 ];

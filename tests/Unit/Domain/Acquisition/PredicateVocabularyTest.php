@@ -6,6 +6,7 @@ namespace Tests\Unit\Domain\Acquisition;
 
 use App\Domain\Acquisition\AgeClaimValue;
 use App\Domain\Acquisition\ClaimValueType;
+use App\Domain\Acquisition\EnumClaimValue;
 use App\Domain\Acquisition\Mention;
 use App\Domain\Acquisition\MentionId;
 use App\Domain\Acquisition\MentionKind;
@@ -13,6 +14,7 @@ use App\Domain\Acquisition\MentionRawData;
 use App\Domain\Acquisition\Predicate;
 use App\Domain\Acquisition\PredicateKey;
 use App\Domain\Acquisition\PredicateVocabulary;
+use App\Domain\Acquisition\SexClaimValueKey;
 use App\Domain\Acquisition\SourceId;
 use App\Domain\Acquisition\TextClaimValue;
 use InvalidArgumentException;
@@ -120,5 +122,27 @@ final class PredicateVocabularyTest extends TestCase
             'key' => 'person.academic_degree',
             'schema_version' => 1,
         ], $predicate->identity());
+    }
+
+    public function test_source_recorded_sex_and_religious_affiliation_use_the_documented_literal_contracts(): void
+    {
+        $sex = PredicateVocabulary::get(PredicateKey::PersonSex);
+        $religion = PredicateVocabulary::get(PredicateKey::PersonReligiousAffiliation);
+
+        self::assertSame(ClaimValueType::Enum, $sex->literalValueType);
+        self::assertSame(SexClaimValueKey::values(), $sex->allowedEnumKeys);
+        $sex->assertLiteralValue(new EnumClaimValue('chłopca', SexClaimValueKey::Male->value));
+
+        self::assertSame(ClaimValueType::Text, $religion->literalValueType);
+        self::assertSame([], $religion->allowedEnumKeys);
+        $religion->assertLiteralValue(new TextClaimValue('wyznania katolickiego'));
+    }
+
+    public function test_source_recorded_sex_rejects_an_unsupported_controlled_key(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        PredicateVocabulary::get(PredicateKey::PersonSex)
+            ->assertLiteralValue(new EnumClaimValue('inne określenie', 'sex.unsupported'));
     }
 }

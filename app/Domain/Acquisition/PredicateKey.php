@@ -8,6 +8,8 @@ enum PredicateKey: string
 {
     case PersonGivenName = 'person.given_name';
     case PersonSurname = 'person.surname';
+    case PersonSex = 'person.sex';
+    case PersonReligiousAffiliation = 'person.religious_affiliation';
     case PersonAge = 'person.age';
     case PersonBirthDate = 'person.birth_date';
     case PersonDeathDate = 'person.death_date';

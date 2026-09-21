@@ -264,4 +264,21 @@ final class SourceTypeTemplateApplicationTest extends TestCase
 
         return $ids;
     }
+
+    public function test_templates_can_reference_source_recorded_sex_and_religious_affiliation_fields(): void
+    {
+        $version = app(CreateSourceTypeTemplate::class)->handle(new SourceTypeTemplateDefinition(
+            name: 'Birth record with source-recorded person facts',
+            compatibleSourceTypes: [SourceType::generic()],
+            defaultFieldKeys: [
+                PredicateKey::PersonSex->value,
+                PredicateKey::PersonReligiousAffiliation->value,
+            ],
+        ));
+
+        self::assertSame(
+            [PredicateKey::PersonSex->value, PredicateKey::PersonReligiousAffiliation->value],
+            $version->definition->defaultFieldKeys,
+        );
+    }
 }

@@ -33,6 +33,14 @@ return [
         'person' => [
             'given_name' => ['label' => 'Given name'],
             'surname' => ['label' => 'Surname'],
+            'sex' => [
+                'label' => 'Source-recorded sex',
+                'help' => 'Sex classification explicitly recorded by the Source. Preserve the exact source wording and do not infer it from a name, grammar or role.',
+            ],
+            'religious_affiliation' => [
+                'label' => 'Religious affiliation',
+                'help' => 'Religion, denomination, confession or comparable affiliation explicitly recorded by the Source. Preserve the exact source wording.',
+            ],
             'age' => ['label' => 'Age'],
             'birth_date' => ['label' => 'Birth date'],
             'death_date' => ['label' => 'Death date'],
@@ -99,6 +107,14 @@ return [
         ],
         'place' => [
             'name' => ['label' => 'Place name'],
+        ],
+    ],
+    'enum_values' => [
+        'sex' => [
+            'male' => 'Male',
+            'female' => 'Female',
+            'unknown' => 'Unknown / undetermined in the source',
+            'unmapped' => 'Unmapped source classification',
         ],
     ],
 ];
