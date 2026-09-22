@@ -21,6 +21,7 @@ use App\Domain\Acquisition\ClaimOrigin;
 use App\Domain\Acquisition\ClaimOriginKind;
 use App\Domain\Acquisition\ClaimQualifiers;
 use App\Domain\Acquisition\ClaimRevision;
+use App\Domain\Acquisition\ClaimRevisionSnapshot;
 use App\Domain\Acquisition\DateClaimValue;
 use App\Domain\Acquisition\HistoricalDate;
 use App\Domain\Acquisition\MentionKind;
@@ -87,7 +88,7 @@ final class ClaimRevisionApplicationTest extends TestCase
             'claim_id' => $claim->id->value,
             'revision_number' => 1,
             'subject_mention_revision_id' => $mentionRevision->id->value,
-            'snapshot_schema_version' => 1,
+            'snapshot_schema_version' => ClaimRevisionSnapshot::SCHEMA_VERSION,
         ]);
     }
 
