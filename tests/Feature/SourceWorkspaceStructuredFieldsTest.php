@@ -254,6 +254,90 @@ final class SourceWorkspaceStructuredFieldsTest extends TestCase
         self::assertSame('Pierre', $current->sourceLinguisticRepresentations[0]->value);
     }
 
+    public function test_surname_place_and_occupation_source_recorded_forms_persist_as_claim_state(): void
+    {
+        $source = app(CreateSource::class)->handle(SourceType::generic());
+
+        Livewire::test(SourceEditor::class, ['source' => $source->id->value])
+            ->fillForm([
+                'mentions' => [
+                    [
+                        'id' => null,
+                        'kind' => MentionKind::PERSON,
+                        'local_key' => 'person.1',
+                        'role' => null,
+                        'display_label' => 'Johann Schmidt',
+                        'raw_data_json' => '{}',
+                        'claims' => [
+                            $this->literalRow(
+                                PredicateKey::PersonSurname->value,
+                                'Schmidt',
+                                sourceRepresentations: [[
+                                    'value' => 'Szmidt',
+                                    'language' => 'pl',
+                                    'script' => 'Latn',
+                                    'relation' => SourceLinguisticRepresentationRelation::LanguageEquivalent->value,
+                                    'source_locator_ids' => [],
+                                ]],
+                            ),
+                            $this->literalRow(
+                                PredicateKey::PersonOccupation->value,
+                                'Arbeiter',
+                                sourceRepresentations: [[
+                                    'value' => 'robotnik',
+                                    'language' => 'pl',
+                                    'script' => 'Latn',
+                                    'relation' => SourceLinguisticRepresentationRelation::Translation->value,
+                                    'source_locator_ids' => [],
+                                ]],
+                            ),
+                        ],
+                    ],
+                    [
+                        'id' => null,
+                        'kind' => MentionKind::PLACE,
+                        'local_key' => 'place.1',
+                        'role' => null,
+                        'display_label' => 'Posen',
+                        'raw_data_json' => '{}',
+                        'claims' => [
+                            $this->literalRow(
+                                PredicateKey::PlaceName->value,
+                                'Posen',
+                                sourceRepresentations: [[
+                                    'value' => 'Poznań',
+                                    'language' => 'pl',
+                                    'script' => 'Latn',
+                                    'relation' => SourceLinguisticRepresentationRelation::LanguageEquivalent->value,
+                                    'source_locator_ids' => [],
+                                ]],
+                            ),
+                        ],
+                    ],
+                ],
+            ], 'evidenceForm')
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $claims = app(LoadSourceDraft::class)->handle($source->id)->current->claims;
+
+        self::assertSame(
+            'Szmidt',
+            $this->claimByPredicate($claims, PredicateKey::PersonSurname)
+                ->sourceLinguisticRepresentations[0]->value,
+        );
+        self::assertSame(
+            'robotnik',
+            $this->claimByPredicate($claims, PredicateKey::PersonOccupation)
+                ->sourceLinguisticRepresentations[0]->value,
+        );
+        self::assertSame(
+            'Poznań',
+            $this->claimByPredicate($claims, PredicateKey::PlaceName)
+                ->sourceLinguisticRepresentations[0]->value,
+        );
+    }
+
     public function test_repeatable_claims_can_be_removed_inside_one_mention_without_touching_mention_raw_data(): void
     {
         $source = app(CreateSource::class)->handle(SourceType::generic());
