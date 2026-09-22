@@ -44,10 +44,6 @@ final readonly class SourceLinguisticRepresentation
 
         $seen = [];
         foreach ($sourceLocatorIds as $sourceLocatorId) {
-            if (! $sourceLocatorId instanceof SourceLocatorId) {
-                throw new InvalidArgumentException('Source linguistic representation locator references must be SourceLocatorId values.');
-            }
-
             if (isset($seen[$sourceLocatorId->value])) {
                 throw new InvalidArgumentException('Source linguistic representation locator references must be unique.');
             }
