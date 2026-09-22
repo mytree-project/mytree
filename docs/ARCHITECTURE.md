@@ -199,6 +199,28 @@ app/Filament/Widgets/SystemStatusWidget.php
 
 These boundaries coexist with the real Acquisition and Settings modules; they are no longer examples standing in for an otherwise empty Domain/Application hierarchy.
 
+### Planned M5 Search boundary
+
+The accepted project-wide Search contract is defined in `mytree-project/mytree-project/docs/search/SEARCH_AND_NAME_PROCESSING.md`. Repository implementation must preserve the following dependency direction when #184 adds the capability:
+
+```text
+Filament/Search
+      ↓
+Application/Search
+      ↓ application-owned name-processing contract
+Infrastructure/Search
+      ├── SearchDocument persistence/index adapter
+      └── mytree/name-processing adapter
+```
+
+Search orchestration, Source-level result aggregation, projection/rebuild decisions, query semantics, filters/sorting/pagination, query expansion, fuzzy policy and retrieval ranking belong to the application Search capability. Concrete `mytree/name-processing` DTOs/services, ICU details and database-specific matching belong at the Infrastructure/composition boundary and must not leak into Domain/Application contracts merely for convenience.
+
+The initial M5 Search projection is derived from current accepted immutable Acquisition input and indexes structured Claim values (including `person.given_name`, `person.surname` and `place.name`) plus eligible source-supplied linguistic representations and Source metadata/name. A structured lexical Claim may already use a meaning-preserving grammatical citation form, e.g. source wording `Józefa` with `person.given_name = Józef`; the verbatim surface wording remains Acquisition provenance rather than a separate Search `base_form`. Normalized, transliterated and folded forms remain derived retrieval data, while candidate variants and maintained dictionary mappings are query-time aids. None may mutate Source/Mention/Claim history.
+
+Search results identify source-local evidence for retrieval/navigation. They do not create interpreted `Person` entities, `same_person` hypotheses or Engine confidence. Search projection persistence is rebuildable Infrastructure data and must remain replaceable without loss of source truth.
+
+This section defines an implementation-facing boundary only. It does not claim that Search is already implemented before #184.
+
 ### Not yet implemented
 
 The current baseline does not claim implementation of future capabilities merely because their placement is documented. Provider integration, Search, MyTree Engine integration, Viewer/Interpretation and Research orchestration remain future work unless concrete code is added under their corresponding boundaries.
