@@ -20,6 +20,9 @@ use App\Domain\Acquisition\Mention;
 use App\Domain\Acquisition\MentionId;
 use App\Domain\Acquisition\MentionKind;
 use App\Domain\Acquisition\MentionRawData;
+use App\Domain\Acquisition\SourceLinguisticRepresentation;
+use App\Domain\Acquisition\SourceLinguisticRepresentationRelation;
+use App\Domain\Acquisition\SourceLocatorId;
 use App\Filament\Support\SourceWorkspacePage;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -416,6 +419,35 @@ final readonly class StructuredAcquisitionFormAdapter
                 ->label('Controlled value')
                 ->options(fn (Get $get): array => $this->enumOptions($get('field_key')))
                 ->visible(fn (Get $get): bool => $this->editorKind($get('field_key')) === SupportedAcquisitionFieldEditorKind::Enum),
+            Repeater::make('source_linguistic_representations')
+                ->label('Source-recorded linguistic forms')
+                ->helperText('Add only alternative forms explicitly present in the acquired source. Do not enter editorial translations or processor-generated suggestions here.')
+                ->schema([
+                    TextInput::make('value')
+                        ->label('Source-recorded form')
+                        ->required(),
+                    TextInput::make('language')
+                        ->label('Language')
+                        ->helperText('Optional language code when known.'),
+                    TextInput::make('script')
+                        ->label('Script')
+                        ->helperText('Optional script code when known, e.g. Latn or Cyrl.'),
+                    Select::make('relation')
+                        ->label('Relation')
+                        ->options([
+                            SourceLinguisticRepresentationRelation::Translation->value => 'Translation',
+                            SourceLinguisticRepresentationRelation::Transliteration->value => 'Transliteration',
+                            SourceLinguisticRepresentationRelation::LanguageEquivalent->value => 'Language equivalent',
+                            SourceLinguisticRepresentationRelation::HistoricalOrthographicVariant->value => 'Historical / orthographic variant',
+                        ])
+                        ->required(),
+                    Hidden::make('source_locator_ids'),
+                ])
+                ->columns(2)
+                ->defaultItems(0)
+                ->addActionLabel('Add source-recorded form')
+                ->visible(fn (Get $get): bool => $this->supportsSourceLinguisticRepresentations($get('field_key')))
+                ->columnSpanFull(),
             Section::make('Context & provenance')
                 ->description('Optional source context and certainty metadata.')
                 ->schema([
@@ -486,6 +518,13 @@ final readonly class StructuredAcquisitionFormAdapter
         }
 
         return $options;
+    }
+
+    private function supportsSourceLinguisticRepresentations(mixed $fieldKey): bool
+    {
+        return is_string($fieldKey)
+            && $this->catalog->has($fieldKey)
+            && $this->catalog->get($fieldKey)->supportsSourceLinguisticRepresentations();
     }
 
     private function isLiteralEditor(mixed $fieldKey): bool
@@ -626,6 +665,7 @@ final readonly class StructuredAcquisitionFormAdapter
             rawText: $this->optionalString($row['raw_text'] ?? null),
             transcriptionCertainty: $this->optionalString($row['transcription_certainty'] ?? null) ?? 'unspecified',
             interpretationCertainty: $this->optionalString($row['interpretation_certainty'] ?? null) ?? 'unspecified',
+            sourceLinguisticRepresentations: $this->sourceLinguisticRepresentationsInput($descriptor, $row, $path),
         );
     }
 
@@ -665,6 +705,94 @@ final readonly class StructuredAcquisitionFormAdapter
                 ? $this->optionalString($row['enum_key'] ?? null)
                 : null,
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @return list<SourceLinguisticRepresentation>
+     */
+    private function sourceLinguisticRepresentationsInput(
+        SupportedAcquisitionFieldDescriptor $descriptor,
+        array $row,
+        string $path,
+    ): array {
+        $rows = $this->rows($row['source_linguistic_representations'] ?? []);
+        if ($rows === []) {
+            return [];
+        }
+
+        if (! $descriptor->supportsSourceLinguisticRepresentations()) {
+            throw ValidationException::withMessages([
+                "$path.source_linguistic_representations" => sprintf(
+                    'Supported acquisition field "%s" does not allow source linguistic representations.',
+                    $descriptor->key,
+                ),
+            ]);
+        }
+
+        $allowedRelations = array_fill_keys(
+            array_map(
+                static fn (SourceLinguisticRepresentationRelation $relation): string => $relation->value,
+                $descriptor->sourceLinguisticRepresentationRelations,
+            ),
+            true,
+        );
+        $representations = [];
+
+        foreach ($rows as $index => $representationRow) {
+            if ($this->isEmptySourceLinguisticRepresentationRow($representationRow)) {
+                continue;
+            }
+
+            $value = $representationRow['value'] ?? null;
+            $relationValue = $this->optionalString($representationRow['relation'] ?? null);
+            if (! is_string($value) || trim($value) === '' || $relationValue === null) {
+                throw ValidationException::withMessages([
+                    "$path.source_linguistic_representations.$index" => 'Source-recorded form and relation are required.',
+                ]);
+            }
+
+            $relation = SourceLinguisticRepresentationRelation::tryFrom($relationValue);
+            if ($relation === null || ! isset($allowedRelations[$relation->value])) {
+                throw ValidationException::withMessages([
+                    "$path.source_linguistic_representations.$index.relation" => 'Unsupported source linguistic representation relation.',
+                ]);
+            }
+
+            $locatorValues = $representationRow['source_locator_ids'] ?? [];
+            if ($locatorValues === null) {
+                $locatorValues = [];
+            }
+            if (! is_array($locatorValues) || ! array_is_list($locatorValues)) {
+                throw ValidationException::withMessages([
+                    "$path.source_linguistic_representations.$index.source_locator_ids" => 'Source locator references must be a list.',
+                ]);
+            }
+
+            $locatorIds = [];
+            try {
+                foreach ($locatorValues as $locatorValue) {
+                    if (! is_string($locatorValue) || trim($locatorValue) === '') {
+                        throw new InvalidArgumentException('Source locator references must contain valid identifiers.');
+                    }
+                    $locatorIds[] = new SourceLocatorId($locatorValue);
+                }
+
+                $representations[] = new SourceLinguisticRepresentation(
+                    value: $value,
+                    language: $this->optionalString($representationRow['language'] ?? null),
+                    script: $this->optionalString($representationRow['script'] ?? null),
+                    relation: $relation,
+                    sourceLocatorIds: $locatorIds,
+                );
+            } catch (InvalidArgumentException $exception) {
+                throw ValidationException::withMessages([
+                    "$path.source_linguistic_representations.$index" => $exception->getMessage(),
+                ]);
+            }
+        }
+
+        return $representations;
     }
 
     /** @param  array<string, mixed>  $row */
@@ -755,6 +883,29 @@ final readonly class StructuredAcquisitionFormAdapter
         $row['transcription_certainty'] = $claim->transcriptionCertainty->code;
         $row['interpretation_certainty'] = $claim->interpretationCertainty->code;
 
+        $descriptor = $this->catalog->get($claim->predicate->key->value);
+        if ($claim->sourceLinguisticRepresentations !== [] && ! $descriptor->supportsSourceLinguisticRepresentations()) {
+            throw new InvalidArgumentException(sprintf(
+                'Claim %s contains source linguistic representations unsupported by the Basic editor field "%s".',
+                $claim->id->value,
+                $descriptor->key,
+            ));
+        }
+
+        $row['source_linguistic_representations'] = array_map(
+            static fn (SourceLinguisticRepresentation $representation): array => [
+                'value' => $representation->value,
+                'language' => $representation->language,
+                'script' => $representation->script,
+                'relation' => $representation->relation->value,
+                'source_locator_ids' => array_map(
+                    static fn (SourceLocatorId $id): string => $id->value,
+                    $representation->sourceLocatorIds,
+                ),
+            ],
+            $claim->sourceLinguisticRepresentations,
+        );
+
         $this->fillValueRow($row, $claim->value);
         $effectiveTime = $claim->qualifiers->effectiveTime;
         if ($effectiveTime !== null) {
@@ -826,6 +977,7 @@ final readonly class StructuredAcquisitionFormAdapter
             'integer_value' => null,
             'boolean_value' => null,
             'enum_key' => null,
+            'source_linguistic_representations' => [],
             'effective_time_raw' => null,
             'effective_time_kind' => null,
             'effective_time_from' => null,
@@ -880,6 +1032,12 @@ final readonly class StructuredAcquisitionFormAdapter
             }
         }
 
+        foreach ($this->rows($row['source_linguistic_representations'] ?? []) as $representationRow) {
+            if (! $this->isEmptySourceLinguisticRepresentationRow($representationRow)) {
+                return false;
+            }
+        }
+
         foreach (['transcription_certainty', 'interpretation_certainty'] as $key) {
             $certainty = $this->optionalString($row[$key] ?? null);
             if ($certainty !== null && $certainty !== 'unspecified') {
@@ -888,6 +1046,20 @@ final readonly class StructuredAcquisitionFormAdapter
         }
 
         return true;
+    }
+
+    /** @param array<string, mixed> $row */
+    private function isEmptySourceLinguisticRepresentationRow(array $row): bool
+    {
+        foreach (['value', 'language', 'script', 'relation'] as $key) {
+            if ($this->hasValue($row[$key] ?? null)) {
+                return false;
+            }
+        }
+
+        $locatorIds = $row['source_locator_ids'] ?? [];
+
+        return $locatorIds === null || $locatorIds === [];
     }
 
     /** @param  array<string, mixed>  $row */
