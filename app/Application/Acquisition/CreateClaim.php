@@ -12,6 +12,7 @@ use App\Domain\Acquisition\ClaimValue;
 use App\Domain\Acquisition\MentionId;
 use App\Domain\Acquisition\Predicate;
 use App\Domain\Acquisition\SourceId;
+use App\Domain\Acquisition\SourceLinguisticRepresentation;
 
 final readonly class CreateClaim
 {
@@ -23,6 +24,7 @@ final readonly class CreateClaim
         private AcquisitionTransaction $transaction,
     ) {}
 
+    /** @param list<SourceLinguisticRepresentation> $sourceLinguisticRepresentations */
     public function handle(
         SourceId $sourceId,
         MentionId $subjectMentionId,
@@ -36,6 +38,7 @@ final readonly class CreateClaim
         ?ClaimCertainty $interpretationCertainty = null,
         ?string $changeNote = null,
         ?string $changedBy = null,
+        array $sourceLinguisticRepresentations = [],
     ): Claim {
         $claim = new Claim(
             id: $this->identifiers->claimId(),
@@ -49,6 +52,7 @@ final readonly class CreateClaim
             origin: $origin,
             transcriptionCertainty: $transcriptionCertainty,
             interpretationCertainty: $interpretationCertainty,
+            sourceLinguisticRepresentations: $sourceLinguisticRepresentations,
         );
 
         $this->references->validate($claim);

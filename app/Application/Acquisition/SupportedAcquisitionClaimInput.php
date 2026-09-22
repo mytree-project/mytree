@@ -5,9 +5,14 @@ declare(strict_types=1);
 namespace App\Application\Acquisition;
 
 use App\Domain\Acquisition\ClaimId;
+use App\Domain\Acquisition\SourceLinguisticRepresentation;
 
 final readonly class SupportedAcquisitionClaimInput
 {
+    /** @var list<SourceLinguisticRepresentation> */
+    public array $sourceLinguisticRepresentations;
+
+    /** @param list<SourceLinguisticRepresentation> $sourceLinguisticRepresentations */
     public function __construct(
         public ?ClaimId $id,
         public string $fieldKey,
@@ -18,5 +23,8 @@ final readonly class SupportedAcquisitionClaimInput
         public ?string $rawText = null,
         public string $transcriptionCertainty = 'unspecified',
         public string $interpretationCertainty = 'unspecified',
-    ) {}
+        array $sourceLinguisticRepresentations = [],
+    ) {
+        $this->sourceLinguisticRepresentations = $sourceLinguisticRepresentations;
+    }
 }

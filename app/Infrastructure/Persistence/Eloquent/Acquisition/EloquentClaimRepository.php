@@ -15,6 +15,7 @@ use App\Domain\Acquisition\ClaimValueSerializer;
 use App\Domain\Acquisition\MentionId;
 use App\Domain\Acquisition\PredicateVocabulary;
 use App\Domain\Acquisition\SourceId;
+use App\Domain\Acquisition\SourceLinguisticRepresentationSerializer;
 use App\Infrastructure\Persistence\Eloquent\Acquisition\Models\ClaimRecord;
 
 final class EloquentClaimRepository implements ClaimRepository
@@ -73,6 +74,9 @@ final class EloquentClaimRepository implements ClaimRepository
     private function map(ClaimRecord $record): Claim
     {
         $valuePayload = $record->value_payload === null ? null : (string) $record->value_payload;
+        $sourceRepresentationPayload = $record->source_linguistic_representations_payload === null
+            ? null
+            : (string) $record->source_linguistic_representations_payload;
 
         return new Claim(
             id: new ClaimId((string) $record->id),
@@ -96,6 +100,9 @@ final class EloquentClaimRepository implements ClaimRepository
                 (int) $record->interpretation_certainty_schema_version,
             ),
             schemaVersion: (int) $record->schema_version,
+            sourceLinguisticRepresentations: $sourceRepresentationPayload === null
+                ? []
+                : SourceLinguisticRepresentationSerializer::deserializeList($sourceRepresentationPayload),
         );
     }
 
@@ -109,6 +116,9 @@ final class EloquentClaimRepository implements ClaimRepository
             'predicate_schema_version' => $claim->predicate->schemaVersion,
             'object_mention_id' => $claim->objectMentionId?->value,
             'value_payload' => $claim->value === null ? null : ClaimValueSerializer::serialize($claim->value),
+            'source_linguistic_representations_payload' => $claim->sourceLinguisticRepresentations === []
+                ? null
+                : SourceLinguisticRepresentationSerializer::serializeList($claim->sourceLinguisticRepresentations),
             'qualifiers_payload' => $claim->qualifiers->serialize(),
             'raw_text' => $claim->rawText,
             'origin_payload' => $claim->origin->serialize(),

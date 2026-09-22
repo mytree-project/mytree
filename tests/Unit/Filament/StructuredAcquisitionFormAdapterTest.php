@@ -8,8 +8,11 @@ use App\Application\Acquisition\SupportedAcquisitionFieldCatalog;
 use App\Domain\Acquisition\MentionKind;
 use App\Domain\Acquisition\PredicateKey;
 use App\Domain\Acquisition\SexClaimValueKey;
+use App\Domain\Acquisition\SourceLinguisticRepresentation;
+use App\Domain\Acquisition\SourceLinguisticRepresentationRelation;
 use App\Filament\Pages\Acquisition\Support\StructuredAcquisitionFormAdapter;
-use PHPUnit\Framework\TestCase;
+use Illuminate\Validation\ValidationException;
+use Tests\TestCase;
 
 final class StructuredAcquisitionFormAdapterTest extends TestCase
 {
@@ -120,6 +123,57 @@ final class StructuredAcquisitionFormAdapterTest extends TestCase
         self::assertNull($claim->value->integerValue);
         self::assertNull($claim->value->booleanValue);
         self::assertNull($claim->value->enumKey);
+    }
+
+    public function test_source_recorded_linguistic_forms_are_typed_and_limited_to_capable_fields(): void
+    {
+        $adapter = new StructuredAcquisitionFormAdapter(new SupportedAcquisitionFieldCatalog);
+        $state = $this->state();
+        $state['mentions'][0]['claims'] = [[
+            'field_key' => PredicateKey::PersonGivenName->value,
+            'value_raw' => 'Peter',
+            'source_linguistic_representations' => [
+                [
+                    'value' => 'Piotr',
+                    'language' => 'pl',
+                    'script' => 'Latn',
+                    'relation' => SourceLinguisticRepresentationRelation::LanguageEquivalent->value,
+                    'source_locator_ids' => [],
+                ],
+                [
+                    'value' => 'Пётр',
+                    'language' => 'ru',
+                    'script' => 'Cyrl',
+                    'relation' => SourceLinguisticRepresentationRelation::Transliteration->value,
+                    'source_locator_ids' => [],
+                ],
+            ],
+        ]];
+
+        $claim = $adapter->editInput($state)->fields[0];
+
+        self::assertCount(2, $claim->sourceLinguisticRepresentations);
+        self::assertSame(
+            ['Piotr', 'Пётр'],
+            array_map(
+                static fn (SourceLinguisticRepresentation $representation): string => $representation->value,
+                $claim->sourceLinguisticRepresentations,
+            ),
+        );
+
+        $state['mentions'][0]['claims'] = [[
+            'field_key' => PredicateKey::PersonBirthDate->value,
+            'value_raw' => '1891',
+            'expression_kind' => 'exact',
+            'value_from' => '1891',
+            'source_linguistic_representations' => [[
+                'value' => 'eighteen ninety-one',
+                'relation' => SourceLinguisticRepresentationRelation::Translation->value,
+            ]],
+        ]];
+
+        $this->expectException(ValidationException::class);
+        $adapter->editInput($state);
     }
 
     public function test_exact_date_does_not_submit_stale_range_end(): void

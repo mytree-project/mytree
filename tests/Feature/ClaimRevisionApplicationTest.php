@@ -21,12 +21,15 @@ use App\Domain\Acquisition\ClaimOrigin;
 use App\Domain\Acquisition\ClaimOriginKind;
 use App\Domain\Acquisition\ClaimQualifiers;
 use App\Domain\Acquisition\ClaimRevision;
+use App\Domain\Acquisition\ClaimRevisionSnapshot;
 use App\Domain\Acquisition\DateClaimValue;
 use App\Domain\Acquisition\HistoricalDate;
 use App\Domain\Acquisition\MentionKind;
 use App\Domain\Acquisition\PdfPageLocatorValue;
 use App\Domain\Acquisition\PredicateKey;
 use App\Domain\Acquisition\PredicateVocabulary;
+use App\Domain\Acquisition\SourceLinguisticRepresentation;
+use App\Domain\Acquisition\SourceLinguisticRepresentationRelation;
 use App\Domain\Acquisition\SourceType;
 use App\Domain\Acquisition\TextClaimValue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -87,7 +90,7 @@ final class ClaimRevisionApplicationTest extends TestCase
             'claim_id' => $claim->id->value,
             'revision_number' => 1,
             'subject_mention_revision_id' => $mentionRevision->id->value,
-            'snapshot_schema_version' => 1,
+            'snapshot_schema_version' => ClaimRevisionSnapshot::SCHEMA_VERSION,
         ]);
     }
 
@@ -218,6 +221,74 @@ final class ClaimRevisionApplicationTest extends TestCase
         self::assertCount(0, $revisions[2]->reconstruct()->sourceLocators);
         self::assertSame('Attach exact page', $revisions[1]->changeNote);
         self::assertSame('Locator was incorrect', $revisions[2]->changeNote);
+    }
+
+    public function test_source_representation_revision_preserves_claim_context_and_locator_provenance(): void
+    {
+        $source = app(CreateSource::class)->handle(SourceType::generic());
+        $person = app(CreateMention::class)->handle($source->id, MentionKind::person(), 'person.subject');
+        $qualifiers = new ClaimQualifiers(
+            effectiveTime: DateClaimValue::range(
+                '1890-1895',
+                HistoricalDate::year(1890),
+                HistoricalDate::year(1895),
+            ),
+        );
+        $origin = new ClaimOrigin(
+            kind: ClaimOriginKind::ManualDirectSource,
+            metadata: ['language' => 'de'],
+        );
+        $predicate = PredicateVocabulary::get(PredicateKey::PersonOccupation);
+        $claim = app(CreateClaim::class)->handle(
+            sourceId: $source->id,
+            subjectMentionId: $person->id,
+            predicate: $predicate,
+            value: new TextClaimValue('Arbeiter'),
+            qualifiers: $qualifiers,
+            rawText: 'Arbeiter (robotnik)',
+            origin: $origin,
+        );
+        $locator = app(CreateSourceLocator::class)->handle(
+            $source->id,
+            $claim->id,
+            new PdfPageLocatorValue(3),
+        );
+
+        app(UpdateClaim::class)->handle(
+            sourceId: $source->id,
+            claimId: $claim->id,
+            subjectMentionId: $person->id,
+            predicate: $predicate,
+            value: new TextClaimValue('Arbeiter'),
+            qualifiers: $qualifiers,
+            rawText: 'Arbeiter (robotnik)',
+            origin: $origin,
+            sourceLinguisticRepresentations: [
+                new SourceLinguisticRepresentation(
+                    value: 'robotnik',
+                    language: 'pl',
+                    script: 'Latn',
+                    relation: SourceLinguisticRepresentationRelation::Translation,
+                    sourceLocatorIds: [$locator->id],
+                ),
+            ],
+        );
+
+        $revisions = app(ListClaimRevisions::class)->handle($source->id, $claim->id);
+        $state = $revisions[count($revisions) - 1]->reconstruct();
+
+        self::assertSame('Arbeiter', $state->claim->value?->raw());
+        self::assertSame('1890-1895', $state->claim->qualifiers->effectiveTime?->raw());
+        self::assertSame('Arbeiter (robotnik)', $state->claim->rawText);
+        self::assertSame(['language' => 'de'], $state->claim->origin->metadata);
+        self::assertCount(1, $state->sourceLocators);
+        self::assertSame($locator->id->value, $state->sourceLocators[0]->id->value);
+        self::assertCount(1, $state->claim->sourceLinguisticRepresentations);
+        self::assertSame('robotnik', $state->claim->sourceLinguisticRepresentations[0]->value);
+        self::assertSame(
+            $locator->id->value,
+            $state->claim->sourceLinguisticRepresentations[0]->sourceLocatorIds[0]->value,
+        );
     }
 
     public function test_history_remains_readable_after_current_claim_is_removed(): void
