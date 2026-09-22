@@ -12,7 +12,7 @@ use App\Domain\Acquisition\SourceLinguisticRepresentation;
 use App\Domain\Acquisition\SourceLinguisticRepresentationRelation;
 use App\Filament\Pages\Acquisition\Support\StructuredAcquisitionFormAdapter;
 use Illuminate\Validation\ValidationException;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 final class StructuredAcquisitionFormAdapterTest extends TestCase
 {
