@@ -213,9 +213,9 @@ Infrastructure/Search
       └── mytree/name-processing adapter
 ```
 
-Search orchestration, projection/rebuild decisions, query expansion and retrieval ranking belong to the application Search capability. Concrete `mytree/name-processing` DTOs/services, ICU details and database-specific matching belong at the Infrastructure/composition boundary and must not leak into Domain/Application contracts merely for convenience.
+Search orchestration, Source-level result aggregation, projection/rebuild decisions, query semantics, filters/sorting/pagination, query expansion, fuzzy policy and retrieval ranking belong to the application Search capability. Concrete `mytree/name-processing` DTOs/services, ICU details and database-specific matching belong at the Infrastructure/composition boundary and must not leak into Domain/Application contracts merely for convenience.
 
-The initial M5 Search projection is derived from explicit immutable Acquisition input and may index eligible exact Claim forms plus source-supplied linguistic representations. Normalized, transliterated, folded and candidate-variant forms remain derived retrieval data; they must not mutate Source/Mention/Claim history. Candidate variants are query-time expansion in M5 rather than materialized Claim or SearchDocument source forms.
+The initial M5 Search projection is derived from current accepted immutable Acquisition input and indexes structured Claim values (including `person.given_name`, `person.surname` and `place.name`) plus eligible source-supplied linguistic representations and Source metadata/name. A structured lexical Claim may already use a meaning-preserving grammatical citation form, e.g. source wording `Józefa` with `person.given_name = Józef`; the verbatim surface wording remains Acquisition provenance rather than a separate Search `base_form`. Normalized, transliterated and folded forms remain derived retrieval data, while candidate variants and maintained dictionary mappings are query-time aids. None may mutate Source/Mention/Claim history.
 
 Search results identify source-local evidence for retrieval/navigation. They do not create interpreted `Person` entities, `same_person` hypotheses or Engine confidence. Search projection persistence is rebuildable Infrastructure data and must remain replaceable without loss of source truth.
 
