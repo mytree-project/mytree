@@ -8,9 +8,10 @@ use App\Application\Acquisition\SupportedAcquisitionFieldCatalog;
 use App\Domain\Acquisition\MentionKind;
 use App\Domain\Acquisition\PredicateKey;
 use App\Domain\Acquisition\SexClaimValueKey;
+use App\Domain\Acquisition\SourceLinguisticRepresentation;
 use App\Domain\Acquisition\SourceLinguisticRepresentationRelation;
-use Illuminate\Validation\ValidationException;
 use App\Filament\Pages\Acquisition\Support\StructuredAcquisitionFormAdapter;
+use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\TestCase;
 
 final class StructuredAcquisitionFormAdapterTest extends TestCase
@@ -155,7 +156,7 @@ final class StructuredAcquisitionFormAdapterTest extends TestCase
         self::assertSame(
             ['Piotr', 'Пётр'],
             array_map(
-                static fn ($representation): string => $representation->value,
+                static fn (SourceLinguisticRepresentation $representation): string => $representation->value,
                 $claim->sourceLinguisticRepresentations,
             ),
         );
