@@ -199,6 +199,28 @@ app/Filament/Widgets/SystemStatusWidget.php
 
 These boundaries coexist with the real Acquisition and Settings modules; they are no longer examples standing in for an otherwise empty Domain/Application hierarchy.
 
+### Planned M5 Search boundary
+
+The accepted project-wide Search contract is defined in `mytree-project/mytree-project/docs/search/SEARCH_AND_NAME_PROCESSING.md`. Repository implementation must preserve the following dependency direction when #184 adds the capability:
+
+```text
+Filament/Search
+      ↓
+Application/Search
+      ↓ application-owned name-processing contract
+Infrastructure/Search
+      ├── SearchDocument persistence/index adapter
+      └── mytree/name-processing adapter
+```
+
+Search orchestration, projection/rebuild decisions, query expansion and retrieval ranking belong to the application Search capability. Concrete `mytree/name-processing` DTOs/services, ICU details and database-specific matching belong at the Infrastructure/composition boundary and must not leak into Domain/Application contracts merely for convenience.
+
+The initial M5 Search projection is derived from explicit immutable Acquisition input and may index eligible exact Claim forms plus source-supplied linguistic representations. Normalized, transliterated, folded and candidate-variant forms remain derived retrieval data; they must not mutate Source/Mention/Claim history. Candidate variants are query-time expansion in M5 rather than materialized Claim or SearchDocument source forms.
+
+Search results identify source-local evidence for retrieval/navigation. They do not create interpreted `Person` entities, `same_person` hypotheses or Engine confidence. Search projection persistence is rebuildable Infrastructure data and must remain replaceable without loss of source truth.
+
+This section defines an implementation-facing boundary only. It does not claim that Search is already implemented before #184.
+
 ### Not yet implemented
 
 The current baseline does not claim implementation of future capabilities merely because their placement is documented. Provider integration, Search, MyTree Engine integration, Viewer/Interpretation and Research orchestration remain future work unless concrete code is added under their corresponding boundaries.
