@@ -484,6 +484,7 @@ final class SourceWorkspaceStructuredFieldsTest extends TestCase
 
     /**
      * @param  array{raw: string, kind: string, from: string, to?: string}|null  $effectiveTime
+     * @param  list<array<string, mixed>>  $sourceRepresentations
      * @return array<string, mixed>
      */
     private function literalRow(
