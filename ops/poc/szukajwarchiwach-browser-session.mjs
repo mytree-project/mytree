@@ -6,7 +6,7 @@ import process from 'node:process';
 import { chromium } from 'playwright';
 
 const DEFAULT_TARGET_URL = 'https://szukajwarchiwach.gov.pl/skan/-/skan/cf34102284d1121630d7e065baff12133f77944f57015c27db5bb8f666cd9c38';
-const DEFAULT_BOOTSTRAP_URL = 'https://szukajwarchiwach.gov.pl/';
+const DEFAULT_BOOTSTRAP_URL = 'https://www.szukajwarchiwach.gov.pl/';
 const DEFAULT_OUTPUT_DIR = 'storage/app/private/szukajwarchiwach-poc';
 const DEFAULT_TIMEOUT_MS = 30_000;
 
@@ -102,7 +102,9 @@ function hasImpervaBlockBody(body) {
     return text.includes('incapsula')
         || text.includes('imperva')
         || text.includes('request unsuccessful')
-        || text.includes('incident id');
+        || text.includes('incident id')
+        || text.includes('<title>403 forbidden</title>')
+        || text.includes('>403 forbidden<');
 }
 
 function imageExtension(contentType, body) {
@@ -249,6 +251,12 @@ try {
 
     process.stdout.write(`Session HTTP fetch of supplied URL: ${targetUrl}\n`);
     const first = await apiFetch(context, 'session-http-supplied-url', targetUrl);
+    const canonicalViewerUrl = first.response.url();
+    diagnostics.canonical_viewer_url = canonicalViewerUrl;
+
+    if (canonicalViewerUrl !== targetUrl) {
+        process.stdout.write(`Canonical viewer URL resolved by session HTTP: ${canonicalViewerUrl}\n`);
+    }
     if (imageExtension(first.details.content_type, first.body) !== null) {
         const extension = imageExtension(first.details.content_type, first.body);
         const filename = path.join(outputDir, `02-session-http-image${extension}`);
@@ -330,7 +338,7 @@ try {
         const downloadPromise = page.waitForEvent('download', { timeout: timeoutMs }).catch(() => null);
 
         try {
-            navigationResponse = await page.goto(targetUrl, {
+            navigationResponse = await page.goto(canonicalViewerUrl, {
                 waitUntil: 'domcontentloaded',
                 timeout: timeoutMs,
             });
@@ -439,13 +447,13 @@ try {
             exitCode = 0;
         }
 
-        const canonicalViewerUrl = page.url();
-        if (canonicalViewerUrl !== targetUrl) {
-            process.stdout.write(`Session HTTP fetch of canonical browser URL: ${canonicalViewerUrl}\n`);
-            const canonical = await apiFetch(context, 'session-http-canonical-viewer-url', canonicalViewerUrl);
+        const finalBrowserUrl = page.url();
+        if (finalBrowserUrl !== canonicalViewerUrl) {
+            process.stdout.write(`Session HTTP fetch of final browser URL: ${finalBrowserUrl}\n`);
+            const canonical = await apiFetch(context, 'session-http-final-browser-url', finalBrowserUrl);
 
             if (imageExtension(canonical.details.content_type, canonical.body) === null) {
-                await saveNonImageBody('06-session-http-canonical-viewer-url', canonical.body);
+                await saveNonImageBody('06-session-http-final-browser-url', canonical.body);
             }
         }
     }
