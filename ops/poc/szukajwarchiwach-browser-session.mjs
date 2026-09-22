@@ -22,23 +22,22 @@ function hasFlag(name) {
 }
 
 function usage(exitCode = 0) {
-    const text = `Szukaj w Archiwach browser-session PoC
+    process.stdout.write(`Szukaj w Archiwach browser-session PoC
 
 Usage:
   node ops/poc/szukajwarchiwach-browser-session.mjs [options]
 
 Options:
-  --url=<url>            Target public /skan/-/skan/<token> URL.
+  --url=<url>            Target public /skan/-/skan/<token> viewer URL.
   --bootstrap-url=<url>  Portal page opened first to establish browser session state.
   --output=<dir>         Diagnostic/output directory.
   --timeout-ms=<ms>      Navigation/request timeout in milliseconds.
   --help                 Show this help.
 
-The default target is the real scan URL used while investigating MyTree issue #169.
-The PoC never prints cookie values. It does not solve CAPTCHAs or attempt to disguise Chromium.
-`;
-
-    process.stdout.write(text);
+The PoC listens to browser network responses so an image loaded by the scan viewer
+from photos.szukajwarchiwach.gov.pl can be captured separately from the HTML viewer.
+Cookie values are never printed or persisted.
+`);
     process.exit(exitCode);
 }
 
@@ -70,11 +69,13 @@ for (const [label, value] of [['target URL', targetUrl], ['bootstrap URL', boots
 await mkdir(outputDir, { recursive: true });
 
 const diagnostics = {
-    schema: 'mytree.szukajwarchiwach-browser-poc.v1',
+    schema: 'mytree.szukajwarchiwach-browser-poc.v2',
     target_url: targetUrl,
     bootstrap_url: bootstrapUrl,
     headless: true,
     attempts: [],
+    network_resources: [],
+    dom_resource_candidates: [],
     cookie_names: [],
     artifacts: {},
 };
@@ -90,17 +91,13 @@ function safeResponseDetails(response, body) {
         content_type: contentType,
         content_length_header: headers['content-length'] ?? null,
         body_bytes: body.length,
-        x_iinfo_present: Boolean(headers['x-iinfo']),
-        imperva_signal: hasImpervaSignal(headers, body),
+        imperva_edge_header_present: Boolean(headers['x-iinfo']),
+        imperva_block_page: hasImpervaBlockBody(body),
     };
 }
 
-function hasImpervaSignal(headers, body) {
-    if (headers['x-iinfo']) {
-        return true;
-    }
-
-    const text = body.subarray(0, Math.min(body.length, 16_384)).toString('utf8').toLowerCase();
+function hasImpervaBlockBody(body) {
+    const text = body.subarray(0, Math.min(body.length, 16_384)).toString('latin1').toLowerCase();
 
     return text.includes('incapsula')
         || text.includes('imperva')
@@ -174,28 +171,15 @@ async function recordCookies(context) {
     );
 }
 
-async function saveBody(prefix, body, contentType) {
-    const extension = imageExtension(contentType, body);
-
-    if (extension !== null) {
-        const filename = path.join(outputDir, `${prefix}${extension}`);
-        await writeFile(filename, body);
-        diagnostics.artifacts.downloaded_image = filename;
-        process.stdout.write(`Image received: ${body.length} bytes -> ${filename}\n`);
-
-        return filename;
-    }
-
+async function saveNonImageBody(prefix, body) {
     const filename = path.join(outputDir, `${prefix}.html`);
     await writeFile(filename, body);
     diagnostics.artifacts[`${prefix}_body`] = filename;
-    process.stdout.write(`Non-image response saved: ${body.length} bytes -> ${filename}\n`);
-
-    return null;
+    process.stdout.write(`HTML/non-image response saved: ${body.length} bytes -> ${filename}\n`);
 }
 
-async function apiFetch(context, label) {
-    const response = await context.request.get(targetUrl, {
+async function apiFetch(context, label, url) {
+    const response = await context.request.get(url, {
         failOnStatusCode: false,
         timeout: timeoutMs,
     });
@@ -204,10 +188,24 @@ async function apiFetch(context, label) {
     diagnostics.attempts.push(details);
 
     process.stdout.write(
-        `${label}: status=${details.status} content-type=${details.content_type ?? '(none)'} bytes=${details.body_bytes} imperva=${details.imperva_signal ? 'yes' : 'no'}\n`,
+        `${label}: status=${details.status} content-type=${details.content_type ?? '(none)'} bytes=${details.body_bytes} imperva-block=${details.imperva_block_page ? 'yes' : 'no'} x-iinfo=${details.imperva_edge_header_present ? 'yes' : 'no'}\n`,
     );
 
     return { response, body, details };
+}
+
+function responseLooksInteresting(response) {
+    let hostname = '';
+
+    try {
+        hostname = new URL(response.url()).hostname;
+    } catch {
+        return false;
+    }
+
+    const contentType = (response.headers()['content-type'] ?? '').toLowerCase();
+
+    return hostname === 'photos.szukajwarchiwach.gov.pl' || contentType.startsWith('image/');
 }
 
 const browser = await chromium.launch({ headless: true });
@@ -249,14 +247,83 @@ try {
     diagnostics.artifacts.bootstrap_screenshot = bootstrapScreenshot;
     await recordCookies(context);
 
-    process.stdout.write(`Session HTTP fetch: ${targetUrl}\n`);
-    const first = await apiFetch(context, 'session-http-first');
-    const firstImage = await saveBody('02-session-http-first', first.body, first.details.content_type);
-
-    if (firstImage !== null) {
+    process.stdout.write(`Session HTTP fetch of supplied URL: ${targetUrl}\n`);
+    const first = await apiFetch(context, 'session-http-supplied-url', targetUrl);
+    if (imageExtension(first.details.content_type, first.body) !== null) {
+        const extension = imageExtension(first.details.content_type, first.body);
+        const filename = path.join(outputDir, `02-session-http-image${extension}`);
+        await writeFile(filename, first.body);
+        diagnostics.artifacts.downloaded_image = filename;
         exitCode = 0;
     } else {
-        process.stdout.write('First session HTTP fetch was not an image; trying normal browser navigation without challenge automation.\n');
+        await saveNonImageBody('02-session-http-supplied-url', first.body);
+    }
+
+    if (exitCode !== 0) {
+        process.stdout.write('Supplied /skan URL was not an image; opening it as a browser viewer and observing image/network subrequests.\n');
+
+        const capturePromises = [];
+        let largestNetworkImage = null;
+
+        const captureResponse = async (response) => {
+            if (!responseLooksInteresting(response)) {
+                return;
+            }
+
+            const headers = response.headers();
+            const contentType = headers['content-type'] ?? null;
+            let body;
+
+            try {
+                body = Buffer.from(await response.body());
+            } catch (error) {
+                diagnostics.network_resources.push({
+                    url: response.url(),
+                    status: response.status(),
+                    content_type: contentType,
+                    resource_type: response.request().resourceType(),
+                    body_error: error instanceof Error ? error.message : String(error),
+                });
+
+                return;
+            }
+
+            let hostname = null;
+            try {
+                hostname = new URL(response.url()).hostname;
+            } catch {
+                // Keep null in diagnostics.
+            }
+
+            const extension = imageExtension(contentType, body);
+            const resource = {
+                url: response.url(),
+                hostname,
+                status: response.status(),
+                content_type: contentType,
+                resource_type: response.request().resourceType(),
+                body_bytes: body.length,
+                image_detected: extension !== null,
+                imperva_edge_header_present: Boolean(headers['x-iinfo']),
+                imperva_block_page: hasImpervaBlockBody(body),
+            };
+
+            diagnostics.network_resources.push(resource);
+
+            if (extension !== null && (largestNetworkImage === null || body.length > largestNetworkImage.body.length)) {
+                largestNetworkImage = {
+                    body,
+                    extension,
+                    url: response.url(),
+                    contentType,
+                };
+            }
+        };
+
+        page.on('response', (response) => {
+            const promise = captureResponse(response);
+            capturePromises.push(promise);
+        });
 
         let navigationResponse = null;
         let download = null;
@@ -267,14 +334,18 @@ try {
                 waitUntil: 'domcontentloaded',
                 timeout: timeoutMs,
             });
+
+            await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => null);
         } catch (error) {
             diagnostics.browser_navigation_error = error instanceof Error ? error.message : String(error);
             process.stdout.write(`Browser navigation reported: ${diagnostics.browser_navigation_error}\n`);
         }
 
+        await page.waitForTimeout(4_000);
+
         download = await Promise.race([
             downloadPromise,
-            page.waitForTimeout(1_000).then(() => null),
+            page.waitForTimeout(500).then(() => null),
         ]);
 
         if (download !== null) {
@@ -295,7 +366,8 @@ try {
             }
         }
 
-        await page.waitForTimeout(4_000);
+        await Promise.allSettled(capturePromises);
+
         diagnostics.browser_navigation = {
             final_url: page.url(),
             title: await page.title().catch(() => null),
@@ -303,42 +375,82 @@ try {
             content_type: navigationResponse?.headers()['content-type'] ?? null,
         };
 
-        if (navigationResponse !== null && exitCode !== 0) {
+        process.stdout.write(
+            `Browser viewer result: status=${diagnostics.browser_navigation.status ?? '(none)'} title=${diagnostics.browser_navigation.title ?? '(none)'} final-url=${diagnostics.browser_navigation.final_url}\n`,
+        );
+
+        if (navigationResponse !== null) {
             const body = Buffer.from(await navigationResponse.body().catch(() => Buffer.alloc(0)));
             const details = {
-                label: 'browser-navigation',
+                label: 'browser-viewer-navigation',
                 transport: 'page_navigation',
                 ...safeResponseDetails(navigationResponse, body),
             };
             diagnostics.attempts.push(details);
-            await saveBody('03-browser-navigation-response', body, details.content_type);
-
-            if (imageExtension(details.content_type, body) !== null) {
-                exitCode = 0;
-            }
+            await saveNonImageBody('03-browser-viewer-response', body);
         }
 
-        const browserScreenshot = path.join(outputDir, '04-browser-navigation.png');
+        diagnostics.dom_resource_candidates = await page.evaluate(() => {
+            const candidates = new Set();
+
+            for (const image of document.querySelectorAll('img')) {
+                if (image.currentSrc) {
+                    candidates.add(image.currentSrc);
+                } else if (image.src) {
+                    candidates.add(image.src);
+                }
+            }
+
+            for (const entry of performance.getEntriesByType('resource')) {
+                if (entry.name.includes('szukajwarchiwach.gov.pl')) {
+                    candidates.add(entry.name);
+                }
+            }
+
+            return [...candidates].sort();
+        }).catch(() => []);
+
+        const browserScreenshot = path.join(outputDir, '04-browser-viewer.png');
         await page.screenshot({ path: browserScreenshot, fullPage: true }).catch(() => null);
         diagnostics.artifacts.browser_navigation_screenshot = browserScreenshot;
         await recordCookies(context);
 
-        if (exitCode !== 0) {
-            process.stdout.write('Retrying HTTP fetch after browser navigation/session update.\n');
-            const second = await apiFetch(context, 'session-http-after-browser-navigation');
-            const secondImage = await saveBody(
-                '05-session-http-after-browser-navigation',
-                second.body,
-                second.details.content_type,
-            );
+        const imageResources = diagnostics.network_resources.filter((resource) => resource.image_detected);
+        const photosResources = diagnostics.network_resources.filter(
+            (resource) => resource.hostname === 'photos.szukajwarchiwach.gov.pl',
+        );
 
-            if (secondImage !== null) {
-                exitCode = 0;
+        process.stdout.write(
+            `Observed browser resources: ${diagnostics.network_resources.length} interesting, ${photosResources.length} from photos.szukajwarchiwach.gov.pl, ${imageResources.length} recognized images.\n`,
+        );
+
+        if (largestNetworkImage !== null) {
+            const filename = path.join(outputDir, `05-largest-network-image${largestNetworkImage.extension}`);
+            await writeFile(filename, largestNetworkImage.body);
+            diagnostics.artifacts.largest_network_image = filename;
+            diagnostics.largest_network_image = {
+                url: largestNetworkImage.url,
+                content_type: largestNetworkImage.contentType,
+                body_bytes: largestNetworkImage.body.length,
+            };
+            process.stdout.write(
+                `Largest browser-loaded image: ${largestNetworkImage.body.length} bytes -> ${filename}\n`,
+            );
+            exitCode = 0;
+        }
+
+        const canonicalViewerUrl = page.url();
+        if (canonicalViewerUrl !== targetUrl) {
+            process.stdout.write(`Session HTTP fetch of canonical browser URL: ${canonicalViewerUrl}\n`);
+            const canonical = await apiFetch(context, 'session-http-canonical-viewer-url', canonicalViewerUrl);
+
+            if (imageExtension(canonical.details.content_type, canonical.body) === null) {
+                await saveNonImageBody('06-session-http-canonical-viewer-url', canonical.body);
             }
         }
     }
 
-    diagnostics.result = exitCode === 0 ? 'image_downloaded' : 'no_image_downloaded';
+    diagnostics.result = exitCode === 0 ? 'browser_image_observed' : 'no_image_observed';
 } finally {
     await browser.close();
     const diagnosticsPath = path.join(outputDir, 'diagnostics.json');
