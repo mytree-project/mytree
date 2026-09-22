@@ -10,6 +10,7 @@ use App\Application\Acquisition\ListClaimRevisions;
 use App\Application\Acquisition\LoadSourceDraft;
 use App\Domain\Acquisition\AgeClaimValue;
 use App\Domain\Acquisition\Claim;
+use App\Domain\Acquisition\ClaimRevision;
 use App\Domain\Acquisition\DateClaimValue;
 use App\Domain\Acquisition\EvidenceStateId;
 use App\Domain\Acquisition\Mention;
@@ -22,6 +23,7 @@ use App\Filament\Pages\Acquisition\SourceEditor;
 use App\Infrastructure\Persistence\Eloquent\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -237,7 +239,7 @@ final class SourceWorkspaceStructuredFieldsTest extends TestCase
         $firstEvidence = app(GetEvidenceState::class)->get(new EvidenceStateId($firstEvidenceStateId));
         $firstHistoricalClaim = array_values(array_filter(
             $firstEvidence->claimRevisions,
-            static fn ($revision): bool => $revision->claimId->value === $claim->id->value,
+            static fn (ClaimRevision $revision): bool => $revision->claimId->value === $claim->id->value,
         ));
         self::assertCount(1, $firstHistoricalClaim);
         self::assertSame(
