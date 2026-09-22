@@ -89,9 +89,6 @@ final readonly class SupportedAcquisitionFieldDescriptor
 
         $seenRelations = [];
         foreach ($sourceLinguisticRepresentationRelations as $relation) {
-            if (! $relation instanceof SourceLinguisticRepresentationRelation) {
-                throw new InvalidArgumentException('Source linguistic representation relations must use the controlled relation vocabulary.');
-            }
             if (isset($seenRelations[$relation->value])) {
                 throw new InvalidArgumentException('Source linguistic representation relations must be unique.');
             }
