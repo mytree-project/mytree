@@ -24,6 +24,7 @@ final class ClaimRecord extends Model
         'predicate_schema_version',
         'object_mention_id',
         'value_payload',
+        'source_linguistic_representations_payload',
         'qualifiers_payload',
         'raw_text',
         'origin_payload',
