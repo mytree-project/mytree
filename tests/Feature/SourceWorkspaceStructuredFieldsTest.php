@@ -5,13 +5,17 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Application\Acquisition\CreateSource;
+use App\Application\Acquisition\GetEvidenceState;
+use App\Application\Acquisition\ListClaimRevisions;
 use App\Application\Acquisition\LoadSourceDraft;
 use App\Domain\Acquisition\AgeClaimValue;
 use App\Domain\Acquisition\Claim;
 use App\Domain\Acquisition\DateClaimValue;
+use App\Domain\Acquisition\EvidenceStateId;
 use App\Domain\Acquisition\Mention;
 use App\Domain\Acquisition\MentionKind;
 use App\Domain\Acquisition\PredicateKey;
+use App\Domain\Acquisition\SourceLinguisticRepresentationRelation;
 use App\Domain\Acquisition\SourceType;
 use App\Domain\Acquisition\TextClaimValue;
 use App\Filament\Pages\Acquisition\SourceEditor;
@@ -136,6 +140,116 @@ final class SourceWorkspaceStructuredFieldsTest extends TestCase
         $this->assertDatabaseCount('mention_revisions', 4);
         $this->assertDatabaseCount('claim_revisions', 7);
         $this->assertDatabaseCount('evidence_states', 1);
+    }
+
+    public function test_source_recorded_linguistic_forms_round_trip_and_remain_exact_in_history(): void
+    {
+        $source = app(CreateSource::class)->handle(SourceType::generic());
+
+        Livewire::test(SourceEditor::class, ['source' => $source->id->value])
+            ->fillForm([
+                'mentions' => [[
+                    'id' => null,
+                    'kind' => MentionKind::PERSON,
+                    'local_key' => 'person.child',
+                    'role' => 'child',
+                    'display_label' => 'Peter Kowalski',
+                    'raw_data_json' => '{}',
+                    'claims' => [
+                        $this->literalRow(
+                            PredicateKey::PersonGivenName->value,
+                            'Peter',
+                            sourceRepresentations: [[
+                                'value' => 'Piotr',
+                                'language' => 'pl',
+                                'script' => 'Latn',
+                                'relation' => SourceLinguisticRepresentationRelation::LanguageEquivalent->value,
+                                'source_locator_ids' => [],
+                            ]],
+                        ),
+                    ],
+                ]],
+            ], 'evidenceForm')
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $firstDraft = app(LoadSourceDraft::class)->handle($source->id);
+        $person = $this->mentionByLocalKey($firstDraft->current->mentions, 'person.child');
+        $claim = $this->claimByPredicate($firstDraft->current->claims, PredicateKey::PersonGivenName);
+
+        self::assertSame('Peter', $claim->value?->raw());
+        self::assertCount(1, $claim->sourceLinguisticRepresentations);
+        self::assertSame('Piotr', $claim->sourceLinguisticRepresentations[0]->value);
+        self::assertSame('pl', $claim->sourceLinguisticRepresentations[0]->language);
+        self::assertSame(
+            SourceLinguisticRepresentationRelation::LanguageEquivalent,
+            $claim->sourceLinguisticRepresentations[0]->relation,
+        );
+
+        $firstEvidenceStateId = DB::table('evidence_states')
+            ->orderBy('recorded_at')
+            ->value('id');
+        self::assertIsString($firstEvidenceStateId);
+
+        $revisionCount = count(app(ListClaimRevisions::class)->handle($source->id, $claim->id));
+        $evidenceCount = DB::table('evidence_states')->count();
+
+        Livewire::test(SourceEditor::class, ['source' => $source->id->value])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        self::assertSame($revisionCount, count(app(ListClaimRevisions::class)->handle($source->id, $claim->id)));
+        self::assertSame($evidenceCount, DB::table('evidence_states')->count());
+
+        Livewire::test(SourceEditor::class, ['source' => $source->id->value])
+            ->fillForm([
+                'mentions' => [[
+                    'id' => $person->id->value,
+                    'kind' => MentionKind::PERSON,
+                    'local_key' => 'person.child',
+                    'role' => 'child',
+                    'display_label' => 'Peter Kowalski',
+                    'raw_data_json' => '{}',
+                    'claims' => [[
+                        ...$this->literalRow(
+                            PredicateKey::PersonGivenName->value,
+                            'Peter',
+                            sourceRepresentations: [[
+                                'value' => 'Pierre',
+                                'language' => 'fr',
+                                'script' => 'Latn',
+                                'relation' => SourceLinguisticRepresentationRelation::Translation->value,
+                                'source_locator_ids' => [],
+                            ]],
+                        ),
+                        'claim_id' => $claim->id->value,
+                    ]],
+                ]],
+            ], 'evidenceForm')
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $revisions = app(ListClaimRevisions::class)->handle($source->id, $claim->id);
+        self::assertCount($revisionCount + 1, $revisions);
+        self::assertSame('Piotr', $revisions[0]->reconstruct()->claim->sourceLinguisticRepresentations[0]->value);
+        self::assertSame('Pierre', $revisions[count($revisions) - 1]->reconstruct()->claim->sourceLinguisticRepresentations[0]->value);
+
+        $firstEvidence = app(GetEvidenceState::class)->get(new EvidenceStateId($firstEvidenceStateId));
+        $firstHistoricalClaim = array_values(array_filter(
+            $firstEvidence->claimRevisions,
+            static fn ($revision): bool => $revision->claimId->value === $claim->id->value,
+        ));
+        self::assertCount(1, $firstHistoricalClaim);
+        self::assertSame(
+            'Piotr',
+            $firstHistoricalClaim[0]->reconstruct()->claim->sourceLinguisticRepresentations[0]->value,
+        );
+
+        $current = $this->claimByPredicate(
+            app(LoadSourceDraft::class)->handle($source->id)->current->claims,
+            PredicateKey::PersonGivenName,
+        );
+        self::assertSame('Pierre', $current->sourceLinguisticRepresentations[0]->value);
     }
 
     public function test_repeatable_claims_can_be_removed_inside_one_mention_without_touching_mention_raw_data(): void
@@ -293,6 +407,7 @@ final class SourceWorkspaceStructuredFieldsTest extends TestCase
         string|int|null $from = null,
         string|int|null $to = null,
         ?array $effectiveTime = null,
+        array $sourceRepresentations = [],
     ): array {
         return [
             'claim_id' => null,
@@ -306,6 +421,7 @@ final class SourceWorkspaceStructuredFieldsTest extends TestCase
             'integer_value' => null,
             'boolean_value' => null,
             'enum_key' => null,
+            'source_linguistic_representations' => $sourceRepresentations,
             'effective_time_raw' => $effectiveTime['raw'] ?? null,
             'effective_time_kind' => $effectiveTime['kind'] ?? null,
             'effective_time_from' => $effectiveTime['from'] ?? null,
