@@ -14,6 +14,7 @@ use App\Domain\Acquisition\Mention;
 use App\Domain\Acquisition\PredicateVocabulary;
 use App\Domain\Acquisition\SourceId;
 use App\Domain\Acquisition\SourceLinguisticRepresentation;
+use App\Domain\Acquisition\SourceLinguisticRepresentationRelation;
 use InvalidArgumentException;
 
 final readonly class SupportedAcquisitionFieldMapper
@@ -58,7 +59,7 @@ final readonly class SupportedAcquisitionFieldMapper
 
         $allowedRelations = array_fill_keys(
             array_map(
-                static fn ($relation): string => $relation->value,
+                static fn (SourceLinguisticRepresentationRelation $relation): string => $relation->value,
                 $descriptor->sourceLinguisticRepresentationRelations,
             ),
             true,
