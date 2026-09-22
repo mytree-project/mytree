@@ -19,10 +19,6 @@ final class SourceLinguisticRepresentationSerializer
         $byKey = [];
 
         foreach ($representations as $representation) {
-            if (! $representation instanceof SourceLinguisticRepresentation) {
-                throw new InvalidArgumentException('Source linguistic representations must use the typed domain contract.');
-            }
-
             $key = CanonicalJson::encode(self::toArray($representation));
             if (isset($byKey[$key])) {
                 throw new InvalidArgumentException('Duplicate source linguistic representations are not allowed.');
