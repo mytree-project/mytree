@@ -9,7 +9,9 @@ use App\Domain\Acquisition\ClaimOriginKind;
 use App\Domain\Acquisition\ClaimValue;
 use App\Domain\Acquisition\Mention;
 use App\Domain\Acquisition\MentionKind;
+use App\Domain\Acquisition\SourceLinguisticRepresentation;
 use App\Domain\Acquisition\SourceLocator;
+use App\Domain\Acquisition\SourceLocatorId;
 use InvalidArgumentException;
 
 final readonly class SourceEvidenceGraphProjector
@@ -197,6 +199,16 @@ final readonly class SourceEvidenceGraphProjector
             $node['object'] = $reference;
         }
 
+        if ($claim->sourceLinguisticRepresentations !== []) {
+            $node['source_linguistic_representations'] = array_map(
+                fn (SourceLinguisticRepresentation $representation): array => $this->sourceRepresentationNode(
+                    $representation,
+                    $persistedLocatorIds,
+                ),
+                $claim->sourceLinguisticRepresentations,
+            );
+        }
+
         if (! $claim->qualifiers->isEmpty()) {
             $node['qualifiers'] = [
                 'effective_time' => $claim->qualifiers->effectiveTime === null
@@ -242,6 +254,40 @@ final readonly class SourceEvidenceGraphProjector
                 fn (array $entry): array => $this->locatorNode($entry[1], $persistedLocatorIds),
                 $locators,
             );
+        }
+
+        return $node;
+    }
+
+    /**
+     * @param  array<string, true>  $persistedLocatorIds
+     * @return array<string, mixed>
+     */
+    private function sourceRepresentationNode(
+        SourceLinguisticRepresentation $representation,
+        array $persistedLocatorIds,
+    ): array {
+        $node = [
+            'value' => $representation->value,
+            'relation' => $representation->relation->value,
+        ];
+
+        if ($representation->language !== null) {
+            $node['language'] = $representation->language;
+        }
+        if ($representation->script !== null) {
+            $node['script'] = $representation->script;
+        }
+
+        $persistedRepresentationLocatorIds = array_values(array_filter(
+            array_map(
+                static fn (SourceLocatorId $id): string => $id->value,
+                $representation->sourceLocatorIds,
+            ),
+            static fn (string $id): bool => isset($persistedLocatorIds[$id]),
+        ));
+        if ($persistedRepresentationLocatorIds !== []) {
+            $node['source_locator_ids'] = $persistedRepresentationLocatorIds;
         }
 
         return $node;
