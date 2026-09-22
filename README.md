@@ -221,7 +221,7 @@ bash ops/szukajwarchiwach-browser-poc.sh "https://szukajwarchiwach.gov.pl/skan/-
 
 Run `./ops/test.sh install` first on a fresh checkout. The probe uses the same Playwright dependency and Chromium installation already included for browser tests, but it is **not** part of the automated browser suite or CI because it deliberately exercises a live third-party portal.
 
-The probe creates an ephemeral headless `BrowserContext`, opens the portal first to establish normal browser session state, requests the scan through the context-shared HTTP client, then falls back to one normal browser navigation and one retry. It does not solve CAPTCHAs, disguise Chromium, or print cookie values. Diagnostic HTML, screenshots, a redacted JSON summary and any successfully downloaded image are written under `storage/app/private/szukajwarchiwach-poc` by default.
+The probe creates an ephemeral headless `BrowserContext`, opens the portal first to establish normal browser session state, checks the supplied `/skan/...` URL through the context-shared HTTP client, then opens that URL as a browser viewer and observes its image/network subrequests. This distinction matters because the current `/skan/-/skan/<token>` route is an HTML scan viewer rather than the raw image response itself. The probe records image responses, including resources served from `photos.szukajwarchiwach.gov.pl`, saves the largest observed image, and separately reports Imperva edge headers versus an actual block-page body. It does not solve CAPTCHAs, disguise Chromium, or print cookie values. Diagnostic HTML, screenshots, a redacted JSON summary and any successfully observed image are written under `storage/app/private/szukajwarchiwach-poc` by default.
 
 ## Direct Compose commands
 
