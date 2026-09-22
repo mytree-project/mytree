@@ -760,9 +760,6 @@ final readonly class StructuredAcquisitionFormAdapter
             }
 
             $locatorValues = $representationRow['source_locator_ids'] ?? [];
-            if ($locatorValues === null) {
-                $locatorValues = [];
-            }
             if (! is_array($locatorValues) || ! array_is_list($locatorValues)) {
                 throw ValidationException::withMessages([
                     "$path.source_linguistic_representations.$index.source_locator_ids" => 'Source locator references must be a list.',
@@ -1059,7 +1056,7 @@ final readonly class StructuredAcquisitionFormAdapter
 
         $locatorIds = $row['source_locator_ids'] ?? [];
 
-        return $locatorIds === null || $locatorIds === [];
+        return $locatorIds === [];
     }
 
     /** @param  array<string, mixed>  $row */
