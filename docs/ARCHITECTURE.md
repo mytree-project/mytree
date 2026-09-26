@@ -166,6 +166,8 @@ Source Type Templates are versioned presentation configuration. They reference s
 
 Claim provenance, qualifiers and `SourceLocator` evidence references remain authoritative Acquisition state during UI edits. The structured editor preserves existing Claim origin when changing represented values and does not implicitly remove locators that are outside the edited field projection.
 
+Supported textual Claim fields may also retain zero or more source-supplied linguistic representations when those alternative forms are explicitly present in the acquired Source. The current Basic editor enables this for given names, surnames, place names and occupations, preserving each representation's value, optional language/script, controlled relation and optional SourceLocator references as part of the owning Claim semantic state. Representation changes therefore participate in ClaimRevision/EvidenceState history. User/editorial translations, name-processing output and Index Provider linguistic forms remain outside this source-truth path.
+
 ### Settings
 
 Application Settings are also implemented rather than merely planned:

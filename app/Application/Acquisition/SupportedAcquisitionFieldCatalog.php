@@ -9,6 +9,7 @@ use App\Domain\Acquisition\MentionKind;
 use App\Domain\Acquisition\Predicate;
 use App\Domain\Acquisition\PredicateKey;
 use App\Domain\Acquisition\PredicateVocabulary;
+use App\Domain\Acquisition\SourceLinguisticRepresentationRelation;
 use InvalidArgumentException;
 
 final class SupportedAcquisitionFieldCatalog
@@ -109,7 +110,21 @@ final class SupportedAcquisitionFieldCatalog
             objectMentionKind: $predicate->objectMentionKind,
             helpText: $this->helpText($predicate->key),
             allowedEnumKeys: $predicate->allowedEnumKeys,
+            sourceLinguisticRepresentationRelations: $this->sourceLinguisticRepresentationRelations($predicate->key),
         );
+    }
+
+    /** @return list<SourceLinguisticRepresentationRelation> */
+    private function sourceLinguisticRepresentationRelations(PredicateKey $key): array
+    {
+        return in_array($key, [
+            PredicateKey::PersonGivenName,
+            PredicateKey::PersonSurname,
+            PredicateKey::PlaceName,
+            PredicateKey::PersonOccupation,
+        ], true)
+            ? SourceLinguisticRepresentationRelation::cases()
+            : [];
     }
 
     private function literalEditor(ClaimValueType $valueType): SupportedAcquisitionFieldEditorKind

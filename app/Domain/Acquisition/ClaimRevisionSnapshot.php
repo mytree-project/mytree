@@ -8,9 +8,13 @@ use InvalidArgumentException;
 
 final readonly class ClaimRevisionSnapshot
 {
-    public const SCHEMA_ID = 'mytree.claim-revision.v1';
+    public const LEGACY_SCHEMA_ID = 'mytree.claim-revision.v1';
 
-    public const SCHEMA_VERSION = 1;
+    public const SCHEMA_ID = 'mytree.claim-revision.v2';
+
+    public const LEGACY_SCHEMA_VERSION = 1;
+
+    public const SCHEMA_VERSION = 2;
 
     private function __construct(
         public int $schemaVersion,
@@ -37,6 +41,20 @@ final readonly class ClaimRevisionSnapshot
             static fn (SourceLocator $left, SourceLocator $right): int => strcmp($left->id->value, $right->id->value),
         );
 
+        $locatorIds = [];
+        foreach ($locators as $locator) {
+            $locatorIds[$locator->id->value] = true;
+        }
+        foreach ($claim->sourceLinguisticRepresentations as $representation) {
+            foreach ($representation->sourceLocatorIds as $sourceLocatorId) {
+                if (! isset($locatorIds[$sourceLocatorId->value])) {
+                    throw new InvalidArgumentException(
+                        'Source linguistic representation locator must belong to the owning Claim revision.',
+                    );
+                }
+            }
+        }
+
         $state = new ClaimRevisionState(
             claim: $claim,
             subjectMentionRevisionId: $subjectMentionRevisionId,
@@ -60,6 +78,9 @@ final readonly class ClaimRevisionSnapshot
                     'mention_revision_id' => $state->objectMentionRevisionId?->value,
                 ],
                 'value' => $state->claim->value === null ? null : ClaimValueSerializer::toArray($state->claim->value),
+                'source_linguistic_representations' => SourceLinguisticRepresentationSerializer::toArrayList(
+                    $state->claim->sourceLinguisticRepresentations,
+                ),
                 'qualifiers' => $state->claim->qualifiers->toArray(),
                 'raw_text' => $state->claim->rawText,
                 'origin' => $state->claim->origin->toArray(),
@@ -96,7 +117,7 @@ final readonly class ClaimRevisionSnapshot
         string $canonicalPayload,
         string $payloadHash,
     ): self {
-        if ($schemaVersion !== self::SCHEMA_VERSION) {
+        if (! in_array($schemaVersion, [self::LEGACY_SCHEMA_VERSION, self::SCHEMA_VERSION], true)) {
             throw new InvalidArgumentException(sprintf(
                 'Unsupported ClaimRevision snapshot schema version %d.',
                 $schemaVersion,
@@ -115,7 +136,11 @@ final readonly class ClaimRevisionSnapshot
 
         $payload = CanonicalJson::decodeObject($canonicalPayload);
 
-        if (($payload['schema'] ?? null) !== self::SCHEMA_ID) {
+        $expectedSchemaId = $schemaVersion === self::LEGACY_SCHEMA_VERSION
+            ? self::LEGACY_SCHEMA_ID
+            : self::SCHEMA_ID;
+
+        if (($payload['schema'] ?? null) !== $expectedSchemaId) {
             throw new InvalidArgumentException('Unsupported ClaimRevision snapshot schema identifier.');
         }
 
@@ -137,7 +162,11 @@ final readonly class ClaimRevisionSnapshot
     {
         $payload = CanonicalJson::decodeObject($this->canonicalPayload);
 
-        if (($payload['schema'] ?? null) !== self::SCHEMA_ID) {
+        $expectedSchemaId = $this->schemaVersion === self::LEGACY_SCHEMA_VERSION
+            ? self::LEGACY_SCHEMA_ID
+            : self::SCHEMA_ID;
+
+        if (($payload['schema'] ?? null) !== $expectedSchemaId) {
             throw new InvalidArgumentException('Unsupported ClaimRevision snapshot schema identifier.');
         }
 
@@ -150,6 +179,11 @@ final readonly class ClaimRevisionSnapshot
         $originPayload = self::objectAt($claimPayload, 'origin');
         $transcriptionCertaintyPayload = self::objectAt($claimPayload, 'transcription_certainty');
         $interpretationCertaintyPayload = self::objectAt($claimPayload, 'interpretation_certainty');
+        $sourceLinguisticRepresentations = $this->schemaVersion === self::LEGACY_SCHEMA_VERSION
+            ? []
+            : SourceLinguisticRepresentationSerializer::fromArrayList(
+                self::objectListAt($claimPayload, 'source_linguistic_representations'),
+            );
 
         $claim = new Claim(
             id: new ClaimId(self::stringAt($claimPayload, 'id')),
@@ -173,6 +207,7 @@ final readonly class ClaimRevisionSnapshot
                 self::intAt($interpretationCertaintyPayload, 'schema_version'),
             ),
             schemaVersion: self::intAt($claimPayload, 'schema_version'),
+            sourceLinguisticRepresentations: $sourceLinguisticRepresentations,
         );
 
         $sourceLocators = [];

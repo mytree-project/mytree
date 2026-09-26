@@ -13,6 +13,8 @@ use App\Domain\Acquisition\ClaimValue;
 use App\Domain\Acquisition\Mention;
 use App\Domain\Acquisition\PredicateVocabulary;
 use App\Domain\Acquisition\SourceId;
+use App\Domain\Acquisition\SourceLinguisticRepresentation;
+use App\Domain\Acquisition\SourceLinguisticRepresentationRelation;
 use InvalidArgumentException;
 
 final readonly class SupportedAcquisitionFieldMapper
@@ -21,6 +23,7 @@ final readonly class SupportedAcquisitionFieldMapper
         private SupportedAcquisitionFieldCatalog $catalog,
     ) {}
 
+    /** @param list<SourceLinguisticRepresentation> $sourceLinguisticRepresentations */
     public function directClaim(
         string $fieldKey,
         ClaimId $claimId,
@@ -33,6 +36,8 @@ final readonly class SupportedAcquisitionFieldMapper
         ?ClaimOrigin $origin = null,
         ?ClaimCertainty $transcriptionCertainty = null,
         ?ClaimCertainty $interpretationCertainty = null,
+        array $sourceLinguisticRepresentations = [],
+        ?int $schemaVersion = null,
     ): Claim {
         $descriptor = $this->catalog->get($fieldKey);
         if (! $descriptor->isDirectClaim() || $descriptor->predicateKey === null) {
@@ -44,6 +49,30 @@ final readonly class SupportedAcquisitionFieldMapper
 
         $this->assertSourceLocal($sourceId, $subject, 'subject');
         $predicate = PredicateVocabulary::get($descriptor->predicateKey);
+
+        if ($sourceLinguisticRepresentations !== [] && ! $descriptor->supportsSourceLinguisticRepresentations()) {
+            throw new InvalidArgumentException(sprintf(
+                'Supported acquisition field "%s" does not allow source linguistic representations.',
+                $fieldKey,
+            ));
+        }
+
+        $allowedRelations = array_fill_keys(
+            array_map(
+                static fn (SourceLinguisticRepresentationRelation $relation): string => $relation->value,
+                $descriptor->sourceLinguisticRepresentationRelations,
+            ),
+            true,
+        );
+        foreach ($sourceLinguisticRepresentations as $representation) {
+            if (! isset($allowedRelations[$representation->relation->value])) {
+                throw new InvalidArgumentException(sprintf(
+                    'Source linguistic representation relation "%s" is not allowed for field "%s".',
+                    $representation->relation->value,
+                    $fieldKey,
+                ));
+            }
+        }
         $predicate->assertSubjectKind($subject->kind);
 
         if ($descriptor->literalValueType !== null) {
@@ -79,6 +108,8 @@ final readonly class SupportedAcquisitionFieldMapper
             origin: $origin,
             transcriptionCertainty: $transcriptionCertainty,
             interpretationCertainty: $interpretationCertainty,
+            schemaVersion: $schemaVersion ?? Claim::SCHEMA_VERSION,
+            sourceLinguisticRepresentations: $sourceLinguisticRepresentations,
         );
     }
 

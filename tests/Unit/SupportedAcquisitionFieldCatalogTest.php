@@ -13,6 +13,7 @@ use App\Domain\Acquisition\MentionKind;
 use App\Domain\Acquisition\PredicateKey;
 use App\Domain\Acquisition\PredicateVocabulary;
 use App\Domain\Acquisition\SexClaimValueKey;
+use App\Domain\Acquisition\SourceLinguisticRepresentationRelation;
 use PHPUnit\Framework\TestCase;
 
 final class SupportedAcquisitionFieldCatalogTest extends TestCase
@@ -59,6 +60,35 @@ final class SupportedAcquisitionFieldCatalogTest extends TestCase
             $descriptor = $catalog->get($key->value);
             self::assertSame(SupportedAcquisitionFieldEditorKind::Text, $descriptor->editorKind);
             self::assertSame(MentionKind::PERSON, $descriptor->subjectMentionKind);
+        }
+    }
+
+    public function test_supported_text_fields_declare_source_linguistic_representation_capability(): void
+    {
+        $catalog = new SupportedAcquisitionFieldCatalog;
+        $relations = SourceLinguisticRepresentationRelation::cases();
+
+        foreach ([
+            PredicateKey::PersonGivenName,
+            PredicateKey::PersonSurname,
+            PredicateKey::PersonOccupation,
+            PredicateKey::PlaceName,
+        ] as $key) {
+            $descriptor = $catalog->get($key->value);
+
+            self::assertTrue($descriptor->supportsSourceLinguisticRepresentations());
+            self::assertSame($relations, $descriptor->sourceLinguisticRepresentationRelations);
+        }
+
+        foreach ([
+            PredicateKey::PersonBirthDate,
+            PredicateKey::PersonSex,
+            PredicateKey::PersonResidence,
+        ] as $key) {
+            $descriptor = $catalog->get($key->value);
+
+            self::assertFalse($descriptor->supportsSourceLinguisticRepresentations());
+            self::assertSame([], $descriptor->sourceLinguisticRepresentationRelations);
         }
     }
 

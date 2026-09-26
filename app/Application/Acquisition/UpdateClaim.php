@@ -13,6 +13,7 @@ use App\Domain\Acquisition\ClaimValue;
 use App\Domain\Acquisition\MentionId;
 use App\Domain\Acquisition\Predicate;
 use App\Domain\Acquisition\SourceId;
+use App\Domain\Acquisition\SourceLinguisticRepresentation;
 
 final readonly class UpdateClaim
 {
@@ -23,6 +24,7 @@ final readonly class UpdateClaim
         private AcquisitionTransaction $transaction,
     ) {}
 
+    /** @param list<SourceLinguisticRepresentation>|null $sourceLinguisticRepresentations */
     public function handle(
         SourceId $sourceId,
         ClaimId $claimId,
@@ -37,9 +39,14 @@ final readonly class UpdateClaim
         ?ClaimCertainty $interpretationCertainty = null,
         ?string $changeNote = null,
         ?string $changedBy = null,
+        ?array $sourceLinguisticRepresentations = null,
     ): Claim {
         $current = $this->claims->find($sourceId, $claimId)
             ?? throw ClaimNotFound::forSourceAndId($sourceId, $claimId);
+        $representations = $sourceLinguisticRepresentations ?? $current->sourceLinguisticRepresentations;
+        $schemaVersion = $representations === []
+            ? $current->schemaVersion
+            : Claim::SCHEMA_VERSION;
 
         $claim = new Claim(
             id: $current->id,
@@ -53,7 +60,8 @@ final readonly class UpdateClaim
             origin: $origin ?? $current->origin,
             transcriptionCertainty: $transcriptionCertainty ?? $current->transcriptionCertainty,
             interpretationCertainty: $interpretationCertainty ?? $current->interpretationCertainty,
-            schemaVersion: $current->schemaVersion,
+            schemaVersion: $schemaVersion,
+            sourceLinguisticRepresentations: $representations,
         );
 
         $this->references->validate($claim);

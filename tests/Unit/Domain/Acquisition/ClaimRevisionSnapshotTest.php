@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Domain\Acquisition;
 
+use App\Domain\Acquisition\CanonicalJson;
 use App\Domain\Acquisition\Claim;
 use App\Domain\Acquisition\ClaimCertainty;
 use App\Domain\Acquisition\ClaimId;
@@ -89,6 +90,36 @@ final class ClaimRevisionSnapshotTest extends TestCase
         self::assertNull($state->objectMentionRevisionId);
         self::assertCount(1, $state->sourceLocators);
         self::assertSame('quoted_fragment', $state->sourceLocators[0]->value->type()->value);
+    }
+
+    public function test_legacy_v1_snapshot_remains_readable_after_source_representation_schema_upgrade(): void
+    {
+        $snapshot = ClaimRevisionSnapshot::capture(
+            $this->claim(),
+            new MentionRevisionId('44444444-4444-4444-8444-444444444444'),
+            null,
+            [],
+        );
+        $payload = CanonicalJson::decodeObject($snapshot->canonicalPayload);
+        $claimPayload = $payload['claim'] ?? null;
+        self::assertIsArray($claimPayload);
+
+        $payload['schema'] = ClaimRevisionSnapshot::LEGACY_SCHEMA_ID;
+        $claimPayload['schema_version'] = Claim::LEGACY_SCHEMA_VERSION;
+        unset($claimPayload['source_linguistic_representations']);
+        $payload['claim'] = $claimPayload;
+        $canonicalPayload = CanonicalJson::encode($payload);
+
+        $legacy = ClaimRevisionSnapshot::rehydrate(
+            ClaimRevisionSnapshot::LEGACY_SCHEMA_VERSION,
+            $canonicalPayload,
+            hash('sha256', $canonicalPayload),
+        );
+        $state = $legacy->reconstruct();
+
+        self::assertSame(Claim::LEGACY_SCHEMA_VERSION, $state->claim->schemaVersion);
+        self::assertSame([], $state->claim->sourceLinguisticRepresentations);
+        self::assertSame('włościan', $state->claim->value?->raw());
     }
 
     public function test_rehydrate_rejects_hash_mismatch(): void

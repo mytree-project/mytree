@@ -19,6 +19,8 @@ use App\Domain\Acquisition\PredicateKey;
 use App\Domain\Acquisition\PredicateVocabulary;
 use App\Domain\Acquisition\Source;
 use App\Domain\Acquisition\SourceId;
+use App\Domain\Acquisition\SourceLinguisticRepresentation;
+use App\Domain\Acquisition\SourceLinguisticRepresentationRelation;
 use App\Domain\Acquisition\SourceMetadata;
 use App\Domain\Acquisition\SourceType;
 use App\Domain\Acquisition\TextClaimValue;
@@ -65,6 +67,14 @@ final class SourceEvidenceGraphYamlExporterTest extends TestCase
             subjectMentionId: $child->id,
             predicate: PredicateVocabulary::get(PredicateKey::PersonGivenName),
             value: new TextClaimValue('Jan'),
+            sourceLinguisticRepresentations: [
+                new SourceLinguisticRepresentation(
+                    value: 'Johann',
+                    language: 'de',
+                    script: 'Latn',
+                    relation: SourceLinguisticRepresentationRelation::LanguageEquivalent,
+                ),
+            ],
         );
         $residence = new Claim(
             id: new ClaimId('66666666-6666-4666-8666-666666666666'),
@@ -107,6 +117,9 @@ final class SourceEvidenceGraphYamlExporterTest extends TestCase
         self::assertStringContainsString('local_key: "person.child"', $yaml);
         self::assertStringContainsString('predicate: "person.given_name"', $yaml);
         self::assertStringContainsString('raw: "Jan"', $yaml);
+        self::assertStringContainsString('source_linguistic_representations:', $yaml);
+        self::assertStringContainsString('value: "Johann"', $yaml);
+        self::assertStringContainsString('relation: "language_equivalent"', $yaml);
         self::assertStringContainsString('predicate: "person.residence"', $yaml);
         self::assertStringContainsString('local_key: "place.birth"', $yaml);
         self::assertStringContainsString('events:', $yaml);

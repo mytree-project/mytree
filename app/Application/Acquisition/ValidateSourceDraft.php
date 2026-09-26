@@ -42,6 +42,8 @@ final readonly class ValidateSourceDraft
         $assets = [];
         /** @var array<string, Claim> $claims */
         $claims = [];
+        /** @var array<string, array<string, true>> $locatorIdsByClaim */
+        $locatorIdsByClaim = [];
 
         foreach ($state->assets as $index => $asset) {
             $assets[$asset->id->value] = true;
@@ -111,6 +113,7 @@ final readonly class ValidateSourceDraft
 
         foreach ($state->locators as $index => $locator) {
             $path = "state.locators.$index";
+            $locatorIdsByClaim[$locator->claimId->value][$locator->id->value] = true;
             if ($locator->sourceId->value !== $sourceId) {
                 $issues[] = $this->error(
                     'draft.locator.cross_source',
@@ -133,6 +136,22 @@ final readonly class ValidateSourceDraft
                     "$path.sourceAssetId",
                     'SourceLocator asset must remain attached to the edited Source.',
                 );
+            }
+        }
+
+        foreach ($state->claims as $claimIndex => $claim) {
+            foreach ($claim->sourceLinguisticRepresentations as $representationIndex => $representation) {
+                foreach ($representation->sourceLocatorIds as $locatorIndex => $locatorId) {
+                    if (isset($locatorIdsByClaim[$claim->id->value][$locatorId->value])) {
+                        continue;
+                    }
+
+                    $issues[] = $this->error(
+                        'draft.claim.source_representation_locator_missing',
+                        "state.claims.$claimIndex.sourceLinguisticRepresentations.$representationIndex.sourceLocatorIds.$locatorIndex",
+                        'Source linguistic representation locator must belong to the owning Claim.',
+                    );
+                }
             }
         }
 

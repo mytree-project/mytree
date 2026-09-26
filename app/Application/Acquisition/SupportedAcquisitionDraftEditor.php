@@ -191,6 +191,10 @@ final readonly class SupportedAcquisitionDraftEditor
                 origin: $existing?->origin,
                 transcriptionCertainty: new ClaimCertainty($claimInput->transcriptionCertainty),
                 interpretationCertainty: new ClaimCertainty($claimInput->interpretationCertainty),
+                sourceLinguisticRepresentations: $claimInput->sourceLinguisticRepresentations,
+                schemaVersion: $existing === null || $claimInput->sourceLinguisticRepresentations !== []
+                    ? Claim::SCHEMA_VERSION
+                    : $existing->schemaVersion,
             );
 
             if ($existing === null) {
