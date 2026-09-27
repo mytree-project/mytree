@@ -11,6 +11,7 @@ use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 
 final class RebuildSourceSearchDocumentJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
@@ -29,6 +30,16 @@ final class RebuildSourceSearchDocumentJob implements ShouldBeUniqueUntilProcess
     public function uniqueId(): string
     {
         return $this->sourceId;
+    }
+
+    /** @return list<object> */
+    public function middleware(): array
+    {
+        return [
+            (new WithoutOverlapping('search-source-'.$this->sourceId))
+                ->releaseAfter(5)
+                ->expireAfter(3600),
+        ];
     }
 
     public function handle(RebuildSourceSearchDocument $rebuild): void

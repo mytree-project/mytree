@@ -66,24 +66,28 @@ final class SearchProjectionFoundationTest extends TestCase
         self::assertNotSame('', $document->indexSignature);
 
         $entries = $document->entries;
-        self::assertCount(3, $entries);
+        self::assertCount(4, $entries);
 
         self::assertSame('source.name', $entries[0]->field);
         self::assertSame('Birth record 1901/42', $entries[0]->value);
         self::assertSame(SearchValueOrigin::SourceMetadata, $entries[0]->origin);
 
-        self::assertSame(PredicateKey::PersonGivenName->value, $entries[1]->field);
-        self::assertSame('Peter', $entries[1]->value);
-        self::assertSame(SearchValueOrigin::ClaimValue, $entries[1]->origin);
-        self::assertSame($person->id->value, $entries[1]->mentionId);
-        self::assertSame($claim->id->value, $entries[1]->claimId);
-        self::assertNotNull($entries[1]->claimRevisionId);
+        self::assertSame('source.metadata.title', $entries[1]->field);
+        self::assertSame('Birth record', $entries[1]->value);
+        self::assertSame(SearchValueOrigin::SourceMetadata, $entries[1]->origin);
 
-        self::assertSame('Piotr', $entries[2]->value);
-        self::assertSame(SearchValueOrigin::SourceRepresentation, $entries[2]->origin);
-        self::assertSame('pl', $entries[2]->language);
-        self::assertSame('Latn', $entries[2]->script);
-        self::assertSame('language_equivalent', $entries[2]->representationRelation);
+        self::assertSame(PredicateKey::PersonGivenName->value, $entries[2]->field);
+        self::assertSame('Peter', $entries[2]->value);
+        self::assertSame(SearchValueOrigin::ClaimValue, $entries[2]->origin);
+        self::assertSame($person->id->value, $entries[2]->mentionId);
+        self::assertSame($claim->id->value, $entries[2]->claimId);
+        self::assertNotNull($entries[2]->claimRevisionId);
+
+        self::assertSame('Piotr', $entries[3]->value);
+        self::assertSame(SearchValueOrigin::SourceRepresentation, $entries[3]->origin);
+        self::assertSame('pl', $entries[3]->language);
+        self::assertSame('Latn', $entries[3]->script);
+        self::assertSame('language_equivalent', $entries[3]->representationRelation);
 
         $persisted = app(SearchDocumentRepository::class)->find($source->id);
         self::assertNotNull($persisted);

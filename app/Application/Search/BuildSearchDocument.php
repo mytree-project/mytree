@@ -36,6 +36,16 @@ final readonly class BuildSearchDocument
             );
         }
 
+        $metadata = $source->metadata->toArray();
+        $title = $metadata['title'] ?? null;
+        if (is_string($title) && trim($title) !== '') {
+            $entries[] = new SearchDocumentEntry(
+                field: 'source.metadata.title',
+                value: $title,
+                origin: SearchValueOrigin::SourceMetadata,
+            );
+        }
+
         foreach ($evidence->claimRevisions as $revision) {
             $this->appendClaimEntries($entries, $revision);
         }
