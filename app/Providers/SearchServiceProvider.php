@@ -8,11 +8,13 @@ use App\Application\Search\CurrentEvidenceStateLookup;
 use App\Application\Search\DirectSearchCandidateRepository;
 use App\Application\Search\SearchDocumentRepository;
 use App\Application\Search\SearchIndexProfile;
+use App\Application\Search\SearchProjectionRebuildTargetRepository;
 use App\Application\Search\SearchProjectionScheduler;
 use App\Application\Search\SearchRuntimeConfiguration;
 use App\Infrastructure\Persistence\Eloquent\Search\EloquentCurrentEvidenceStateLookup;
 use App\Infrastructure\Persistence\Eloquent\Search\EloquentDirectSearchCandidateRepository;
 use App\Infrastructure\Persistence\Eloquent\Search\EloquentSearchDocumentRepository;
+use App\Infrastructure\Persistence\Eloquent\Search\EloquentSearchProjectionRebuildTargetRepository;
 use App\Infrastructure\Search\LaravelSearchProjectionScheduler;
 use Illuminate\Support\ServiceProvider;
 
@@ -42,6 +44,7 @@ final class SearchServiceProvider extends ServiceProvider
         $this->app->bind(SearchDocumentRepository::class, EloquentSearchDocumentRepository::class);
         $this->app->bind(CurrentEvidenceStateLookup::class, EloquentCurrentEvidenceStateLookup::class);
         $this->app->bind(DirectSearchCandidateRepository::class, EloquentDirectSearchCandidateRepository::class);
+        $this->app->bind(SearchProjectionRebuildTargetRepository::class, EloquentSearchProjectionRebuildTargetRepository::class);
         $this->app->bind(SearchProjectionScheduler::class, LaravelSearchProjectionScheduler::class);
     }
 }
