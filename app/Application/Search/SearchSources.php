@@ -121,8 +121,8 @@ final readonly class SearchSources
     }
 
     /**
-     * @param array<string, true> $matchedTerms
-     * @param list<string> $terms
+     * @param  array<string, true>  $matchedTerms
+     * @param  list<string>  $terms
      */
     private function containsAllTerms(array $matchedTerms, array $terms): bool
     {
