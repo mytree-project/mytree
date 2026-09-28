@@ -12,11 +12,11 @@ final class RebuildStaleSearchSources extends Command
 {
     protected $signature = 'search:rebuild-stale';
 
-    protected $description = 'Queue SearchDocument rebuilds for stale or not-yet-built Sources';
+    protected $description = 'Queue SearchDocument rebuilds for stale, missing, or outdated projections';
 
     public function handle(SearchProjectionRebuildTargetRepository $targets): int
     {
-        $sourceIds = $targets->staleOrMissing();
+        $sourceIds = $targets->requiringRebuild();
 
         foreach ($sourceIds as $sourceId) {
             RebuildSourceSearchDocumentJob::dispatch($sourceId->value);
@@ -24,7 +24,7 @@ final class RebuildStaleSearchSources extends Command
 
         $count = count($sourceIds);
         $this->info($count === 0
-            ? 'No stale or missing SearchDocuments require rebuild.'
+            ? 'No SearchDocuments require rebuild.'
             : sprintf('Queued %d SearchDocument rebuild%s.', $count, $count === 1 ? '' : 's'));
 
         return self::SUCCESS;

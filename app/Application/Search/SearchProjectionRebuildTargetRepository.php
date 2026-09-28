@@ -9,5 +9,5 @@ use App\Domain\Acquisition\SourceId;
 interface SearchProjectionRebuildTargetRepository
 {
     /** @return list<SourceId> */
-    public function staleOrMissing(): array;
+    public function requiringRebuild(): array;
 }

@@ -16,6 +16,7 @@ use App\Domain\Acquisition\SourceType;
 use App\Infrastructure\Search\RebuildSourceSearchDocumentJob;
 use Illuminate\Console\Command;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -56,11 +57,12 @@ final class SearchRebuildCommandTest extends TestCase
         Queue::assertNothingPushed();
     }
 
-    public function test_stale_rebuild_command_queues_stale_and_missing_projections_only(): void
+    public function test_stale_rebuild_command_queues_stale_missing_and_outdated_projections_only(): void
     {
         $this->disableAutomaticSearchScheduling();
         $missingProjection = $this->createAcceptedSource('Missing projection');
         $staleProjection = $this->createAcceptedSource('Stale projection');
+        $outdatedProjection = $this->createAcceptedSource('Outdated projection');
         $freshProjection = $this->createAcceptedSource('Fresh projection');
         $noEvidence = app(CreateSource::class)->handle(
             SourceType::generic(),
@@ -69,17 +71,21 @@ final class SearchRebuildCommandTest extends TestCase
 
         $rebuild = app(RebuildSourceSearchDocument::class);
         $rebuild->handle($staleProjection->id);
+        $rebuild->handle($outdatedProjection->id);
         $rebuild->handle($freshProjection->id);
         app(SearchDocumentRepository::class)->markStale($staleProjection->id);
+        DB::table('search_documents')
+            ->where('source_id', $outdatedProjection->id->value)
+            ->update(['index_signature' => str_repeat('0', 64)]);
 
         Queue::fake();
 
         $this->artisan('search:rebuild-stale')
-            ->expectsOutput('Queued 2 SearchDocument rebuilds.')
+            ->expectsOutput('Queued 3 SearchDocument rebuilds.')
             ->assertSuccessful()
             ->execute();
 
-        Queue::assertPushed(RebuildSourceSearchDocumentJob::class, 2);
+        Queue::assertPushed(RebuildSourceSearchDocumentJob::class, 3);
         Queue::assertPushed(
             RebuildSourceSearchDocumentJob::class,
             static fn (RebuildSourceSearchDocumentJob $job): bool => $job->sourceId === $missingProjection->id->value,
@@ -87,6 +93,10 @@ final class SearchRebuildCommandTest extends TestCase
         Queue::assertPushed(
             RebuildSourceSearchDocumentJob::class,
             static fn (RebuildSourceSearchDocumentJob $job): bool => $job->sourceId === $staleProjection->id->value,
+        );
+        Queue::assertPushed(
+            RebuildSourceSearchDocumentJob::class,
+            static fn (RebuildSourceSearchDocumentJob $job): bool => $job->sourceId === $outdatedProjection->id->value,
         );
         Queue::assertNotPushed(
             RebuildSourceSearchDocumentJob::class,
@@ -102,7 +112,10 @@ final class SearchRebuildCommandTest extends TestCase
     {
         $this->app->instance(SearchProjectionScheduler::class, new class implements SearchProjectionScheduler
         {
-            public function sourceChanged(SourceId $sourceId): void {}
+            public function sourceChanged(SourceId $sourceId): void
+            {
+                // Intentionally disabled in command tests.
+            }
         });
     }
 
