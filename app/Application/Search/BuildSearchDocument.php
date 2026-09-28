@@ -24,7 +24,7 @@ final readonly class BuildSearchDocument
         }
 
         $sourceRevision = $evidence->sourceRevisions[0];
-        $sourceRevisionState = $sourceRevision->reconstruct();
+        $sourceRevisionState = $sourceRevision->snapshot->reconstruct();
         $source = $sourceRevisionState->source;
         $entries = [];
 
@@ -80,7 +80,7 @@ final readonly class BuildSearchDocument
 
         $entries[] = new SearchDocumentEntry(
             field: $claim->predicate->key->value,
-            value: $claim->value->value,
+            value: $claim->value->raw(),
             origin: SearchValueOrigin::ClaimValue,
             mentionId: $claim->subjectMentionId->value,
             claimId: $claim->id->value,
