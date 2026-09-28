@@ -29,11 +29,13 @@ final class FilamentSearchPageTest extends TestCase
     {
         $administrator = User::factory()->admin()->create();
         $source = $this->indexedSource();
+        $sourceName = $source->name;
+        self::assertNotNull($sourceName);
 
         $this->actingAs($administrator)
             ->get('/admin/search?q=Peter')
             ->assertOk()
-            ->assertSee($source->name)
+            ->assertSee($sourceName)
             ->assertSee('Peter')
             ->assertSee(__('search.match_types.direct_claim_value'))
             ->assertSee(__('search.fields.person_given_name'))
@@ -44,12 +46,14 @@ final class FilamentSearchPageTest extends TestCase
     {
         $administrator = User::factory()->admin()->create();
         $source = $this->indexedSource();
+        $sourceName = $source->name;
+        self::assertNotNull($sourceName);
         app(SearchDocumentRepository::class)->markStale($source->id);
 
         $this->actingAs($administrator)
             ->get('/admin/search?q=Peter')
             ->assertOk()
-            ->assertSee($source->name)
+            ->assertSee($sourceName)
             ->assertSee(__('search.stale'));
     }
 
