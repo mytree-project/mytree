@@ -20,7 +20,7 @@ final readonly class EloquentSearchProjectionRebuildTargetRepository implements 
     {
         $currentSignature = $this->profile->signature();
 
-        return DB::table('evidence_state_source_revisions as evidence')
+        $sourceIds = DB::table('evidence_state_source_revisions as evidence')
             ->leftJoin('search_documents as document', 'document.source_id', '=', 'evidence.source_id')
             ->where(static function (Builder $query) use ($currentSignature): void {
                 $query
@@ -34,5 +34,7 @@ final readonly class EloquentSearchProjectionRebuildTargetRepository implements 
             ->map(static fn (mixed $sourceId): SourceId => new SourceId((string) $sourceId))
             ->values()
             ->all();
+
+        return array_values($sourceIds);
     }
 }

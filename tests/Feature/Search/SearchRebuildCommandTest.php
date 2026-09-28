@@ -18,6 +18,7 @@ use Illuminate\Console\Command;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Testing\PendingCommand;
 use Tests\TestCase;
 
 final class SearchRebuildCommandTest extends TestCase
@@ -30,7 +31,11 @@ final class SearchRebuildCommandTest extends TestCase
         $source = $this->createAcceptedSource('Single rebuild');
         Queue::fake();
 
-        $this->artisan('search:rebuild '.$source->id->value)
+        $command = $this->artisan('search:rebuild '.$source->id->value);
+
+        self::assertInstanceOf(PendingCommand::class, $command);
+
+        $command
             ->expectsOutput('Queued SearchDocument rebuild for Source '.$source->id->value.'.')
             ->assertSuccessful()
             ->execute();
@@ -49,7 +54,11 @@ final class SearchRebuildCommandTest extends TestCase
         );
         Queue::fake();
 
-        $this->artisan('search:rebuild '.$source->id->value)
+        $command = $this->artisan('search:rebuild '.$source->id->value);
+
+        self::assertInstanceOf(PendingCommand::class, $command);
+
+        $command
             ->expectsOutput('Source '.$source->id->value.' has no accepted EvidenceState to index.')
             ->assertExitCode(Command::FAILURE)
             ->execute();
@@ -80,7 +89,11 @@ final class SearchRebuildCommandTest extends TestCase
 
         Queue::fake();
 
-        $this->artisan('search:rebuild-stale')
+        $command = $this->artisan('search:rebuild-stale');
+
+        self::assertInstanceOf(PendingCommand::class, $command);
+
+        $command
             ->expectsOutput('Queued 3 SearchDocument rebuilds.')
             ->assertSuccessful()
             ->execute();
