@@ -135,10 +135,15 @@ final readonly class SearchSources
         return true;
     }
 
-    /** @param list<SearchMatchReason> $reasons @return list<SearchMatchReason> */
+    /**
+     * @param  list<SearchMatchReason>  $reasons
+     * @return list<SearchMatchReason>
+     */
     private function deduplicateReasons(array $reasons): array
     {
+        /** @var array<string, SearchMatchReason> $unique */
         $unique = [];
+
         foreach ($reasons as $reason) {
             $key = implode('|', [
                 $reason->queryTerm,
@@ -167,7 +172,10 @@ final readonly class SearchSources
         return $reasons;
     }
 
-    /** @param list<SearchMatchReason> $reasons @param list<string> $terms */
+    /**
+     * @param  list<SearchMatchReason>  $reasons
+     * @param  list<string>  $terms
+     */
     private function score(array $reasons, array $terms): int
     {
         $score = 0;
@@ -188,7 +196,10 @@ final readonly class SearchSources
         return $score;
     }
 
-    /** @param list<SearchMatchReason> $reasons @param list<string> $terms */
+    /**
+     * @param  list<SearchMatchReason>  $reasons
+     * @param  list<string>  $terms
+     */
     private function hasSameMentionCoverage(array $reasons, array $terms): bool
     {
         /** @var array<string, array<string, true>> $termsByMention */
