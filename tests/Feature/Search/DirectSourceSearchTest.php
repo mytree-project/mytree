@@ -116,7 +116,7 @@ final class DirectSourceSearchTest extends TestCase
     }
 
     /**
-     * @param list<list<string>> $namesByMention
+     * @param  list<list<string>>  $namesByMention
      */
     private function sourceWithNames(
         string $name,
