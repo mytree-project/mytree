@@ -72,7 +72,7 @@ final class EloquentSearchDocumentRepository implements SearchDocumentRepository
             throw new UnexpectedValueException('Stored SearchDocument built_at must be a date-time value.');
         }
 
-        $entries = SearchDocumentEntryRecord::query()
+        $entries = array_values(SearchDocumentEntryRecord::query()
             ->where('source_id', $sourceId->value)
             ->orderBy('id')
             ->get()
@@ -104,7 +104,7 @@ final class EloquentSearchDocumentRepository implements SearchDocumentRepository
                     indexForms: $forms,
                 );
             })
-            ->all();
+            ->all());
 
         return new SearchDocument(
             sourceId: new SourceId((string) $record->source_id),
