@@ -10,4 +10,7 @@ interface SearchProjectionRebuildTargetRepository
 {
     /** @return list<SourceId> */
     public function requiringRebuild(): array;
+
+    /** @return list<SourceId> */
+    public function allIndexable(): array;
 }

@@ -37,4 +37,17 @@ final readonly class EloquentSearchProjectionRebuildTargetRepository implements 
 
         return array_values($sourceIds);
     }
+
+    public function allIndexable(): array
+    {
+        $sourceIds = DB::table('evidence_state_source_revisions as evidence')
+            ->distinct()
+            ->orderBy('evidence.source_id')
+            ->pluck('evidence.source_id')
+            ->map(static fn (mixed $sourceId): SourceId => new SourceId((string) $sourceId))
+            ->values()
+            ->all();
+
+        return array_values($sourceIds);
+    }
 }

@@ -121,6 +121,48 @@ final class SearchRebuildCommandTest extends TestCase
         );
     }
 
+    public function test_full_rebuild_command_queues_every_source_with_accepted_evidence(): void
+    {
+        $this->disableAutomaticSearchScheduling();
+        $missingProjection = $this->createAcceptedSource('Missing projection');
+        $freshProjection = $this->createAcceptedSource('Fresh projection');
+        $anotherAcceptedSource = $this->createAcceptedSource('Another accepted source');
+        $noEvidence = app(CreateSource::class)->handle(
+            SourceType::generic(),
+            new SourceMetadata(['title' => 'No evidence']),
+        );
+
+        app(RebuildSourceSearchDocument::class)->handle($freshProjection->id);
+        Queue::fake();
+
+        $command = $this->artisan('search:rebuild-all');
+
+        self::assertInstanceOf(PendingCommand::class, $command);
+
+        $command
+            ->expectsOutput('Queued 3 SearchDocument rebuilds.')
+            ->assertSuccessful()
+            ->execute();
+
+        Queue::assertPushed(RebuildSourceSearchDocumentJob::class, 3);
+        Queue::assertPushed(
+            RebuildSourceSearchDocumentJob::class,
+            static fn (RebuildSourceSearchDocumentJob $job): bool => $job->sourceId === $missingProjection->id->value,
+        );
+        Queue::assertPushed(
+            RebuildSourceSearchDocumentJob::class,
+            static fn (RebuildSourceSearchDocumentJob $job): bool => $job->sourceId === $freshProjection->id->value,
+        );
+        Queue::assertPushed(
+            RebuildSourceSearchDocumentJob::class,
+            static fn (RebuildSourceSearchDocumentJob $job): bool => $job->sourceId === $anotherAcceptedSource->id->value,
+        );
+        Queue::assertNotPushed(
+            RebuildSourceSearchDocumentJob::class,
+            static fn (RebuildSourceSearchDocumentJob $job): bool => $job->sourceId === $noEvidence->id->value,
+        );
+    }
+
     private function disableAutomaticSearchScheduling(): void
     {
         $this->app->instance(SearchProjectionScheduler::class, new class implements SearchProjectionScheduler
