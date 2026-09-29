@@ -445,16 +445,24 @@ function submitSourceWorkspaceBrowserForm(AwaitableWebpage $page): AwaitableWebp
 
 function assertSourceWorkspaceNoUnexpectedJavaScriptErrors(AwaitableWebpage $page): void
 {
-    $errors = array_values(array_filter(
-        $page->page()->javaScriptErrors(),
-        static fn (array $error): bool => $error['message'] !== 'ResizeObserver loop completed with undelivered notifications.',
-    ));
+    $page
+        ->assertScript(
+            <<<'JS'
+                function() {
+                    if (! window.__pestBrowser) {
+                        return false;
+                    }
 
-    expect($errors)->toBeEmpty(sprintf(
-        'Expected no unexpected JavaScript errors, but found %d: %s',
-        count($errors),
-        implode(', ', array_map(static fn (array $error): string => $error['message'], $errors)),
-    ));
+                    window.__pestBrowser.jsErrors = (window.__pestBrowser.jsErrors ?? []).filter(
+                        (error) => error.message !== 'ResizeObserver loop completed with undelivered notifications.',
+                    );
+
+                    return true;
+                }
+                JS,
+            true,
+        )
+        ->assertNoJavaScriptErrors();
 }
 
 it('scopes Mention JSON validation styling and moves it when the failing Mention changes', function (): void {
