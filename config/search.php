@@ -6,6 +6,11 @@ return [
     'max_page_size' => 100,
     'candidate_limit' => 1000,
     'query_expansion_limit' => 32,
+    'name_processing' => [
+        'normalize_profile' => 'default',
+        'transliterate_profile' => 'cyrillic-latin',
+        'fold_profile' => 'latin-search',
+    ],
     'fuzzy' => [
         'enabled' => false,
         'threshold' => 0.78,

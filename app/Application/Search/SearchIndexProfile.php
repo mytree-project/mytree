@@ -16,20 +16,24 @@ final readonly class SearchIndexProfile
     /** @param list<PredicateKey> $searchablePredicates */
     public function __construct(
         array $searchablePredicates,
+        public SearchIndexNameProcessingProfile $nameProcessing,
         public string $processingSignature,
     ) {
         $this->searchablePredicates = $searchablePredicates;
     }
 
-    public static function m5Foundation(): self
-    {
+    public static function m5Foundation(
+        SearchIndexNameProcessingProfile $nameProcessing,
+        string $processingSignature,
+    ): self {
         return new self(
             searchablePredicates: [
                 PredicateKey::PersonGivenName,
                 PredicateKey::PersonSurname,
                 PredicateKey::PlaceName,
             ],
-            processingSignature: 'direct-values-v1',
+            nameProcessing: $nameProcessing,
+            processingSignature: $processingSignature,
         );
     }
 
@@ -49,6 +53,7 @@ final readonly class SearchIndexProfile
         return hash('sha256', json_encode([
             'schema_version' => self::SCHEMA_VERSION,
             'searchable_predicates' => $predicates,
+            'name_processing' => $this->nameProcessing->toArray(),
             'processing_signature' => $this->processingSignature,
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
     }

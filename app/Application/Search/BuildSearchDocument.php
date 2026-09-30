@@ -6,6 +6,7 @@ namespace App\Application\Search;
 
 use App\Application\Acquisition\ResolvedEvidenceState;
 use App\Domain\Acquisition\ClaimRevision;
+use App\Domain\Acquisition\PredicateKey;
 use App\Domain\Acquisition\SourceLinguisticRepresentation;
 use App\Domain\Acquisition\TextClaimValue;
 use DateTimeImmutable;
@@ -15,6 +16,7 @@ final readonly class BuildSearchDocument
 {
     public function __construct(
         private SearchIndexProfile $profile,
+        private SearchNameProcessor $nameProcessor,
     ) {}
 
     public function build(ResolvedEvidenceState $evidence, DateTimeImmutable $builtAt): SearchDocument
@@ -78,6 +80,7 @@ final readonly class BuildSearchDocument
             throw new LogicException('M5 searchable lexical predicates must use Text Claim values.');
         }
 
+        $nameType = $this->nameTypeFor($claim->predicate->key);
         $entries[] = new SearchDocumentEntry(
             field: $claim->predicate->key->value,
             value: $claim->value->raw(),
@@ -85,16 +88,21 @@ final readonly class BuildSearchDocument
             mentionId: $claim->subjectMentionId->value,
             claimId: $claim->id->value,
             claimRevisionId: $revision->id->value,
+            indexForms: $this->nameProcessor->indexForms(
+                new SearchNameInput($claim->value->raw(), $nameType),
+                $this->profile->nameProcessing,
+            ),
         );
 
         foreach ($claim->sourceLinguisticRepresentations as $representation) {
-            $entries[] = $this->sourceRepresentationEntry($revision, $representation);
+            $entries[] = $this->sourceRepresentationEntry($revision, $representation, $nameType);
         }
     }
 
     private function sourceRepresentationEntry(
         ClaimRevision $revision,
         SourceLinguisticRepresentation $representation,
+        SearchNameType $nameType,
     ): SearchDocumentEntry {
         $claim = $revision->reconstruct()->claim;
 
@@ -108,6 +116,28 @@ final readonly class BuildSearchDocument
             language: $representation->language,
             script: $representation->script,
             representationRelation: $representation->relation->value,
+            indexForms: $this->nameProcessor->indexForms(
+                new SearchNameInput(
+                    value: $representation->value,
+                    type: $nameType,
+                    language: $representation->language,
+                    script: $representation->script,
+                ),
+                $this->profile->nameProcessing,
+            ),
         );
+    }
+
+    private function nameTypeFor(PredicateKey $predicate): SearchNameType
+    {
+        return match ($predicate) {
+            PredicateKey::PersonGivenName => SearchNameType::GivenName,
+            PredicateKey::PersonSurname => SearchNameType::Surname,
+            PredicateKey::PlaceName => SearchNameType::PlaceName,
+            default => throw new LogicException(sprintf(
+                'Searchable predicate "%s" has no name-processing type mapping.',
+                $predicate->value,
+            )),
+        };
     }
 }

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6aee5a5ccef20cc7c2e6df7a87421282",
+    "content-hash": "8fbff0b241f5b75f8e4c0b5fc1b9b189",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -3414,6 +3414,90 @@
                 }
             ],
             "time": "2026-01-02T08:56:05+00:00"
+        },
+        {
+            "name": "mytree/name-processing",
+            "version": "dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/mytree-project/name-processing.git",
+                "reference": "2277f077d33088e3dd52c0f6b74f9845da5e9c32"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/mytree-project/name-processing/zipball/2277f077d33088e3dd52c0f6b74f9845da5e9c32",
+                "reference": "2277f077d33088e3dd52c0f6b74f9845da5e9c32",
+                "shasum": ""
+            },
+            "require": {
+                "ext-intl": "*",
+                "ext-json": "*",
+                "ext-mbstring": "*",
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.75",
+                "phpstan/phpstan": "^2.1",
+                "phpunit/phpunit": "^11.5"
+            },
+            "default-branch": true,
+            "bin": [
+                "bin/mytree-name"
+            ],
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "MyTree\\NameProcessing\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "MyTree\\NameProcessing\\Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "phpunit"
+                ],
+                "analyse": [
+                    "phpstan analyse --no-progress"
+                ],
+                "format": [
+                    "php-cs-fixer fix"
+                ],
+                "format:check": [
+                    "php-cs-fixer fix --dry-run --diff"
+                ],
+                "qa": [
+                    "@format:check",
+                    "@analyse",
+                    "@test"
+                ]
+            },
+            "license": [
+                "Apache-2.0"
+            ],
+            "authors": [
+                {
+                    "name": "saulgajda",
+                    "homepage": "https://github.com/mytree-project",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Standalone, deterministic name normalization, transliteration, folding and variant resolution for MyTree.",
+            "homepage": "https://github.com/mytree-project/name-processing",
+            "keywords": [
+                "genealogy",
+                "mytree",
+                "names",
+                "normalization",
+                "transliteration"
+            ],
+            "support": {
+                "issues": "https://github.com/mytree-project/name-processing/issues",
+                "source": "https://github.com/mytree-project/name-processing"
+            },
+            "time": "2026-09-30T08:15:25+00:00"
         },
         {
             "name": "nesbot/carbon",
@@ -13293,7 +13377,9 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {},
+    "stability-flags": {
+        "mytree/name-processing": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
