@@ -16,6 +16,8 @@ final class EvidenceStateRecord extends Model
 
     protected $table = 'evidence_states';
 
+    protected $dateFormat = 'Y-m-d H:i:s.u';
+
     /** @var list<string> */
     protected $fillable = [
         'id',

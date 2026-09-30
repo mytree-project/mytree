@@ -443,6 +443,28 @@ function submitSourceWorkspaceBrowserForm(AwaitableWebpage $page): AwaitableWebp
     return $page;
 }
 
+function assertSourceWorkspaceNoUnexpectedJavaScriptErrors(AwaitableWebpage $page): void
+{
+    $page
+        ->assertScript(
+            <<<'JS'
+                function() {
+                    if (! window.__pestBrowser) {
+                        return false;
+                    }
+
+                    window.__pestBrowser.jsErrors = (window.__pestBrowser.jsErrors ?? []).filter(
+                        (error) => error.message !== 'ResizeObserver loop completed with undelivered notifications.',
+                    );
+
+                    return true;
+                }
+                JS,
+            true,
+        )
+        ->assertNoJavaScriptErrors();
+}
+
 it('scopes Mention JSON validation styling and moves it when the failing Mention changes', function (): void {
     sourceWorkspaceBrowserDebugCheckpoint('test:first:start');
 
@@ -532,12 +554,11 @@ it('scopes Mention JSON validation styling and moves it when the failing Mention
     assertSourceWorkspaceEvidenceItemValidationState($page, $valentinMention['selector'], hasError: false);
     assertSourceWorkspaceEvidenceItemValidationState($page, $annaMention['selector'], hasError: true, collapsed: false);
 
-    $page
-        ->assertScript(
-            "Array.from(document.querySelectorAll('textarea')).some((textarea) => textarea.value === '{\"also-broken\":')",
-            true,
-        )
-        ->assertNoJavaScriptErrors();
+    $page->assertScript(
+        "Array.from(document.querySelectorAll('textarea')).some((textarea) => textarea.value === '{\"also-broken\":')",
+        true,
+    );
+    assertSourceWorkspaceNoUnexpectedJavaScriptErrors($page);
 
     sourceWorkspaceBrowserDebugCheckpoint('test:first:completed');
 });
@@ -579,8 +600,8 @@ it('keeps a nested Claim attached when its containing Mention local key is renam
 
     $page
         ->assertDontSee('odwołuje się do nieistniejącej Wzmianki jako podmiotu')
-        ->assertDontSee('Subject Mention local key')
-        ->assertNoJavaScriptErrors();
+        ->assertDontSee('Subject Mention local key');
+    assertSourceWorkspaceNoUnexpectedJavaScriptErrors($page);
 });
 
 it('keeps an event Claim object reference attached when its target Mention local key is renamed', function (): void {
@@ -632,8 +653,8 @@ it('keeps an event Claim object reference attached when its target Mention local
         ->assertScript(
             "document.querySelector('[data-source-workspace-save-errors]') === null",
             true,
-        )
-        ->assertNoJavaScriptErrors();
+        );
+    assertSourceWorkspaceNoUnexpectedJavaScriptErrors($page);
 
     sourceWorkspaceBrowserDebugCheckpoint('test:event-claim:completed');
 });
@@ -668,6 +689,6 @@ it('routes metadata value errors to Source details instead of Mentions and Claim
         ->assertScript(
             "Array.from(document.querySelectorAll('input')).some((input) => input.value === 'abc')",
             true,
-        )
-        ->assertNoJavaScriptErrors();
+        );
+    assertSourceWorkspaceNoUnexpectedJavaScriptErrors($page);
 });

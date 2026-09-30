@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Acquisition;
 
+use App\Application\Search\SearchProjectionScheduler;
 use App\Domain\Acquisition\Claim;
 use App\Domain\Acquisition\ClaimRevisionId;
 use App\Domain\Acquisition\EvidenceState;
@@ -23,6 +24,7 @@ final readonly class CaptureEvidenceStateForSource
         private EvidenceStateRepository $evidenceStates,
         private SourceIdentifierGenerator $identifiers,
         private EvidenceStateClock $clock,
+        private SearchProjectionScheduler $searchProjectionScheduler,
     ) {}
 
     public function capture(
@@ -53,7 +55,7 @@ final readonly class CaptureEvidenceStateForSource
             $this->claims->forSource($sourceId),
         );
 
-        return $this->evidenceStates->append(
+        $evidenceState = $this->evidenceStates->append(
             id: $this->identifiers->evidenceStateId(),
             snapshot: EvidenceStateSnapshot::capture(
                 sourceRevisionIds: [$sourceRevision->id],
@@ -64,5 +66,9 @@ final readonly class CaptureEvidenceStateForSource
             changeNote: $changeNote,
             changedBy: $changedBy,
         );
+
+        $this->searchProjectionScheduler->sourceChanged($sourceId);
+
+        return $evidenceState;
     }
 }

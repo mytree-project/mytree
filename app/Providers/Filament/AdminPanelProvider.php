@@ -6,6 +6,7 @@ namespace App\Providers\Filament;
 
 use App\Filament\Pages\Acquisition\SourceEditor;
 use App\Filament\Pages\Acquisition\Sources;
+use App\Filament\Pages\SearchSources;
 use App\Filament\Pages\Settings;
 use App\Filament\Widgets\SystemStatusWidget;
 use App\Http\Middleware\ApplyApplicationLocale;
@@ -47,6 +48,7 @@ final class AdminPanelProvider extends PanelProvider
             ->login()
             ->pages([
                 Dashboard::class,
+                SearchSources::class,
                 Sources::class,
                 SourceEditor::class,
                 Settings::class,
