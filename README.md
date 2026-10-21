@@ -191,7 +191,7 @@ The default `all` command:
 4. runs Larastan/PHPStan at level 8 without a generated baseline or blanket ignores,
 5. runs the existing non-browser PHPUnit-compatible suite through Pest.
 
-Browser tests are intentionally opt-in. They are not run by `./ops/test.sh`, `./ops/test.sh all`, or GitHub Actions CI. Run them explicitly when browser-level verification is needed:
+Browser tests are intentionally opt-in in the default local `./ops/test.sh` / `./ops/test.sh all` suite. GitHub Actions CI **does** run the dedicated `browser-debug` stage after the PHP quality gates. To run the regular browser suite locally:
 
 ```bash
 ./ops/test.sh browser
@@ -213,7 +213,7 @@ For debugging an individual stage, use:
 
 On a fresh checkout run `./ops/test.sh install` before the manual browser stage so the locked Composer/Node dependencies and browser-enabled image are present.
 
-GitHub Actions uses only `install`, `style`, `static` and `tests`. CI runs for pull requests and pushes to `main`; browser tests remain a local manual check and are never part of the automatic CI gate.
+GitHub Actions runs `install`, `style`, `static`, `tests` and `browser-debug` for pull requests and pushes to `main`. The browser-debug stage includes diagnostic checkpoints and uploads browser artifacts when it fails. Locally, the normal `all` suite still excludes browser tests; invoke `./ops/test.sh browser` or `./ops/test.sh browser-debug` explicitly.
 
 ## Direct Compose commands
 
