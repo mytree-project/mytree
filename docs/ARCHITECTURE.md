@@ -201,12 +201,12 @@ app/Filament/Widgets/SystemStatusWidget.php
 
 These boundaries coexist with the real Acquisition and Settings modules; they are no longer examples standing in for an otherwise empty Domain/Application hierarchy.
 
-### Planned M5 Search boundary
+### Implemented M5 Search foundation and name-processing index adapter
 
-The accepted project-wide Search contract is defined in `mytree-project/mytree-project/docs/search/SEARCH_AND_NAME_PROCESSING.md`. Repository implementation must preserve the following dependency direction when #184 adds the capability:
+The accepted project-wide Search contract is defined in `mytree-project/mytree-project/docs/search/SEARCH_AND_NAME_PROCESSING.md`. The partial M5 implementation currently preserves this dependency direction:
 
 ```text
-Filament/Search
+Filament/Pages/SearchSources
       ↓
 Application/Search
       ↓ application-owned name-processing contract
@@ -221,11 +221,11 @@ The initial M5 Search projection is derived from current accepted immutable Acqu
 
 Search results identify source-local evidence for retrieval/navigation. They do not create interpreted `Person` entities, `same_person` hypotheses or Engine confidence. Search projection persistence is rebuildable Infrastructure data and must remain replaceable without loss of source truth.
 
-This section defines an implementation-facing boundary only. It does not claim that Search is already implemented before #184.
+The first M5 implementation slice provides `Application/Search` SearchDocument projections, direct Source query matching, Source-level result aggregation, Eloquent search persistence, the queued rebuild lifecycle and the Filament Search page. The current #184 index-time slice adds an application-owned `SearchNameProcessor` contract, an Infrastructure adapter to pinned `mytree/name-processing` normalize/transliterate/fold processing, and an index-processing signature incorporating the processor reference, profile versions and ICU version. Derived technical `index_forms` are stored on SearchDocument entries but are **not yet queried** by direct match execution; only source values and accepted Source representations currently match. The following #184 slices will implement query-time processing, editable dictionary/variants, fuzzy support, additional filters/sorting, and the extensible result envelope.
 
 ### Not yet implemented
 
-The current baseline does not claim implementation of future capabilities merely because their placement is documented. Provider integration, Search, MyTree Engine integration, Viewer/Interpretation and Research orchestration remain future work unless concrete code is added under their corresponding boundaries.
+The current baseline does not claim implementation of future capabilities merely because their placement is documented. External Provider integration, **remaining M5 Search work**, MyTree Engine integration, Viewer/Interpretation and Research orchestration remain future work unless concrete code is added under their corresponding boundaries.
 
 ## Testing and enforcement
 
