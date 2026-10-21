@@ -22,7 +22,7 @@ final readonly class SearchIndexProfile
         $this->searchablePredicates = $searchablePredicates;
     }
 
-    public static function m5Foundation(
+    public static function default(
         SearchIndexNameProcessingProfile $nameProcessing,
         string $processingSignature,
     ): self {
