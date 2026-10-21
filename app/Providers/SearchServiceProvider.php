@@ -63,7 +63,7 @@ final class SearchServiceProvider extends ServiceProvider
                 );
                 $processor = $app->make(SearchNameProcessor::class);
 
-                return SearchIndexProfile::m5Foundation(
+                return SearchIndexProfile::default(
                     nameProcessing: $nameProcessing,
                     processingSignature: $processor->signature($nameProcessing),
                 );
