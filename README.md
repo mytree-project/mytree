@@ -30,11 +30,21 @@ The current implemented baseline contains:
 - an application-owned supported acquisition field catalog with typed Mention/Claim editing, repeatable fields and reified event contexts,
 - versioned Source Type Templates used only as presentation configuration for Basic Source Acquisition,
 - an integrated Filament Basic Source Acquisition workspace for create/edit, template selection, metadata/text/assets, supported structured fields and a downloadable read-only YAML evidence graph,
-- Eloquent persistence adapters and migrations for the implemented Acquisition contracts.
+- Eloquent persistence adapters and migrations for the implemented Acquisition contracts,
+- the initial M5 Search foundation: rebuildable current-EvidenceState SearchDocuments, queued rebuilds, stale signalling, direct structured Source search with match provenance and a Filament Search page,
+- index-time normalization, transliteration and comparison folding of searchable Claim/Source-representation values through a version-pinned `mytree/name-processing` Infrastructure adapter.
 
 Source Acquisition is therefore implemented through the M4 Basic Source Acquisition baseline. The editing UI composes one Source-scoped draft and saves through Application use cases; templates and supported-field metadata do not become a second domain model or overwrite Source/Mention/Claim truth. Existing unsupported data is not silently discarded, and persisted Claim provenance, qualifiers and SourceLocators remain part of the authoritative acquisition state.
 
-Provider integration, search integration and MyTree Engine integration are not implemented by this baseline.
+External provider integration and MyTree Engine integration are not implemented by this baseline. M5 Search is **partially implemented**: query-time generated variants and maintained dictionaries, fuzzy matching, the remaining date/place filters and sort modes, and full SearchResult category contracts are follow-up slices of mytree-project/mytree-project#184.
+
+## Search development status
+
+The Search projection and direct matching use current accepted `EvidenceState` snapshots; each result points back to a Source and relevant Mention/Claim provenance. Derived `index_forms` use the versioned `mytree/name-processing` normalize/transliterate/fold adapter and do not rewrite source values or Claim history. The exact dependency reference and configured profile versions contribute to the index-processing signature, so affected projections can be rebuilt when index-time behavior changes.
+
+For now the query matcher still relies on direct stored values; it does **not** yet match against these derived `index_forms`. Query normalization, linguistic candidate variants, the application-owned dictionary, fuzzy matching and richer filters/sorting are out of scope for this PR and remain tracked under #184. Do not interpret this initial index-processing slice as complete M5 Search.
+
+Useful existing administrative commands (with a running queue worker) are `php artisan search:rebuild <source-uuid>`, `php artisan search:rebuild-stale`, and `php artisan search:rebuild-all`. They queue Source SearchDocument refreshes.
 
 ## Application architecture
 
@@ -181,7 +191,7 @@ The default `all` command:
 4. runs Larastan/PHPStan at level 8 without a generated baseline or blanket ignores,
 5. runs the existing non-browser PHPUnit-compatible suite through Pest.
 
-Browser tests are intentionally opt-in. They are not run by `./ops/test.sh`, `./ops/test.sh all`, or GitHub Actions CI. Run them explicitly when browser-level verification is needed:
+Browser tests are intentionally opt-in in the default local `./ops/test.sh` / `./ops/test.sh all` suite. GitHub Actions CI **does** run the dedicated `browser-debug` stage after the PHP quality gates. To run the regular browser suite locally:
 
 ```bash
 ./ops/test.sh browser
@@ -203,7 +213,7 @@ For debugging an individual stage, use:
 
 On a fresh checkout run `./ops/test.sh install` before the manual browser stage so the locked Composer/Node dependencies and browser-enabled image are present.
 
-GitHub Actions uses only `install`, `style`, `static` and `tests`. CI runs for pull requests and pushes to `main`; browser tests remain a local manual check and are never part of the automatic CI gate.
+GitHub Actions runs `install`, `style`, `static`, `tests` and `browser-debug` for pull requests and pushes to `main`. The browser-debug stage includes diagnostic checkpoints and uploads browser artifacts when it fails. Locally, the normal `all` suite still excludes browser tests; invoke `./ops/test.sh browser` or `./ops/test.sh browser-debug` explicitly.
 
 ## Direct Compose commands
 
