@@ -84,10 +84,10 @@ final class EloquentDirectSearchCandidateRepository implements DirectSearchCandi
             }
 
             /** @var list<string> $forms */
-            $forms = array_values(array_map(
+            $forms = array_map(
                 static fn (mixed $form): string => (string) $form,
                 $forms,
-            ));
+            );
 
             $candidates[] = new DirectSearchCandidate(
                 sourceId: new SourceId((string) $row->source_id),
