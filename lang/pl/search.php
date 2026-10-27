@@ -19,6 +19,7 @@ return [
     'score' => 'Wynik: :score',
     'match_reasons' => 'Dlaczego ten wynik pasuje',
     'query_term' => 'Termin zapytania: :term',
+    'matched_form' => 'Forma porównawcza: :form',
     'mention_id' => 'Wzmianka: :id',
     'claim_id' => 'Twierdzenie: :id',
     'representation_relation' => 'Reprezentacja: :relation',
@@ -29,6 +30,7 @@ return [
         'direct_source_metadata' => 'Bezpośrednie metadane źródła',
         'direct_claim_value' => 'Bezpośrednia wartość twierdzenia',
         'source_representation' => 'Reprezentacja źródłowa',
+        'technical_comparison' => 'Dopasowanie techniczne',
     ],
     'fields' => [
         'source_name' => 'Nazwa źródła',

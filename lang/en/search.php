@@ -19,6 +19,7 @@ return [
     'score' => 'Score: :score',
     'match_reasons' => 'Why this matched',
     'query_term' => 'Query term: :term',
+    'matched_form' => 'Comparison form: :form',
     'mention_id' => 'Mention: :id',
     'claim_id' => 'Claim: :id',
     'representation_relation' => 'Representation: :relation',
@@ -29,6 +30,7 @@ return [
         'direct_source_metadata' => 'Direct Source metadata',
         'direct_claim_value' => 'Direct Claim value',
         'source_representation' => 'Source representation',
+        'technical_comparison' => 'Technical comparison',
     ],
     'fields' => [
         'source_name' => 'Source name',

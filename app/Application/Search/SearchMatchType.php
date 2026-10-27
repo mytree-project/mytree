@@ -9,4 +9,5 @@ enum SearchMatchType: string
     case DirectSourceMetadata = 'direct_source_metadata';
     case DirectClaimValue = 'direct_claim_value';
     case SourceRepresentation = 'source_representation';
+    case TechnicalComparison = 'technical_comparison';
 }
