@@ -97,7 +97,7 @@ final class MaintainedSearchVariantDictionaryTest extends TestCase
     }
 
     /**
-     * @param list<string> $values
+     * @param  list<string>  $values
      * @return array<string, mixed>
      */
     private function group(string $id, string $type, array $values): array
