@@ -36,7 +36,7 @@ The current implemented baseline contains:
 
 Source Acquisition is therefore implemented through the M4 Basic Source Acquisition baseline. The editing UI composes one Source-scoped draft and saves through Application use cases; templates and supported-field metadata do not become a second domain model or overwrite Source/Mention/Claim truth. Existing unsupported data is not silently discarded, and persisted Claim provenance, qualifiers and SourceLocators remain part of the authoritative acquisition state.
 
-External provider integration and MyTree Engine integration are not implemented by this baseline. M5 Search is **partially implemented**: query-time generated variants and maintained dictionaries, fuzzy matching, the remaining date/place filters and sort modes, and full SearchResult category contracts are follow-up slices of mytree-project/mytree-project#184.
+External provider integration and MyTree Engine integration are not implemented by this baseline. M5 Search is **partially implemented**: technical and maintained-dictionary query-time matching are present, while fuzzy matching, remaining date/place filters and sort modes, and complete SearchResult category contracts remain follow-up slices of mytree-project/mytree-project#184.
 
 ## Search development status
 
@@ -52,7 +52,7 @@ changing Claims or rebuilding SearchDocuments. Match reasons distinguish diction
 matches and retain dataset id, version, signature and variant group. The generated
 variant selection is bounded by `search.query_expansion_limit`; query-time
 dictionary mappings do not contribute to the index-processing signature.
-Fuzzy matching and richer date/place filters and sorting remain tracked under #184. Do not interpret this initial index-processing slice as complete M5 Search.
+Fuzzy matching and richer date/place filters and sorting remain tracked under #184. Do not interpret the dictionary integration as complete M5 Search.
 
 Useful existing administrative commands (with a running queue worker) are `php artisan search:rebuild <source-uuid>`, `php artisan search:rebuild-stale`, and `php artisan search:rebuild-all`. They queue Source SearchDocument refreshes.
 
