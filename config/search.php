@@ -20,6 +20,7 @@ return [
         'direct_source_metadata' => 100,
         'direct_claim_value' => 100,
         'source_representation' => 90,
+        'technical_comparison' => 80,
         'same_mention_bonus' => 5,
     ],
 ];

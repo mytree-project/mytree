@@ -7,7 +7,7 @@ namespace App\Application\Search;
 interface DirectSearchCandidateRepository
 {
     /**
-     * @param  list<string>  $terms
+     * @param  list<SearchQueryTerm>  $terms
      * @param  list<string>  $sourceTypeKeys
      */
     public function find(

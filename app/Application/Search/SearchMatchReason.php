@@ -18,5 +18,6 @@ final readonly class SearchMatchReason
         public ?string $language = null,
         public ?string $script = null,
         public ?string $representationRelation = null,
+        public ?string $matchedForm = null,
     ) {}
 }

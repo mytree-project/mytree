@@ -22,5 +22,7 @@ final readonly class DirectSearchCandidate
         public ?string $language = null,
         public ?string $script = null,
         public ?string $representationRelation = null,
+        /** @var list<string> */
+        public array $indexForms = [],
     ) {}
 }

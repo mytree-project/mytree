@@ -81,6 +81,7 @@ final class SearchServiceProvider extends ServiceProvider
                 directSourceMetadataWeight: (int) config('search.ranking.direct_source_metadata', 100),
                 directClaimValueWeight: (int) config('search.ranking.direct_claim_value', 100),
                 sourceRepresentationWeight: (int) config('search.ranking.source_representation', 90),
+                technicalComparisonWeight: (int) config('search.ranking.technical_comparison', 80),
                 sameMentionBonus: (int) config('search.ranking.same_mention_bonus', 5),
             ),
         );

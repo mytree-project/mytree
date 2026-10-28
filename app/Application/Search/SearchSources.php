@@ -11,6 +11,8 @@ final readonly class SearchSources
     public function __construct(
         private DirectSearchCandidateRepository $candidates,
         private SearchRuntimeConfiguration $configuration,
+        private SearchNameProcessor $nameProcessor,
+        private SearchIndexProfile $indexProfile,
     ) {}
 
     public function handle(SearchRequest $request): SearchPage
@@ -22,8 +24,23 @@ final readonly class SearchSources
             return new SearchPage([], $request->page, $perPage, 0, false, false);
         }
 
+        $queryTerms = array_map(
+            fn (string $term): SearchQueryTerm => new SearchQueryTerm(
+                value: $term,
+                comparisonForms: array_slice(
+                    $this->nameProcessor->indexForms(
+                        new SearchNameInput($term, SearchNameType::Other),
+                        $this->indexProfile->nameProcessing,
+                    ),
+                    0,
+                    $this->configuration->queryExpansionLimit + 1,
+                ),
+            ),
+            $terms,
+        );
+
         $batch = $this->candidates->find(
-            terms: $terms,
+            terms: $queryTerms,
             sourceTypeKeys: $request->sourceTypeKeys,
             limit: $this->configuration->candidateLimit,
         );
@@ -33,21 +50,27 @@ final readonly class SearchSources
 
         foreach ($batch->candidates as $candidate) {
             $sourceKey = $candidate->sourceId->value;
-            $reason = $this->reasonFor($candidate);
+            foreach ($queryTerms as $term) {
+                $matchedForm = $this->matchedForm($candidate, $term);
+                if ($matchedForm === null) {
+                    continue;
+                }
 
-            if (! isset($grouped[$sourceKey])) {
-                $grouped[$sourceKey] = [
-                    'source_id' => $candidate->sourceId,
-                    'source_name' => $candidate->sourceName,
-                    'source_type_key' => $candidate->sourceTypeKey,
-                    'stale' => $candidate->stale,
-                    'reasons' => [],
-                    'matched_terms' => [],
-                ];
+                $reason = $this->reasonFor($candidate, $term->value, $matchedForm);
+                if (! isset($grouped[$sourceKey])) {
+                    $grouped[$sourceKey] = [
+                        'source_id' => $candidate->sourceId,
+                        'source_name' => $candidate->sourceName,
+                        'source_type_key' => $candidate->sourceTypeKey,
+                        'stale' => $candidate->stale,
+                        'reasons' => [],
+                        'matched_terms' => [],
+                    ];
+                }
+
+                $grouped[$sourceKey]['reasons'][] = $reason;
+                $grouped[$sourceKey]['matched_terms'][$term->value] = true;
             }
-
-            $grouped[$sourceKey]['reasons'][] = $reason;
-            $grouped[$sourceKey]['matched_terms'][$reason->queryTerm] = true;
         }
 
         $results = [];
@@ -88,25 +111,52 @@ final readonly class SearchSources
         );
     }
 
-    private function reasonFor(DirectSearchCandidate $candidate): SearchMatchReason
+    private function matchedForm(DirectSearchCandidate $candidate, SearchQueryTerm $term): ?string
     {
-        [$type, $weight] = match ($candidate->origin) {
-            SearchValueOrigin::SourceMetadata => [
-                SearchMatchType::DirectSourceMetadata,
-                $this->configuration->directSourceMetadataWeight,
-            ],
-            SearchValueOrigin::ClaimValue => [
-                SearchMatchType::DirectClaimValue,
-                $this->configuration->directClaimValueWeight,
-            ],
-            SearchValueOrigin::SourceRepresentation => [
-                SearchMatchType::SourceRepresentation,
-                $this->configuration->sourceRepresentationWeight,
-            ],
-        };
+        if ($candidate->matchedValue === $term->value) {
+            return $term->value;
+        }
+
+        if ($candidate->origin === SearchValueOrigin::SourceMetadata) {
+            return null;
+        }
+
+        foreach ($term->comparisonForms as $form) {
+            if (in_array($form, $candidate->indexForms, true)) {
+                return $form;
+            }
+        }
+
+        return null;
+    }
+
+    private function reasonFor(
+        DirectSearchCandidate $candidate,
+        string $queryTerm,
+        string $matchedForm,
+    ): SearchMatchReason {
+        if ($candidate->matchedValue === $queryTerm) {
+            [$type, $weight] = match ($candidate->origin) {
+                SearchValueOrigin::SourceMetadata => [
+                    SearchMatchType::DirectSourceMetadata,
+                    $this->configuration->directSourceMetadataWeight,
+                ],
+                SearchValueOrigin::ClaimValue => [
+                    SearchMatchType::DirectClaimValue,
+                    $this->configuration->directClaimValueWeight,
+                ],
+                SearchValueOrigin::SourceRepresentation => [
+                    SearchMatchType::SourceRepresentation,
+                    $this->configuration->sourceRepresentationWeight,
+                ],
+            };
+        } else {
+            $type = SearchMatchType::TechnicalComparison;
+            $weight = $this->configuration->technicalComparisonWeight;
+        }
 
         return new SearchMatchReason(
-            queryTerm: $candidate->matchedValue,
+            queryTerm: $queryTerm,
             type: $type,
             field: $candidate->field,
             matchedValue: $candidate->matchedValue,
@@ -117,6 +167,7 @@ final readonly class SearchSources
             language: $candidate->language,
             script: $candidate->script,
             representationRelation: $candidate->representationRelation,
+            matchedForm: $matchedForm,
         );
     }
 
@@ -150,6 +201,7 @@ final readonly class SearchSources
                 $reason->type->value,
                 $reason->field,
                 $reason->matchedValue,
+                $reason->matchedForm ?? '',
                 $reason->mentionId ?? '',
                 $reason->claimId ?? '',
                 $reason->claimRevisionId ?? '',

@@ -94,6 +94,9 @@
                                     </div>
                                     <div class="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
                                         <span>{{ __('search.query_term', ['term' => $reason->queryTerm]) }}</span>
+                                        @if ($reason->matchedForm !== null && $reason->matchedForm !== $reason->matchedValue)
+                                            <span>{{ __('search.matched_form', ['form' => $reason->matchedForm]) }}</span>
+                                        @endif
                                         @if ($reason->mentionId !== null)
                                             <span>{{ __('search.mention_id', ['id' => $reason->mentionId]) }}</span>
                                         @endif

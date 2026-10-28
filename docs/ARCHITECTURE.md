@@ -125,6 +125,20 @@ Entries that do not yet exist are placement conventions, not a request to create
 
 When one capability needs another, prefer a stable Domain/Application contract rather than reaching into another capability's Infrastructure implementation. Cross-capability events are appropriate only when they provide meaningful decoupling; straightforward local calls remain preferable when no boundary is gained.
 
+## Search technical query matching
+
+M5 Search builds derived `index_forms` for searchable Claim values and source-supplied
+representations through the application-owned `SearchNameProcessor` contract.
+Query-time normalized, transliterated and folded forms are compared with those
+stored index forms. Exact Source metadata and structured Claim matches remain
+distinguishable from technical matches, with explicit matched values, comparison
+forms and immutable ClaimRevision provenance.
+
+Candidate limits apply to complete Source candidates, not individual matching index
+rows. A truncated Source window is explicitly signalled rather than presented as
+an exhaustive result count. Maintained dictionary variants, native import/export,
+fuzzy matching and structured date/place filtering remain pending M5 slices.
+
 ## Current baseline mapping
 
 The repository now contains real framework-independent MyTree Domain and Application code. The earlier M0/M1 baseline in which these layers were intentionally empty is no longer current.
