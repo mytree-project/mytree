@@ -13,18 +13,18 @@ use App\Application\Acquisition\SourceTypeTemplateNotFound;
 use App\Application\Acquisition\SourceTypeTemplateVersion;
 use App\Application\Acquisition\SupportedAcquisitionFieldCatalog;
 use App\Application\Acquisition\UpdateSourceTypeTemplate;
+use App\Application\Search\SearchVariantDictionary;
 use App\Application\Settings\Application\ApplicationSettings;
 use App\Application\Settings\Application\ApplicationSettingsProvider;
 use App\Application\Settings\Application\UpdateApplicationSettings;
 use App\Domain\Acquisition\SourceType;
-use App\Application\Search\SearchVariantDictionary;
 use App\Filament\Support\SourceTypePresentationCatalog;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Http\UploadedFile;
 use InvalidArgumentException;
-use MyTree\NameProcessing\Exception\InvalidResourceException;
 use Livewire\WithFileUploads;
+use MyTree\NameProcessing\Exception\InvalidResourceException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use UnexpectedValueException;
 
@@ -78,7 +78,7 @@ final class Settings extends Page
     {
         $this->validate(['variantImportFile' => ['required', 'file', 'max:512']]);
 
-        if (! $this->variantImportFile instanceof UploadedFile) {
+        if (! ($this->variantImportFile instanceof UploadedFile)) {
             $this->addError('variantImportFile', __('validation.file', ['attribute' => 'variantImportFile']));
 
             return;
