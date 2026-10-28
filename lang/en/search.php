@@ -29,6 +29,7 @@ return [
     'dictionary_export' => 'Export JSON dataset',
     'dictionary_saved' => 'Search dictionary saved',
     'dictionary_imported' => 'Search dictionary imported',
+    'dictionary_read_failed' => 'Unable to read the uploaded dictionary file.',
     'mention_id' => 'Mention: :id',
     'claim_id' => 'Claim: :id',
     'representation_relation' => 'Representation: :relation',
