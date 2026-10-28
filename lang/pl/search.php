@@ -29,6 +29,7 @@ return [
     'dictionary_export' => 'Eksportuj zestaw JSON',
     'dictionary_saved' => 'Zapisano słownik wyszukiwania',
     'dictionary_imported' => 'Zaimportowano słownik wyszukiwania',
+    'dictionary_read_failed' => 'Nie udało się odczytać przesłanego pliku słownika.',
     'mention_id' => 'Wzmianka: :id',
     'claim_id' => 'Twierdzenie: :id',
     'representation_relation' => 'Reprezentacja: :relation',
