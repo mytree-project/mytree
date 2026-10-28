@@ -21,6 +21,7 @@ use App\Application\Search\SearchVariantDictionary;
 use App\Filament\Support\SourceTypePresentationCatalog;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Illuminate\Http\UploadedFile;
 use InvalidArgumentException;
 use MyTree\NameProcessing\Exception\InvalidResourceException;
 use Livewire\WithFileUploads;
@@ -76,6 +77,12 @@ final class Settings extends Page
     public function importVariantDataset(): void
     {
         $this->validate(['variantImportFile' => ['required', 'file', 'max:512']]);
+
+        if (! $this->variantImportFile instanceof UploadedFile) {
+            $this->addError('variantImportFile', __('validation.file', ['attribute' => 'variantImportFile']));
+
+            return;
+        }
 
         $json = $this->variantImportFile->get();
         try {
