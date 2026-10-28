@@ -85,6 +85,12 @@ final class Settings extends Page
         }
 
         $json = $this->variantImportFile->get();
+        if ($json === false) {
+            $this->addError('variantImportFile', __('search.dictionary_read_failed'));
+
+            return;
+        }
+
         try {
             app(SearchVariantDictionary::class)->import($json, $this->changedBy());
         } catch (InvalidResourceException $exception) {
