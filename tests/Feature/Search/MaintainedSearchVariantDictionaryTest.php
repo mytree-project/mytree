@@ -96,8 +96,9 @@ final class MaintainedSearchVariantDictionaryTest extends TestCase
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
     }
 
-    /** @param list<string> $values
-     *  @return array<string, mixed>
+    /**
+     * @param list<string> $values
+     * @return array<string, mixed>
      */
     private function group(string $id, string $type, array $values): array
     {
