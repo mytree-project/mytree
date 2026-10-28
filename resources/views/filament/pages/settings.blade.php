@@ -495,6 +495,64 @@
             </div>
         </section>
 
+        <section class="mytree-settings-section" aria-labelledby="settings-search-variants-heading">
+            <h2 id="settings-search-variants-heading" class="mytree-settings-section-title">
+                {{ __('search.dictionary_title') }}
+            </h2>
+            <div class="mytree-settings-card">
+                <div class="mytree-template-card-header">
+                    <div>
+                        <div class="mytree-template-heading">{{ __('search.dictionary_editor') }}</div>
+                        <p class="mytree-template-help">{{ __('search.dictionary_help') }}</p>
+                    </div>
+                    <x-filament::button size="sm" color="gray" wire:click="exportVariantDataset">
+                        {{ __('search.dictionary_export') }}
+                    </x-filament::button>
+                </div>
+                <div class="p-6 space-y-3">
+                    <label for="search-variant-dataset-json" class="mytree-field-label">
+                        {{ __('search.dictionary_native_json') }}
+                    </label>
+                    <textarea
+                        id="search-variant-dataset-json"
+                        rows="14"
+                        wire:model="variantDatasetJson"
+                        spellcheck="false"
+                        class="mytree-drawer-textarea font-mono"
+                    ></textarea>
+                    @error('variantDatasetJson')
+                        <p class="mytree-row-error">{{ $message }}</p>
+                    @enderror
+                    <div class="mytree-setting-actions">
+                        <x-filament::button size="sm" wire:click="saveVariantDataset">
+                            {{ __('ui.settings.save') }}
+                        </x-filament::button>
+                        <x-filament::button size="sm" color="gray" wire:click="resetVariantDataset">
+                            {{ __('ui.settings.cancel') }}
+                        </x-filament::button>
+                    </div>
+                </div>
+                <div class="p-6 space-y-3" style="border-top: 1px solid rgb(229 231 235)">
+                    <label for="search-variant-import" class="mytree-field-label">
+                        {{ __('search.dictionary_import') }}
+                    </label>
+                    <input
+                        id="search-variant-import"
+                        type="file"
+                        accept=".json,application/json"
+                        wire:model="variantImportFile"
+                        class="mytree-drawer-input"
+                    >
+                    @error('variantImportFile')
+                        <p class="mytree-row-error">{{ $message }}</p>
+                    @enderror
+                    <x-filament::button size="sm" wire:click="importVariantDataset">
+                        {{ __('search.dictionary_import') }}
+                    </x-filament::button>
+                </div>
+            </div>
+        </section>
+
         <section class="mytree-settings-section" aria-labelledby="settings-acquisition-heading">
             <h2 id="settings-acquisition-heading" class="mytree-settings-section-title">
                 {{ __('ui.settings.acquisition') }}

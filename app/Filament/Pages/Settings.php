@@ -17,19 +17,29 @@ use App\Application\Settings\Application\ApplicationSettings;
 use App\Application\Settings\Application\ApplicationSettingsProvider;
 use App\Application\Settings\Application\UpdateApplicationSettings;
 use App\Domain\Acquisition\SourceType;
+use App\Application\Search\SearchVariantDictionary;
 use App\Filament\Support\SourceTypePresentationCatalog;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use InvalidArgumentException;
+use MyTree\NameProcessing\Exception\InvalidResourceException;
+use Livewire\WithFileUploads;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use UnexpectedValueException;
 
 final class Settings extends Page
 {
+    use WithFileUploads;
+
     protected string $view = 'filament.pages.settings';
 
     public string $language = 'en';
 
     public bool $editingLanguage = false;
+
+    public string $variantDatasetJson = '';
+
+    public mixed $variantImportFile = null;
 
     public bool $templateEditorOpen = false;
 
@@ -45,6 +55,59 @@ final class Settings extends Page
     {
         $this->reloadLanguage();
         $this->resetTemplateEditor();
+        $this->variantDatasetJson = app(SearchVariantDictionary::class)->export();
+    }
+
+    public function saveVariantDataset(): void
+    {
+        $this->validate(['variantDatasetJson' => ['required', 'string', 'max:524288']]);
+        try {
+            app(SearchVariantDictionary::class)->import($this->variantDatasetJson, $this->changedBy());
+        } catch (InvalidResourceException $exception) {
+            $this->addError('variantDatasetJson', $exception->getMessage());
+
+            return;
+        }
+
+        $this->variantDatasetJson = app(SearchVariantDictionary::class)->export();
+        Notification::make()->title(__('search.dictionary_saved'))->success()->send();
+    }
+
+    public function importVariantDataset(): void
+    {
+        $this->validate(['variantImportFile' => ['required', 'file', 'max:512']]);
+
+        $json = $this->variantImportFile->get();
+        try {
+            app(SearchVariantDictionary::class)->import($json, $this->changedBy());
+        } catch (InvalidResourceException $exception) {
+            $this->addError('variantImportFile', $exception->getMessage());
+
+            return;
+        }
+
+        $this->variantDatasetJson = app(SearchVariantDictionary::class)->export();
+        $this->variantImportFile = null;
+        Notification::make()->title(__('search.dictionary_imported'))->success()->send();
+    }
+
+    public function exportVariantDataset(): StreamedResponse
+    {
+        $json = app(SearchVariantDictionary::class)->export();
+
+        return response()->streamDownload(
+            static function () use ($json): void {
+                echo $json;
+            },
+            'given-names.v1.json',
+            ['Content-Type' => 'application/json; charset=utf-8'],
+        );
+    }
+
+    public function resetVariantDataset(): void
+    {
+        $this->variantDatasetJson = app(SearchVariantDictionary::class)->export();
+        $this->resetValidation('variantDatasetJson');
     }
 
     public function startEditingLanguage(): void

@@ -42,7 +42,17 @@ External provider integration and MyTree Engine integration are not implemented 
 
 The Search projection and direct matching use current accepted `EvidenceState` snapshots; each result points back to a Source and relevant Mention/Claim provenance. Derived `index_forms` use the versioned `mytree/name-processing` normalize/transliterate/fold adapter and do not rewrite source values or Claim history. The exact dependency reference and configured profile versions contribute to the index-processing signature, so affected projections can be rebuilt when index-time behavior changes.
 
-For now the query matcher still relies on direct stored values; it does **not** yet match against these derived `index_forms`. Query normalization, linguistic candidate variants, the application-owned dictionary, fuzzy matching and richer filters/sorting are out of scope for this PR and remain tracked under #184. Do not interpret this initial index-processing slice as complete M5 Search.
+Query-time technical comparisons against derived `index_forms` are implemented. The Search variant
+dictionary is an editable application-owned copy of the package's native
+`mytree.name-variants.v1` dataset, seeded from the package until an application
+copy is imported/saved. In Settings, editors can modify the native JSON, import a
+validated dataset or export the working copy for upstream contribution. Mappings
+are resolved through `mytree/name-processing` on the next Search query, without
+changing Claims or rebuilding SearchDocuments. Match reasons distinguish dictionary
+matches and retain dataset id, version, signature and variant group. The generated
+variant selection is bounded by `search.query_expansion_limit`; query-time
+dictionary mappings do not contribute to the index-processing signature.
+Fuzzy matching and richer date/place filters and sorting remain tracked under #184. Do not interpret this initial index-processing slice as complete M5 Search.
 
 Useful existing administrative commands (with a running queue worker) are `php artisan search:rebuild <source-uuid>`, `php artisan search:rebuild-stale`, and `php artisan search:rebuild-all`. They queue Source SearchDocument refreshes.
 
