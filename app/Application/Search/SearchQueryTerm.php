@@ -15,6 +15,8 @@ final readonly class SearchQueryTerm
     public function __construct(
         public string $value,
         array $comparisonForms,
+        /** @var list<SearchQueryVariant> */
+        public array $variants = [],
     ) {
         if (trim($value) === '') {
             throw new InvalidArgumentException('Search query term must not be empty.');

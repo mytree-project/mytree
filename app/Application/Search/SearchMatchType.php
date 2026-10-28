@@ -10,4 +10,5 @@ enum SearchMatchType: string
     case DirectClaimValue = 'direct_claim_value';
     case SourceRepresentation = 'source_representation';
     case TechnicalComparison = 'technical_comparison';
+    case DictionaryVariant = 'dictionary_variant';
 }

@@ -19,5 +19,9 @@ final readonly class SearchMatchReason
         public ?string $script = null,
         public ?string $representationRelation = null,
         public ?string $matchedForm = null,
+        public ?string $datasetId = null,
+        public ?string $datasetVersion = null,
+        public ?string $datasetSignature = null,
+        public ?string $variantGroupId = null,
     ) {}
 }
