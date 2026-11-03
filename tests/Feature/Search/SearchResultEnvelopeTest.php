@@ -8,6 +8,7 @@ use App\Application\Acquisition\CaptureEvidenceStateForSource;
 use App\Application\Acquisition\CreateClaim;
 use App\Application\Acquisition\CreateMention;
 use App\Application\Acquisition\CreateSource;
+use App\Application\Search\RebuildSourceSearchDocument;
 use App\Application\Search\SearchMatchType;
 use App\Application\Search\SearchRequest;
 use App\Application\Search\SearchResult;
@@ -21,6 +22,7 @@ use App\Domain\Acquisition\SourceMetadata;
 use App\Domain\Acquisition\SourceType;
 use App\Domain\Acquisition\TextClaimValue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 final class SearchResultEnvelopeTest extends TestCase
@@ -102,6 +104,36 @@ final class SearchResultEnvelopeTest extends TestCase
         self::assertCount(1, $mixed->results);
         self::assertSame(SearchResultCategory::Source, $mixed->results[0]->category);
         self::assertSame($source->id->value, $mixed->results[0]->details->sourceId->value);
+    }
+
+    public function test_unaccepted_acquisition_changes_remain_invisible_and_search_does_not_rewrite_claim_history(): void
+    {
+        $source = app(CreateSource::class)->handle(
+            new SourceType('civil.birth'),
+            new SourceMetadata(['title' => 'Unaccepted record']),
+        );
+        $mention = app(CreateMention::class)->handle(
+            sourceId: $source->id,
+            kind: new MentionKind('person'),
+            localKey: 'person-1',
+        );
+        app(CreateClaim::class)->handle(
+            sourceId: $source->id,
+            subjectMentionId: $mention->id,
+            predicate: PredicateVocabulary::get(PredicateKey::PersonGivenName),
+            value: new TextClaimValue('Filip'),
+        );
+
+        self::assertSame([], app(SearchSources::class)->handle(new SearchRequest('Filip'))->results);
+
+        app(CaptureEvidenceStateForSource::class)->capture($source->id);
+        app(RebuildSourceSearchDocument::class)->handle($source->id);
+
+        $before = DB::table('claim_revisions')->where('source_id', $source->id->value)->count();
+        $result = app(SearchSources::class)->handle(new SearchRequest('Filip'));
+        self::assertCount(1, $result->results);
+        self::assertSame('source:'.$source->id->value, $result->results[0]->resultKey);
+        self::assertSame($before, DB::table('claim_revisions')->where('source_id', $source->id->value)->count());
     }
 
     public function test_filter_only_page_still_uses_common_result_envelope_without_match_reasons(): void
