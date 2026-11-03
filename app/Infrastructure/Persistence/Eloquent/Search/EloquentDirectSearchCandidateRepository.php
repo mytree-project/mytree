@@ -201,7 +201,12 @@ final class EloquentDirectSearchCandidateRepository implements DirectSearchCandi
         $this->sortSourceQuery($sourceQuery, $sort);
         $sourceRows = $sourceQuery->limit($limit + 1)->get();
 
-        return [$sourceRows->take($limit)->pluck('source_id')->all(), $sourceRows->count() > $limit];
+        $sourceIds = array_values(array_map(
+            static fn (mixed $id): string => (string) $id,
+            $sourceRows->take($limit)->pluck('source_id')->all(),
+        ));
+
+        return [$sourceIds, $sourceRows->count() > $limit];
     }
 
     private function sortSourceQuery(Builder $query, SearchSortMode $sort): void
