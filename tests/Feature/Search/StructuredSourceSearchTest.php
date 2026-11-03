@@ -11,6 +11,7 @@ use App\Application\Acquisition\CreateSource;
 use App\Application\Search\RebuildSourceSearchDocument;
 use App\Application\Search\SearchDocumentRepository;
 use App\Application\Search\SearchRequest;
+use App\Application\Search\SearchRuntimeConfiguration;
 use App\Application\Search\SearchSortMode;
 use App\Application\Search\SearchSources;
 use App\Application\Search\SearchVariantDictionary;
@@ -181,6 +182,7 @@ final class StructuredSourceSearchTest extends TestCase
         self::assertFalse($only->candidateWindowTruncated);
 
         config()->set('search.candidate_limit', 10);
+        app()->forgetInstance(SearchRuntimeConfiguration::class);
         DB::table('sources')->where('id', $first->id->value)->update(['created_at' => '2026-01-01 00:00:00']);
         DB::table('sources')->where('id', $second->id->value)->update(['created_at' => '2026-03-01 00:00:00']);
 
