@@ -10,6 +10,7 @@ use App\Application\Acquisition\CreateMention;
 use App\Application\Acquisition\CreateSource;
 use App\Application\Search\SearchMatchType;
 use App\Application\Search\SearchRequest;
+use App\Application\Search\SearchSourceResult;
 use App\Application\Search\SearchSources;
 use App\Application\Search\SearchVariantDictionary;
 use App\Domain\Acquisition\MentionKind;
@@ -40,15 +41,15 @@ final class MaintainedSearchVariantDictionaryTest extends TestCase
 
         $page = $search->handle(new SearchRequest('Piotr'));
         self::assertCount(1, $page->results);
-        self::assertSame($source, $page->results[0]->details->sourceId->value);
-        self::assertSame(SearchMatchType::DictionaryVariant, $page->results[0]->details->matchReasons[0]->type);
-        self::assertSame('Peter', $page->results[0]->details->matchReasons[0]->matchedValue);
-        self::assertSame('Piotr', $page->results[0]->details->matchReasons[0]->queryTerm);
-        self::assertSame('given-names.v1', $page->results[0]->details->matchReasons[0]->datasetId);
-        self::assertSame('1.1.0', $page->results[0]->details->matchReasons[0]->datasetVersion);
-        self::assertSame(64, strlen((string) $page->results[0]->details->matchReasons[0]->datasetSignature));
-        self::assertSame('peter', $page->results[0]->details->matchReasons[0]->variantGroupId);
-        self::assertNotNull($page->results[0]->details->matchReasons[0]->claimRevisionId);
+        self::assertSame($source, $page->results[0]->detailsAs(SearchSourceResult::class)->sourceId->value);
+        self::assertSame(SearchMatchType::DictionaryVariant, $page->results[0]->detailsAs(SearchSourceResult::class)->matchReasons[0]->type);
+        self::assertSame('Peter', $page->results[0]->detailsAs(SearchSourceResult::class)->matchReasons[0]->matchedValue);
+        self::assertSame('Piotr', $page->results[0]->detailsAs(SearchSourceResult::class)->matchReasons[0]->queryTerm);
+        self::assertSame('given-names.v1', $page->results[0]->detailsAs(SearchSourceResult::class)->matchReasons[0]->datasetId);
+        self::assertSame('1.1.0', $page->results[0]->detailsAs(SearchSourceResult::class)->matchReasons[0]->datasetVersion);
+        self::assertSame(64, strlen((string) $page->results[0]->detailsAs(SearchSourceResult::class)->matchReasons[0]->datasetSignature));
+        self::assertSame('peter', $page->results[0]->detailsAs(SearchSourceResult::class)->matchReasons[0]->variantGroupId);
+        self::assertNotNull($page->results[0]->detailsAs(SearchSourceResult::class)->matchReasons[0]->claimRevisionId);
     }
 
     public function test_place_mapping_uses_place_field_and_not_an_unrelated_surname(): void
@@ -62,8 +63,8 @@ final class MaintainedSearchVariantDictionaryTest extends TestCase
 
         $results = app(SearchSources::class)->handle(new SearchRequest('Poznań'))->results;
         self::assertCount(1, $results);
-        self::assertSame($place, $results[0]->details->sourceId->value);
-        self::assertSame(SearchMatchType::DictionaryVariant, $results[0]->details->matchReasons[0]->type);
+        self::assertSame($place, $results[0]->detailsAs(SearchSourceResult::class)->sourceId->value);
+        self::assertSame(SearchMatchType::DictionaryVariant, $results[0]->detailsAs(SearchSourceResult::class)->matchReasons[0]->type);
     }
 
     public function test_native_export_roundtrips_and_invalid_import_does_not_replace_working_copy(): void

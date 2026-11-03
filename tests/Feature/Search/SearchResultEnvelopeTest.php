@@ -67,10 +67,10 @@ final class SearchResultEnvelopeTest extends TestCase
         self::assertNotNull($result->score);
         self::assertSame('source_retrieval_v1', $result->score->scale);
         self::assertInstanceOf(SearchSourceResult::class, $result->details);
-        self::assertSame($result->details->score, $result->score->value);
-        self::assertSame($source->id->value, $result->details->sourceId->value);
-        self::assertCount(1, $result->details->matchReasons);
-        $reason = $result->details->matchReasons[0];
+        self::assertSame($result->detailsAs(SearchSourceResult::class)->score, $result->score->value);
+        self::assertSame($source->id->value, $result->detailsAs(SearchSourceResult::class)->sourceId->value);
+        self::assertCount(1, $result->detailsAs(SearchSourceResult::class)->matchReasons);
+        $reason = $result->detailsAs(SearchSourceResult::class)->matchReasons[0];
         self::assertSame(SearchMatchType::TechnicalComparison, $reason->type);
         self::assertSame($mention->id->value, $reason->mentionId);
         self::assertNotNull($reason->claimRevisionId);
@@ -103,7 +103,7 @@ final class SearchResultEnvelopeTest extends TestCase
         ));
         self::assertCount(1, $mixed->results);
         self::assertSame(SearchResultCategory::Source, $mixed->results[0]->category);
-        self::assertSame($source->id->value, $mixed->results[0]->details->sourceId->value);
+        self::assertSame($source->id->value, $mixed->results[0]->detailsAs(SearchSourceResult::class)->sourceId->value);
     }
 
     public function test_unaccepted_acquisition_changes_remain_invisible_and_search_does_not_rewrite_claim_history(): void
@@ -151,6 +151,6 @@ final class SearchResultEnvelopeTest extends TestCase
         self::assertCount(1, $page->results);
         self::assertSame('source:'.$source->id->value, $page->results[0]->resultKey);
         self::assertSame(0, $page->results[0]->score?->value);
-        self::assertSame([], $page->results[0]->details->matchReasons);
+        self::assertSame([], $page->results[0]->detailsAs(SearchSourceResult::class)->matchReasons);
     }
 }

@@ -36,11 +36,6 @@ final readonly class SearchRequest
             throw new InvalidArgumentException('Search page and per-page values must be positive integers.');
         }
 
-        foreach ($categories as $category) {
-            if ($category instanceof SearchResultCategory === false) {
-                throw new InvalidArgumentException('Search result category must be a SearchResultCategory.');
-            }
-        }
         $this->categories = array_values(array_unique($categories, SORT_REGULAR));
 
         $this->sourceTypeKeys = array_values(array_unique(array_filter(

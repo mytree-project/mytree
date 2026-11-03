@@ -42,10 +42,12 @@ final class SearchResultContractTest extends TestCase
             categories: [SearchResultCategory::ExternalIndexObservation, SearchResultCategory::Source],
         );
 
+        self::assertNotNull($page->results[0]->score);
+        self::assertNotNull($page->results[1]->score);
         self::assertSame('external_index_observation:provider-x:123', $page->results[0]->resultKey);
-        self::assertSame('provider_x_relevance', $page->results[0]->score?->scale);
-        self::assertSame('source_retrieval_v1', $page->results[1]->score?->scale);
-        self::assertNotSame($page->results[0]->score?->scale, $page->results[1]->score?->scale);
+        self::assertSame('provider_x_relevance', $page->results[0]->score->scale);
+        self::assertSame('source_retrieval_v1', $page->results[1]->score->scale);
+        self::assertNotSame($page->results[0]->score->scale, $page->results[1]->score->scale);
         self::assertSame($external, $page->results[0]->details);
         self::assertSame($source, $page->results[1]->details);
     }
@@ -96,12 +98,12 @@ final readonly class FakeExternalIndexSearchDetails implements SearchResultDetai
         return 'provider-x:123';
     }
 
-    public function label(): ?string
+    public function label(): string
     {
         return 'Observation 123';
     }
 
-    public function ranking(): ?SearchResultScore
+    public function ranking(): SearchResultScore
     {
         return new SearchResultScore('provider_x_relevance', 0.82);
     }

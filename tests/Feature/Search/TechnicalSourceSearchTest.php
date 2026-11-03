@@ -10,6 +10,7 @@ use App\Application\Acquisition\CreateMention;
 use App\Application\Acquisition\CreateSource;
 use App\Application\Search\SearchMatchType;
 use App\Application\Search\SearchRequest;
+use App\Application\Search\SearchSourceResult;
 use App\Application\Search\SearchSources;
 use App\Domain\Acquisition\MentionKind;
 use App\Domain\Acquisition\PredicateKey;
@@ -32,14 +33,14 @@ final class TechnicalSourceSearchTest extends TestCase
         $page = app(SearchSources::class)->handle(new SearchRequest('Jozef'));
 
         self::assertCount(2, $page->results);
-        self::assertSame($exact, $page->results[0]->details->sourceId->value);
-        self::assertSame($folded, $page->results[1]->details->sourceId->value);
-        self::assertSame(SearchMatchType::DirectClaimValue, $page->results[0]->details->matchReasons[0]->type);
-        self::assertSame(SearchMatchType::TechnicalComparison, $page->results[1]->details->matchReasons[0]->type);
-        self::assertSame('Jozef', $page->results[1]->details->matchReasons[0]->queryTerm);
-        self::assertSame('Józef', $page->results[1]->details->matchReasons[0]->matchedValue);
-        self::assertSame('jozef', $page->results[1]->details->matchReasons[0]->matchedForm);
-        self::assertNotNull($page->results[1]->details->matchReasons[0]->claimRevisionId);
+        self::assertSame($exact, $page->results[0]->detailsAs(SearchSourceResult::class)->sourceId->value);
+        self::assertSame($folded, $page->results[1]->detailsAs(SearchSourceResult::class)->sourceId->value);
+        self::assertSame(SearchMatchType::DirectClaimValue, $page->results[0]->detailsAs(SearchSourceResult::class)->matchReasons[0]->type);
+        self::assertSame(SearchMatchType::TechnicalComparison, $page->results[1]->detailsAs(SearchSourceResult::class)->matchReasons[0]->type);
+        self::assertSame('Jozef', $page->results[1]->detailsAs(SearchSourceResult::class)->matchReasons[0]->queryTerm);
+        self::assertSame('Józef', $page->results[1]->detailsAs(SearchSourceResult::class)->matchReasons[0]->matchedValue);
+        self::assertSame('jozef', $page->results[1]->detailsAs(SearchSourceResult::class)->matchReasons[0]->matchedForm);
+        self::assertNotNull($page->results[1]->detailsAs(SearchSourceResult::class)->matchReasons[0]->claimRevisionId);
     }
 
     public function test_latin_query_matches_cyrillic_claim_without_modifying_source_value(): void
@@ -49,8 +50,8 @@ final class TechnicalSourceSearchTest extends TestCase
         $page = app(SearchSources::class)->handle(new SearchRequest('Aleksandr'));
 
         self::assertCount(1, $page->results);
-        self::assertSame($source, $page->results[0]->details->sourceId->value);
-        $reason = $page->results[0]->details->matchReasons[0];
+        self::assertSame($source, $page->results[0]->detailsAs(SearchSourceResult::class)->sourceId->value);
+        $reason = $page->results[0]->detailsAs(SearchSourceResult::class)->matchReasons[0];
         self::assertSame(SearchMatchType::TechnicalComparison, $reason->type);
         self::assertSame('Александр', $reason->matchedValue);
         self::assertSame('aleksandr', $reason->matchedForm);
@@ -87,8 +88,8 @@ final class TechnicalSourceSearchTest extends TestCase
         $page = app(SearchSources::class)->handle(new SearchRequest('Jozef Kowalski'));
 
         self::assertCount(1, $page->results);
-        self::assertSame($source->id->value, $page->results[0]->details->sourceId->value);
-        self::assertCount(2, $page->results[0]->details->matchReasons);
+        self::assertSame($source->id->value, $page->results[0]->detailsAs(SearchSourceResult::class)->sourceId->value);
+        self::assertCount(2, $page->results[0]->detailsAs(SearchSourceResult::class)->matchReasons);
         self::assertSame(1, $page->total);
         self::assertFalse($page->candidateWindowTruncated);
     }

@@ -29,4 +29,19 @@ final readonly class SearchResult
         $this->title = $details->label();
         $this->score = $details->ranking();
     }
+
+    /**
+     * @template T of SearchResultDetails
+     *
+     * @param  class-string<T>  $detailsType
+     * @return T
+     */
+    public function detailsAs(string $detailsType): SearchResultDetails
+    {
+        if ($this->details instanceof $detailsType === false) {
+            throw new InvalidArgumentException('Search result does not carry the requested details type.');
+        }
+
+        return $this->details;
+    }
 }

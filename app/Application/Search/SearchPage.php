@@ -27,19 +27,13 @@ final readonly class SearchPage
         public bool $candidateWindowTruncated,
         array $categories = [SearchResultCategory::Source],
     ) {
-        foreach ($categories as $category) {
-            if ($category instanceof SearchResultCategory === false) {
-                throw new InvalidArgumentException('Search page category must be a SearchResultCategory.');
-            }
-        }
-
         foreach ($results as $result) {
-            if ($result instanceof SearchResult === false || in_array($result->category, $categories, true) === false) {
-                throw new InvalidArgumentException('Search page results must be typed and within requested categories.');
+            if (in_array($result->category, $categories, true) === false) {
+                throw new InvalidArgumentException('Search page results must belong to requested categories.');
             }
         }
 
         $this->categories = array_values(array_unique($categories, SORT_REGULAR));
-        $this->results = array_values($results);
+        $this->results = $results;
     }
 }

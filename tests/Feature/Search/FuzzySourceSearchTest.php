@@ -10,6 +10,7 @@ use App\Application\Acquisition\CreateMention;
 use App\Application\Acquisition\CreateSource;
 use App\Application\Search\SearchMatchType;
 use App\Application\Search\SearchRequest;
+use App\Application\Search\SearchSourceResult;
 use App\Application\Search\SearchSources;
 use App\Domain\Acquisition\MentionKind;
 use App\Domain\Acquisition\PredicateKey;
@@ -44,11 +45,11 @@ final class FuzzySourceSearchTest extends TestCase
         $page = app(SearchSources::class)->handle(new SearchRequest('Kupniewicz'));
 
         self::assertCount(2, $page->results);
-        self::assertSame($exact, $page->results[0]->details->sourceId->value);
-        self::assertSame($near, $page->results[1]->details->sourceId->value);
-        self::assertSame(SearchMatchType::DirectClaimValue, $page->results[0]->details->matchReasons[0]->type);
+        self::assertSame($exact, $page->results[0]->detailsAs(SearchSourceResult::class)->sourceId->value);
+        self::assertSame($near, $page->results[1]->detailsAs(SearchSourceResult::class)->sourceId->value);
+        self::assertSame(SearchMatchType::DirectClaimValue, $page->results[0]->detailsAs(SearchSourceResult::class)->matchReasons[0]->type);
 
-        $reason = $page->results[1]->details->matchReasons[0];
+        $reason = $page->results[1]->detailsAs(SearchSourceResult::class)->matchReasons[0];
         self::assertSame(SearchMatchType::FuzzyComparison, $reason->type);
         self::assertSame('Kupniewicz', $reason->queryTerm);
         self::assertSame('Kutniewicz', $reason->matchedValue);
@@ -56,7 +57,7 @@ final class FuzzySourceSearchTest extends TestCase
         self::assertGreaterThan(0.8, $reason->similarity);
         self::assertLessThan(1.0, $reason->similarity);
         self::assertNotNull($reason->claimRevisionId);
-        self::assertGreaterThan($page->results[1]->details->score, $page->results[0]->details->score);
+        self::assertGreaterThan($page->results[1]->detailsAs(SearchSourceResult::class)->score, $page->results[0]->detailsAs(SearchSourceResult::class)->score);
         self::assertFalse($page->candidateWindowTruncated);
     }
 
@@ -80,15 +81,15 @@ final class FuzzySourceSearchTest extends TestCase
         $page = app(SearchSources::class)->handle(new SearchRequest('Jan Kupniewicz'));
 
         self::assertCount(1, $page->results);
-        self::assertSame($matching, $page->results[0]->details->sourceId->value);
-        self::assertCount(2, $page->results[0]->details->matchReasons);
+        self::assertSame($matching, $page->results[0]->detailsAs(SearchSourceResult::class)->sourceId->value);
+        self::assertCount(2, $page->results[0]->detailsAs(SearchSourceResult::class)->matchReasons);
         self::assertContains(
             SearchMatchType::FuzzyComparison,
-            array_map(static fn ($reason) => $reason->type, $page->results[0]->details->matchReasons),
+            array_map(static fn ($reason) => $reason->type, $page->results[0]->detailsAs(SearchSourceResult::class)->matchReasons),
         );
         self::assertContains(
             SearchMatchType::DirectClaimValue,
-            array_map(static fn ($reason) => $reason->type, $page->results[0]->details->matchReasons),
+            array_map(static fn ($reason) => $reason->type, $page->results[0]->detailsAs(SearchSourceResult::class)->matchReasons),
         );
     }
 
@@ -110,7 +111,7 @@ final class FuzzySourceSearchTest extends TestCase
         self::assertTrue($page->candidateWindowTruncated);
         self::assertNull($page->total);
         self::assertTrue($page->hasMore);
-        self::assertSame('civil.birth', $page->results[0]->details->sourceTypeKey);
+        self::assertSame('civil.birth', $page->results[0]->detailsAs(SearchSourceResult::class)->sourceTypeKey);
     }
 
     private function sourceWithNames(
