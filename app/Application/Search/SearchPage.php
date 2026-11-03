@@ -28,13 +28,13 @@ final readonly class SearchPage
         array $categories = [SearchResultCategory::Source],
     ) {
         foreach ($categories as $category) {
-            if (! $category instanceof SearchResultCategory) {
+            if ($category instanceof SearchResultCategory === false) {
                 throw new InvalidArgumentException('Search page category must be a SearchResultCategory.');
             }
         }
 
         foreach ($results as $result) {
-            if (! $result instanceof SearchResult || ! in_array($result->category, $categories, true)) {
+            if ($result instanceof SearchResult === false || in_array($result->category, $categories, true) === false) {
                 throw new InvalidArgumentException('Search page results must be typed and within requested categories.');
             }
         }

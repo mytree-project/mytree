@@ -78,8 +78,8 @@ final class SearchResultEnvelopeTest extends TestCase
     {
         $source = app(CreateSource::class)->handle(
             new SourceType('civil.birth'),
-            new SourceMetadata(['title' => 'Sources only']),
-            name: 'Sources only',
+            new SourceMetadata(['title' => 'Sources']),
+            name: 'Sources',
         );
         app(CaptureEvidenceStateForSource::class)->capture($source->id);
 

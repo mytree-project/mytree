@@ -12,7 +12,7 @@ final readonly class SearchResultScore
         public string $scale,
         public int|float $value,
     ) {
-        if (trim($scale) === '' || ! is_finite((float) $value)) {
+        if (trim($scale) === '' || is_finite((float) $value) === false) {
             throw new InvalidArgumentException('Search result score requires a scale and finite value.');
         }
     }

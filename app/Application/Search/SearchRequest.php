@@ -37,7 +37,7 @@ final readonly class SearchRequest
         }
 
         foreach ($categories as $category) {
-            if (! $category instanceof SearchResultCategory) {
+            if ($category instanceof SearchResultCategory === false) {
                 throw new InvalidArgumentException('Search result category must be a SearchResultCategory.');
             }
         }
