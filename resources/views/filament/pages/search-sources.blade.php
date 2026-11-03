@@ -84,9 +84,11 @@
                 <div>{{ __('search.page', ['page' => $searchPage->page]) }}</div>
             </div>
 
-            @forelse ($searchPage->results as $result)
+            @forelse ($searchPage->results as $item)
+                @if ($item->details instanceof \App\Application\Search\SearchSourceResult)
+                    @php($result = $item->details)
                 <article
-                    wire:key="search-result-{{ $result->sourceId->value }}"
+                    wire:key="search-result-{{ $item->resultKey }}"
                     class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-gray-900"
                 >
                     <div class="flex flex-wrap items-start justify-between gap-4">
@@ -110,6 +112,9 @@
                         </div>
 
                         <div class="flex flex-wrap items-center gap-2 text-xs">
+                            <span class="rounded-full bg-gray-100 px-2 py-1 font-medium text-gray-700 dark:bg-white/10 dark:text-gray-200">
+                                {{ __('search.result_categories.'.$item->category->value) }}
+                            </span>
                             <span class="rounded-full bg-gray-100 px-2 py-1 font-medium text-gray-700 dark:bg-white/10 dark:text-gray-200">
                                 {{ __('search.source_type', ['type' => $result->sourceTypeKey]) }}
                             </span>
@@ -160,6 +165,7 @@
                         </div>
                     </div>
                 </article>
+                @endif
             @empty
                 <div class="rounded-xl border border-dashed border-gray-300 px-6 py-10 text-center text-sm text-gray-500 dark:border-white/20 dark:text-gray-400">
                     {{ __('search.no_results') }}

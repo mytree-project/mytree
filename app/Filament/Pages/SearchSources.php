@@ -7,6 +7,7 @@ namespace App\Filament\Pages;
 use App\Application\Search\SearchMatchType;
 use App\Application\Search\SearchPage;
 use App\Application\Search\SearchRequest;
+use App\Application\Search\SearchResultCategory;
 use App\Application\Search\SearchSortMode;
 use App\Application\Search\SearchSourceResult;
 use App\Application\Search\SearchSources as SearchSourcesUseCase;
@@ -99,6 +100,7 @@ final class SearchSources extends Page
             dateFrom: $this->dateFrom,
             dateTo: $this->dateTo,
             sort: SearchSortMode::tryFrom($this->sortMode) ?? SearchSortMode::Relevance,
+            categories: [SearchResultCategory::Source],
         ));
     }
 

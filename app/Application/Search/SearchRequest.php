@@ -14,7 +14,13 @@ final readonly class SearchRequest
 
     public ?SearchDateSpan $dateRange;
 
-    /** @param list<string> $sourceTypeKeys */
+    /** @var list<SearchResultCategory> */
+    public array $categories;
+
+    /**
+     * @param  list<string>  $sourceTypeKeys
+     * @param  list<SearchResultCategory>  $categories
+     */
     public function __construct(
         public string $query,
         public int $page = 1,
@@ -24,10 +30,18 @@ final readonly class SearchRequest
         public ?string $dateFrom = null,
         public ?string $dateTo = null,
         public SearchSortMode $sort = SearchSortMode::Relevance,
+        array $categories = [SearchResultCategory::Source],
     ) {
         if ($page < 1 || $perPage < 1) {
             throw new InvalidArgumentException('Search page and per-page values must be positive integers.');
         }
+
+        foreach ($categories as $category) {
+            if (! $category instanceof SearchResultCategory) {
+                throw new InvalidArgumentException('Search result category must be a SearchResultCategory.');
+            }
+        }
+        $this->categories = array_values(array_unique($categories, SORT_REGULAR));
 
         $this->sourceTypeKeys = array_values(array_unique(array_filter(
             array_map(static fn (string $key): string => trim($key), $sourceTypeKeys),
@@ -44,6 +58,11 @@ final readonly class SearchRequest
         $this->dateRange = $from === null && $to === null
             ? null
             : SearchDateSpan::between($from, $to);
+    }
+
+    public function includesCategory(SearchResultCategory $category): bool
+    {
+        return in_array($category, $this->categories, true);
     }
 
     public function hasScope(): bool
