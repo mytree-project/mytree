@@ -110,8 +110,7 @@ final class EloquentDirectSearchCandidateRepository implements DirectSearchCandi
         ?SearchDateSpan $dateRange = null,
         ?SearchQueryTerm $place = null,
         SearchSortMode $sort = SearchSortMode::Relevance,
-    ): DirectSearchCandidateBatch
-    {
+    ): DirectSearchCandidateBatch {
         // A portable, deterministic preselection: names/places sharing an initial
         // Unicode letter. A finite Source window is always loaded before computing
         // any similarity in Application (no whole-table PHP candidate scan).
@@ -253,7 +252,7 @@ final class EloquentDirectSearchCandidateRepository implements DirectSearchCandi
         $candidates = [];
         foreach ($rows as $row) {
             $forms = json_decode((string) $row->index_forms, true, 512, JSON_THROW_ON_ERROR);
-            if (! is_array($forms) || ! array_is_list($forms)) {
+            if (is_array($forms) === false || array_is_list($forms) === false) {
                 throw new UnexpectedValueException('Search index forms must be a JSON array.');
             }
 

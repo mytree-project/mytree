@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Persistence\Eloquent\Search;
 
+use App\Application\Search\SearchDateSpan;
 use App\Application\Search\SearchDocument;
 use App\Application\Search\SearchDocumentEntry;
-use App\Application\Search\SearchDateSpan;
 use App\Application\Search\SearchDocumentDate;
 use App\Application\Search\SearchDocumentRepository;
 use App\Application\Search\SearchValueOrigin;
@@ -82,7 +82,7 @@ final class EloquentSearchDocumentRepository implements SearchDocumentRepository
         }
 
         $builtAt = $record->getAttribute('built_at');
-        if (! $builtAt instanceof DateTimeInterface) {
+        if ($builtAt instanceof DateTimeInterface === false) {
             throw new UnexpectedValueException('Stored SearchDocument built_at must be a date-time value.');
         }
 
@@ -93,7 +93,7 @@ final class EloquentSearchDocumentRepository implements SearchDocumentRepository
             ->map(static function (SearchDocumentEntryRecord $entry): SearchDocumentEntry {
                 $indexForms = $entry->getAttribute('index_forms');
 
-                if (! is_array($indexForms)) {
+                if (is_array($indexForms) === false) {
                     throw new UnexpectedValueException('Stored SearchDocument index forms must be an array.');
                 }
 

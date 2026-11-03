@@ -12,7 +12,6 @@ final readonly class SearchRequest
     /** @var list<string> */
     public array $sourceTypeKeys;
 
-    /** @var ?SearchDateSpan */
     public ?SearchDateSpan $dateRange;
 
     /** @param list<string> $sourceTypeKeys */
