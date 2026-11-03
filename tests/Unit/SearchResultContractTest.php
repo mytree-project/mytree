@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit;
 
 use App\Application\Search\SearchPage;
+use App\Application\Search\SearchRequest;
 use App\Application\Search\SearchResult;
 use App\Application\Search\SearchResultCategory;
 use App\Application\Search\SearchResultDetails;
@@ -18,8 +19,7 @@ final class SearchResultContractTest extends TestCase
 {
     public function test_result_envelope_supports_a_distinct_future_payload_without_pretending_it_is_a_source(): void
     {
-        $external = new class implements SearchResultDetails
-        {
+        $external = new class implements SearchResultDetails {
             public function category(): SearchResultCategory
             {
                 return SearchResultCategory::ExternalIndexObservation;
@@ -95,7 +95,7 @@ final class SearchResultContractTest extends TestCase
 
     public function test_empty_category_selection_does_not_mean_all_categories(): void
     {
-        $request = new \App\Application\Search\SearchRequest(
+        $request = new SearchRequest(
             query: 'Jan',
             categories: [],
         );
