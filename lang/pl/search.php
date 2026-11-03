@@ -20,6 +20,7 @@ return [
     'match_reasons' => 'Dlaczego ten wynik pasuje',
     'query_term' => 'Termin zapytania: :term',
     'matched_form' => 'Forma porównawcza: :form',
+    'fuzzy_similarity' => 'Podobieństwo: :percent%',
     'dictionary_origin' => 'Słownik: :dataset (:version), grupa :group',
     'dictionary_title' => 'Warianty nazw osób i miejsc',
     'dictionary_editor' => 'Słownik wariantów zarządzany w aplikacji',
@@ -42,6 +43,7 @@ return [
         'source_representation' => 'Reprezentacja źródłowa',
         'technical_comparison' => 'Dopasowanie techniczne',
         'dictionary_variant' => 'Wariant ze słownika',
+        'fuzzy_comparison' => 'Podobieństwo rozmyte',
     ],
     'fields' => [
         'source_name' => 'Nazwa źródła',

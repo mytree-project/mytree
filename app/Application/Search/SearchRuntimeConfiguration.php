@@ -20,6 +20,7 @@ final readonly class SearchRuntimeConfiguration
         public int $sourceRepresentationWeight,
         public int $technicalComparisonWeight,
         public int $dictionaryVariantWeight,
+        public int $fuzzyComparisonWeight,
         public int $sameMentionBonus,
     ) {
         if ($maxPageSize < 1 || $candidateLimit < 1 || $queryExpansionLimit < 1 || $fuzzyCandidateLimit < 1) {
@@ -36,6 +37,7 @@ final readonly class SearchRuntimeConfiguration
             || $sourceRepresentationWeight < 0
             || $technicalComparisonWeight < 0
             || $dictionaryVariantWeight < 0
+            || $fuzzyComparisonWeight < 0
             || $sameMentionBonus < 0
         ) {
             throw new InvalidArgumentException('Search ranking weights must not be negative.');

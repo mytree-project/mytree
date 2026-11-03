@@ -90,6 +90,7 @@ final class SearchServiceProvider extends ServiceProvider
                 sourceRepresentationWeight: (int) config('search.ranking.source_representation', 90),
                 technicalComparisonWeight: (int) config('search.ranking.technical_comparison', 80),
                 dictionaryVariantWeight: (int) config('search.ranking.dictionary_variant', 65),
+                fuzzyComparisonWeight: (int) config('search.ranking.fuzzy_comparison', 50),
                 sameMentionBonus: (int) config('search.ranking.same_mention_bonus', 5),
             ),
         );

@@ -14,6 +14,7 @@ final readonly class SearchSources
         private SearchNameProcessor $nameProcessor,
         private SearchIndexProfile $indexProfile,
         private SearchVariantDictionary $dictionary,
+        private SearchFuzzyMatcher $fuzzyMatcher,
     ) {}
 
     public function handle(SearchRequest $request): SearchPage
@@ -65,19 +66,36 @@ final readonly class SearchSources
             sourceTypeKeys: $request->sourceTypeKeys,
             limit: $this->configuration->candidateLimit,
         );
+        $fuzzyBatch = $this->configuration->fuzzyEnabled
+            ? $this->candidates->findFuzzy(
+                terms: $queryTerms,
+                sourceTypeKeys: $request->sourceTypeKeys,
+                limit: $this->configuration->fuzzyCandidateLimit,
+            )
+            : new DirectSearchCandidateBatch([], false);
+        $truncated = $batch->truncated || $fuzzyBatch->truncated;
 
         /** @var array<string, array{source_id: SourceId, source_name: ?string, source_type_key: string, stale: bool, reasons: list<SearchMatchReason>, matched_terms: array<string, true>}> $grouped */
         $grouped = [];
 
-        foreach ($batch->candidates as $candidate) {
+        foreach ([...$batch->candidates, ...$fuzzyBatch->candidates] as $candidate) {
             $sourceKey = $candidate->sourceId->value;
             foreach ($queryTerms as $term) {
                 $match = $this->matchedForm($candidate, $term);
-                if ($match === null) {
-                    continue;
-                }
+                if ($match !== null) {
+                    $reason = $this->reasonFor($candidate, $term->value, $match['form'], $match['variant']);
+                } else {
+                    if (! $this->configuration->fuzzyEnabled) {
+                        continue;
+                    }
 
-                $reason = $this->reasonFor($candidate, $term->value, $match['form'], $match['variant']);
+                    $fuzzyMatch = $this->fuzzyMatcher->match($term, $candidate, $this->configuration->fuzzyThreshold);
+                    if ($fuzzyMatch === null) {
+                        continue;
+                    }
+
+                    $reason = $this->fuzzyReasonFor($candidate, $term->value, $fuzzyMatch);
+                }
                 if (! isset($grouped[$sourceKey])) {
                     $grouped[$sourceKey] = [
                         'source_id' => $candidate->sourceId,
@@ -117,10 +135,10 @@ final readonly class SearchSources
             return $byScore !== 0 ? $byScore : strcmp($left->sourceId->value, $right->sourceId->value);
         });
 
-        $total = $batch->truncated ? null : count($results);
+        $total = $truncated ? null : count($results);
         $offset = ($request->page - 1) * $perPage;
         $pageResults = array_slice($results, $offset, $perPage);
-        $hasMore = $batch->truncated || $offset + count($pageResults) < count($results);
+        $hasMore = $truncated || $offset + count($pageResults) < count($results);
 
         return new SearchPage(
             results: $pageResults,
@@ -128,7 +146,7 @@ final readonly class SearchSources
             perPage: $perPage,
             total: $total,
             hasMore: $hasMore,
-            candidateWindowTruncated: $batch->truncated,
+            candidateWindowTruncated: $truncated,
         );
     }
 
@@ -212,6 +230,29 @@ final readonly class SearchSources
         );
     }
 
+    private function fuzzyReasonFor(
+        DirectSearchCandidate $candidate,
+        string $queryTerm,
+        SearchFuzzyMatch $match,
+    ): SearchMatchReason {
+        return new SearchMatchReason(
+            queryTerm: $queryTerm,
+            type: SearchMatchType::FuzzyComparison,
+            field: $candidate->field,
+            matchedValue: $candidate->matchedValue,
+            weight: (int) round($this->configuration->fuzzyComparisonWeight * $match->similarity),
+            mentionId: $candidate->mentionId,
+            claimId: $candidate->claimId,
+            claimRevisionId: $candidate->claimRevisionId,
+            language: $candidate->language,
+            script: $candidate->script,
+            representationRelation: $candidate->representationRelation,
+            matchedForm: $match->matchedForm,
+            similarity: $match->similarity,
+            queryComparisonForm: $match->queryForm,
+        );
+    }
+
     /**
      * @param  array<string, true>  $matchedTerms
      * @param  list<string>  $terms
@@ -245,6 +286,7 @@ final readonly class SearchSources
                 $reason->matchedForm ?? '',
                 $reason->datasetSignature ?? '',
                 $reason->variantGroupId ?? '',
+                $reason->queryComparisonForm ?? '',
                 $reason->mentionId ?? '',
                 $reason->claimId ?? '',
                 $reason->claimRevisionId ?? '',

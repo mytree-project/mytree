@@ -20,6 +20,7 @@ return [
     'match_reasons' => 'Why this matched',
     'query_term' => 'Query term: :term',
     'matched_form' => 'Comparison form: :form',
+    'fuzzy_similarity' => 'Similarity: :percent%',
     'dictionary_origin' => 'Dictionary: :dataset (:version), group :group',
     'dictionary_title' => 'Search name and place variants',
     'dictionary_editor' => 'Maintained application dictionary',
@@ -42,6 +43,7 @@ return [
         'source_representation' => 'Source representation',
         'technical_comparison' => 'Technical comparison',
         'dictionary_variant' => 'Maintained dictionary variant',
+        'fuzzy_comparison' => 'Fuzzy similarity',
     ],
     'fields' => [
         'source_name' => 'Source name',

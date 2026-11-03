@@ -49,6 +49,52 @@ final class EloquentDirectSearchCandidateRepository implements DirectSearchCandi
             $query->whereIn('document.source_type_key', $sourceTypeKeys);
         }
 
+        return $this->selectCandidates($query, $limit);
+    }
+
+    public function findFuzzy(array $terms, array $sourceTypeKeys, int $limit): DirectSearchCandidateBatch
+    {
+        // A portable, deterministic preselection: names/places sharing an initial
+        // Unicode letter. A finite Source window is always loaded before computing
+        // any similarity in Application (no whole-table PHP candidate scan).
+        $prefixes = [];
+        foreach ($terms as $term) {
+            foreach ($term->comparisonForms as $form) {
+                if (mb_strlen($form) < 4) {
+                    continue;
+                }
+
+                $prefix = mb_strtolower(mb_substr($form, 0, 1));
+                if (preg_match('/^\\p{L}$/u', $prefix) === 1) {
+                    $prefixes[$prefix] = true;
+                }
+            }
+        }
+
+        if ($prefixes === []) {
+            return new DirectSearchCandidateBatch([], false);
+        }
+
+        ksort($prefixes);
+        $query = DB::table('search_document_entries as entry')
+            ->join('search_documents as document', 'document.source_id', '=', 'entry.source_id')
+            ->where('entry.origin', '!=', SearchValueOrigin::SourceMetadata->value)
+            ->whereIn('entry.field', ['person.given_name', 'person.surname', 'place.name'])
+            ->where(static function (Builder $match) use ($prefixes): void {
+                foreach (array_keys($prefixes) as $prefix) {
+                    $match->orWhereRaw('LOWER(entry.value) LIKE ?', [$prefix.'%']);
+                }
+            });
+
+        if ($sourceTypeKeys !== []) {
+            $query->whereIn('document.source_type_key', $sourceTypeKeys);
+        }
+
+        return $this->selectCandidates($query, $limit);
+    }
+
+    private function selectCandidates(Builder $query, int $limit): DirectSearchCandidateBatch
+    {
         // Limit complete Source candidates rather than individual matching entries.
         $sourceRows = (clone $query)
             ->select('document.source_id')

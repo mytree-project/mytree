@@ -137,7 +137,7 @@ forms and immutable ClaimRevision provenance.
 Candidate limits apply to complete Source candidates, not individual matching index
 rows. A truncated Source window is explicitly signalled rather than presented as
 an exhaustive result count. Maintained dictionary variants, native import/export,
-fuzzy matching and structured date/place filtering remain pending M5 slices.
+optional bounded fuzzy matching is now implemented; structured date/place filtering remains pending M5 slices.
 
 ## Maintained Search variant dataset
 
@@ -246,7 +246,16 @@ The initial M5 Search projection is derived from current accepted immutable Acqu
 
 Search results identify source-local evidence for retrieval/navigation. They do not create interpreted `Person` entities, `same_person` hypotheses or Engine confidence. Search projection persistence is rebuildable Infrastructure data and must remain replaceable without loss of source truth.
 
-The first M5 implementation slice provides `Application/Search` SearchDocument projections, direct Source query matching, Source-level result aggregation, Eloquent search persistence, the queued rebuild lifecycle and the Filament Search page. The current #184 index-time slice adds an application-owned `SearchNameProcessor` contract, an Infrastructure adapter to pinned `mytree/name-processing` normalize/transliterate/fold processing, and an index-processing signature incorporating the processor reference, profile versions and ICU version. Derived technical `index_forms` are stored on SearchDocument entries but are **not yet queried** by direct match execution; only source values and accepted Source representations currently match. The following #184 slices will implement query-time processing, editable dictionary/variants, fuzzy support, additional filters/sorting, and the extensible result envelope.
+The first M5 implementation slice provides `Application/Search` SearchDocument projections, direct Source query matching, Source-level result aggregation, Eloquent search persistence, the queued rebuild lifecycle and the Filament Search page. The current #184 index-time slice adds an application-owned `SearchNameProcessor` contract, an Infrastructure adapter to pinned `mytree/name-processing` normalize/transliterate/fold processing, and an index-processing signature incorporating the processor reference, profile versions and ICU version. Derived technical `index_forms` now participate in query-time matching. The
+application-owned dataset supplies query-time maintained variants while the
+Infrastructure adapter keeps native codec/resolution in `name-processing`.
+Optional fuzzy candidate retrieval selects a bounded, deterministic Source
+window via a database-side first-letter name/place filter and hydrates
+complete matching Source entries. Application's Unicode Levenshtein matcher
+then applies the configured threshold, weight and provenance; no fuzzy
+matching is applied to Source metadata. Neither mechanism rewrites Claim
+history. Additional date/place filters, sorting and the extensible SearchResult
+envelope remain separate #184 slices.
 
 ### Not yet implemented
 

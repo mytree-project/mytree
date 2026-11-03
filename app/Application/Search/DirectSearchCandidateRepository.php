@@ -15,4 +15,17 @@ interface DirectSearchCandidateRepository
         array $sourceTypeKeys,
         int $limit,
     ): DirectSearchCandidateBatch;
+
+    /**
+     * Retrieves a bounded Source-complete fuzzy candidate window; similarity
+     * and matching policy are evaluated by Application Search.
+     *
+     * @param  list<SearchQueryTerm>  $terms
+     * @param  list<string>  $sourceTypeKeys
+     */
+    public function findFuzzy(
+        array $terms,
+        array $sourceTypeKeys,
+        int $limit,
+    ): DirectSearchCandidateBatch;
 }

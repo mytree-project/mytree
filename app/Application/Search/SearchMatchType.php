@@ -11,4 +11,5 @@ enum SearchMatchType: string
     case SourceRepresentation = 'source_representation';
     case TechnicalComparison = 'technical_comparison';
     case DictionaryVariant = 'dictionary_variant';
+    case FuzzyComparison = 'fuzzy_comparison';
 }
