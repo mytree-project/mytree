@@ -19,27 +19,7 @@ final class SearchResultContractTest extends TestCase
 {
     public function test_result_envelope_supports_a_distinct_future_payload_without_pretending_it_is_a_source(): void
     {
-        $external = new class implements SearchResultDetails {
-            public function category(): SearchResultCategory
-            {
-                return SearchResultCategory::ExternalIndexObservation;
-            }
-
-            public function resultId(): string
-            {
-                return 'provider-x:123';
-            }
-
-            public function label(): ?string
-            {
-                return 'Observation 123';
-            }
-
-            public function ranking(): ?SearchResultScore
-            {
-                return new SearchResultScore('provider_x_relevance', 0.82);
-            }
-        };
+        $external = new FakeExternalIndexSearchDetails;
 
         $source = new SearchSourceResult(
             sourceId: new SourceId('00000000-0000-4000-8000-000000000001'),
@@ -101,5 +81,28 @@ final class SearchResultContractTest extends TestCase
         );
         self::assertSame([], $request->categories);
         self::assertFalse($request->includesCategory(SearchResultCategory::Source));
+    }
+}
+
+final readonly class FakeExternalIndexSearchDetails implements SearchResultDetails
+{
+    public function category(): SearchResultCategory
+    {
+        return SearchResultCategory::ExternalIndexObservation;
+    }
+
+    public function resultId(): string
+    {
+        return 'provider-x:123';
+    }
+
+    public function label(): ?string
+    {
+        return 'Observation 123';
+    }
+
+    public function ranking(): ?SearchResultScore
+    {
+        return new SearchResultScore('provider_x_relevance', 0.82);
     }
 }
