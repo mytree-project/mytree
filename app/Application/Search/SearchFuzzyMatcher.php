@@ -73,8 +73,9 @@ final readonly class SearchFuzzyMatcher
         return mb_str_split(mb_strtolower($value));
     }
 
-    /** @param list<string> $left
-     *  @param list<string> $right
+    /**
+     * @param  list<string>  $left
+     * @param  list<string>  $right
      */
     private function distance(array $left, array $right): int
     {
