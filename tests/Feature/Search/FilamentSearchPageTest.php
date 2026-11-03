@@ -57,6 +57,23 @@ final class FilamentSearchPageTest extends TestCase
             ->assertSee(__('search.stale'));
     }
 
+    public function test_administrator_can_filter_without_text_query_and_see_invalid_dates(): void
+    {
+        $administrator = User::factory()->admin()->create();
+        $source = $this->indexedSource();
+
+        $this->actingAs($administrator)
+            ->get('/admin/search?type=civil.birth&sort=source_added')
+            ->assertOk()
+            ->assertSee($source->id->value)
+            ->assertSee(__('search.sort_source_added'));
+
+        $this->actingAs($administrator)
+            ->get('/admin/search?q=Peter&from=1901-99')
+            ->assertOk()
+            ->assertSee(__('search.invalid_date_filter'));
+    }
+
     private function indexedSource(): Source
     {
         $source = app(CreateSource::class)->handle(
