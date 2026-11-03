@@ -56,6 +56,9 @@ return [
         'dictionary_variant' => 'Wariant ze słownika',
         'fuzzy_comparison' => 'Podobieństwo rozmyte',
     ],
+    'result_categories' => [
+        'source' => 'Źródło',
+    ],
     'fields' => [
         'source_name' => 'Nazwa źródła',
         'source_title' => 'Tytuł źródła',

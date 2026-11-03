@@ -36,7 +36,11 @@ The current implemented baseline contains:
 
 Source Acquisition is therefore implemented through the M4 Basic Source Acquisition baseline. The editing UI composes one Source-scoped draft and saves through Application use cases; templates and supported-field metadata do not become a second domain model or overwrite Source/Mention/Claim truth. Existing unsupported data is not silently discarded, and persisted Claim provenance, qualifiers and SourceLocators remain part of the authoritative acquisition state.
 
-External provider integration and MyTree Engine integration are not implemented by this baseline. M5 Search is **partially implemented**: technical and maintained-dictionary query-time matching are present, while the common SearchResult category contract and final hardening remain follow-up slices of mytree-project/mytree-project#184.
+External provider integration and MyTree Engine integration are not implemented by this baseline. M5 local Search now includes query-time technical/maintained-dictionary variants,
+bounded fuzzy matching, structured Source filters/sorting and the category-aware
+`SearchResult` envelope. Only local Source result data is populated by M5;
+integration with external Index Providers and Engine Interpretations remains
+a separate future capability.
 
 ## Search development status
 
@@ -78,7 +82,17 @@ bounded and indicate truncation.
 `php artisan search:rebuild-all`** (with a queue worker) to populate
 historical date intervals for existing projections. The Search index profile
 signature is bumped so old projections can be identified as outdated.
-The category-aware SearchResult envelope and final hardening remain under #184. Do not interpret the dictionary integration as complete M5 Search.
+Stage D introduces a typed category-aware `SearchResult` envelope on every
+`SearchPage.results` entry. Its `details` implement the
+`SearchResultDetails` contract; M5 populates `SearchSourceResult` details
+with Source/Mention/Claim provenance. The envelope includes a category-qualified
+`resultKey`, display title, and an optional score bearing a named
+`scale` (`source_retrieval_v1` for local Sources). Scores from
+different future categories must not be compared or interpreted as confidence.
+`SearchRequest.categories` allows callers to explicitly request Sources-only
+(the default); unsupported reserved categories currently yield no corresponding
+results. This is not a provider or Engine integration. Stage D's final M5
+regression hardening is tracked in #184.
 
 Useful existing administrative commands (with a running queue worker) are `php artisan search:rebuild <source-uuid>`, `php artisan search:rebuild-stale`, and `php artisan search:rebuild-all`. They queue Source SearchDocument refreshes.
 

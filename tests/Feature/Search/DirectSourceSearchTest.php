@@ -10,6 +10,7 @@ use App\Application\Acquisition\CreateMention;
 use App\Application\Acquisition\CreateSource;
 use App\Application\Search\SearchMatchType;
 use App\Application\Search\SearchRequest;
+use App\Application\Search\SearchSourceResult;
 use App\Application\Search\SearchSources;
 use App\Domain\Acquisition\MentionKind;
 use App\Domain\Acquisition\PredicateKey;
@@ -36,13 +37,13 @@ final class DirectSourceSearchTest extends TestCase
         $page = app(SearchSources::class)->handle(new SearchRequest('Jan Kowalski'));
 
         self::assertCount(2, $page->results);
-        self::assertSame($sameMention->id->value, $page->results[0]->sourceId->value);
-        self::assertSame($differentMentions->id->value, $page->results[1]->sourceId->value);
-        self::assertGreaterThan($page->results[1]->score, $page->results[0]->score);
-        self::assertCount(2, $page->results[0]->matchReasons);
+        self::assertSame($sameMention->id->value, $page->results[0]->detailsAs(SearchSourceResult::class)->sourceId->value);
+        self::assertSame($differentMentions->id->value, $page->results[1]->detailsAs(SearchSourceResult::class)->sourceId->value);
+        self::assertGreaterThan($page->results[1]->detailsAs(SearchSourceResult::class)->score, $page->results[0]->detailsAs(SearchSourceResult::class)->score);
+        self::assertCount(2, $page->results[0]->detailsAs(SearchSourceResult::class)->matchReasons);
         self::assertSame(
             [SearchMatchType::DirectClaimValue, SearchMatchType::DirectClaimValue],
-            array_map(static fn ($reason) => $reason->type, $page->results[0]->matchReasons),
+            array_map(static fn ($reason) => $reason->type, $page->results[0]->detailsAs(SearchSourceResult::class)->matchReasons),
         );
         self::assertSame(2, $page->total);
         self::assertFalse($page->candidateWindowTruncated);
@@ -87,12 +88,12 @@ final class DirectSourceSearchTest extends TestCase
         $page = app(SearchSources::class)->handle(new SearchRequest('Piotr Kowalski'));
 
         self::assertCount(2, $page->results);
-        self::assertSame($direct->id->value, $page->results[0]->sourceId->value);
-        self::assertSame($represented->id->value, $page->results[1]->sourceId->value);
-        self::assertGreaterThan($page->results[1]->score, $page->results[0]->score);
+        self::assertSame($direct->id->value, $page->results[0]->detailsAs(SearchSourceResult::class)->sourceId->value);
+        self::assertSame($represented->id->value, $page->results[1]->detailsAs(SearchSourceResult::class)->sourceId->value);
+        self::assertGreaterThan($page->results[1]->detailsAs(SearchSourceResult::class)->score, $page->results[0]->detailsAs(SearchSourceResult::class)->score);
         self::assertContains(
             SearchMatchType::SourceRepresentation,
-            array_map(static fn ($reason) => $reason->type, $page->results[1]->matchReasons),
+            array_map(static fn ($reason) => $reason->type, $page->results[1]->detailsAs(SearchSourceResult::class)->matchReasons),
         );
     }
 
@@ -110,7 +111,7 @@ final class DirectSourceSearchTest extends TestCase
         ));
 
         self::assertCount(1, $page->results);
-        self::assertContains($page->results[0]->sourceId->value, [$first->id->value, $second->id->value]);
+        self::assertContains($page->results[0]->detailsAs(SearchSourceResult::class)->sourceId->value, [$first->id->value, $second->id->value]);
         self::assertSame(2, $page->total);
         self::assertTrue($page->hasMore);
     }

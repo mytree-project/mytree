@@ -139,7 +139,22 @@ rows. A truncated Source window is explicitly signalled rather than presented as
 an exhaustive result count. Maintained dictionary variants, native import/export,
 optional bounded fuzzy matching is now implemented; C2 adds typed date interval
 projection, Source-local place/source-type/date filters and deterministic sorting.
-The common category-aware SearchResult envelope remains a follow-up M5 slice.
+The common category-aware `SearchResult` envelope is now implemented;
+only typed local `SearchSourceResult` details are currently produced.
+
+## Category-aware M5 Search results
+
+`Application/Search/SearchResult` is a common retrieval envelope carrying a
+result category, category-qualified identity, display label, score with explicit
+scale and a typed `SearchResultDetails` payload. `SearchPage.results` now
+contains that envelope rather than Source-only result DTOs.
+`SearchSources` currently emits only `SearchSourceResult` details and
+accepts a Source-only category scope through `SearchRequest.categories`.
+Non-Source categories are reserved in the enum for later provider observations
+and Engine Interpretations, but this stage does not fabricate those results,
+globally rank unlike score scales or import external data into Source
+SearchDocuments. Filament safely dispatches on the details type and retains
+Source navigation and explanation rendering.
 
 ## Maintained Search variant dataset
 

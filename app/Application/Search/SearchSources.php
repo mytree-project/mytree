@@ -22,8 +22,14 @@ final readonly class SearchSources
         $terms = $request->terms();
         $perPage = min($request->perPage, $this->configuration->maxPageSize);
 
+        // M5 has only a local Source producer. Unsupported category requests
+        // never trigger a Source query or manufacture external observations.
+        if (! $request->includesCategory(SearchResultCategory::Source)) {
+            return new SearchPage([], $request->page, $perPage, 0, false, false, $request->categories);
+        }
+
         if ($terms === [] && ! $request->hasScope()) {
-            return new SearchPage([], $request->page, $perPage, 0, false, false);
+            return new SearchPage([], $request->page, $perPage, 0, false, false, $request->categories);
         }
 
         $placeTerm = $request->place !== null && trim($request->place) !== ''
@@ -214,7 +220,10 @@ final readonly class SearchSources
 
         $total = $truncated ? null : count($results);
         $offset = ($request->page - 1) * $perPage;
-        $pageResults = array_slice($results, $offset, $perPage);
+        $pageResults = array_map(
+            static fn (SearchSourceResult $source): SearchResult => new SearchResult($source),
+            array_slice($results, $offset, $perPage),
+        );
         $hasMore = $truncated || $offset + count($pageResults) < count($results);
 
         return new SearchPage(
@@ -224,6 +233,7 @@ final readonly class SearchSources
             total: $total,
             hasMore: $hasMore,
             candidateWindowTruncated: $truncated,
+            categories: $request->categories,
         );
     }
 

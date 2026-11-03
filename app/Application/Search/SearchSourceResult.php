@@ -6,7 +6,7 @@ namespace App\Application\Search;
 
 use App\Domain\Acquisition\SourceId;
 
-final readonly class SearchSourceResult
+final readonly class SearchSourceResult implements SearchResultDetails
 {
     /** @var list<SearchMatchReason> */
     public array $matchReasons;
@@ -28,5 +28,20 @@ final readonly class SearchSourceResult
     public function category(): SearchResultCategory
     {
         return SearchResultCategory::Source;
+    }
+
+    public function resultId(): string
+    {
+        return $this->sourceId->value;
+    }
+
+    public function label(): ?string
+    {
+        return $this->sourceName;
+    }
+
+    public function ranking(): SearchResultScore
+    {
+        return new SearchResultScore('source_retrieval_v1', $this->score);
     }
 }

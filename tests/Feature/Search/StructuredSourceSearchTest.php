@@ -13,6 +13,7 @@ use App\Application\Search\SearchDocumentRepository;
 use App\Application\Search\SearchRequest;
 use App\Application\Search\SearchRuntimeConfiguration;
 use App\Application\Search\SearchSortMode;
+use App\Application\Search\SearchSourceResult;
 use App\Application\Search\SearchSources;
 use App\Application\Search\SearchVariantDictionary;
 use App\Domain\Acquisition\DateClaimValue;
@@ -51,13 +52,13 @@ final class StructuredSourceSearchTest extends TestCase
 
         $page = app(SearchSources::class)->handle(new SearchRequest(query: 'Jan', dateFrom: '1902', dateTo: '1902'));
         self::assertCount(1, $page->results);
-        self::assertSame($inRange->id->value, $page->results[0]->sourceId->value);
+        self::assertSame($inRange->id->value, $page->results[0]->detailsAs(SearchSourceResult::class)->sourceId->value);
 
         $february = app(SearchSources::class)->handle(new SearchRequest(query: '', dateFrom: '1903-02', dateTo: '1903-02'));
         self::assertCount(1, $february->results);
-        self::assertSame($inRange->id->value, $february->results[0]->sourceId->value);
-        self::assertSame(0, $february->results[0]->score);
-        self::assertSame([], $february->results[0]->matchReasons);
+        self::assertSame($inRange->id->value, $february->results[0]->detailsAs(SearchSourceResult::class)->sourceId->value);
+        self::assertSame(0, $february->results[0]->detailsAs(SearchSourceResult::class)->score);
+        self::assertSame([], $february->results[0]->detailsAs(SearchSourceResult::class)->matchReasons);
 
         $april = app(SearchSources::class)->handle(new SearchRequest(query: 'Jan', dateFrom: '1903-04', dateTo: '1903-04'));
         self::assertSame([], $april->results);
@@ -89,14 +90,14 @@ final class StructuredSourceSearchTest extends TestCase
         ))->results;
         self::assertSame(
             [$dated->id->value, $claimOnly->id->value, $undated->id->value],
-            array_map(static fn ($result) => $result->sourceId->value, $results),
+            array_map(static fn ($result) => $result->detailsAs(SearchSourceResult::class)->sourceId->value, $results),
         );
 
         $metadataDate = app(SearchSources::class)->handle(new SearchRequest(query: '', dateFrom: '1905-04-30', dateTo: '1905-04-30'));
-        self::assertSame([$dated->id->value], array_map(static fn ($result) => $result->sourceId->value, $metadataDate->results));
+        self::assertSame([$dated->id->value], array_map(static fn ($result) => $result->detailsAs(SearchSourceResult::class)->sourceId->value, $metadataDate->results));
 
         $claimDate = app(SearchSources::class)->handle(new SearchRequest(query: '', dateFrom: '1880'));
-        self::assertContains($dated->id->value, array_map(static fn ($result) => $result->sourceId->value, $claimDate->results));
+        self::assertContains($dated->id->value, array_map(static fn ($result) => $result->detailsAs(SearchSourceResult::class)->sourceId->value, $claimDate->results));
     }
 
     public function test_source_metadata_date_ranges_are_recognized_but_unknown_date_strings_are_not_invented(): void
@@ -153,9 +154,9 @@ final class StructuredSourceSearchTest extends TestCase
             dateTo: '1902',
         ));
         self::assertCount(1, $page->results);
-        self::assertSame($matching->id->value, $page->results[0]->sourceId->value);
-        self::assertCount(1, $page->results[0]->matchReasons);
-        self::assertSame('Jan', $page->results[0]->matchReasons[0]->matchedValue);
+        self::assertSame($matching->id->value, $page->results[0]->detailsAs(SearchSourceResult::class)->sourceId->value);
+        self::assertCount(1, $page->results[0]->detailsAs(SearchSourceResult::class)->matchReasons);
+        self::assertSame('Jan', $page->results[0]->detailsAs(SearchSourceResult::class)->matchReasons[0]->matchedValue);
 
         $filteredOnly = app(SearchSources::class)->handle(new SearchRequest(query: '', place: 'Poznań'));
         self::assertCount(2, $filteredOnly->results);
@@ -178,7 +179,7 @@ final class StructuredSourceSearchTest extends TestCase
 
         $only = app(SearchSources::class)->handle(new SearchRequest(query: 'Jan', dateFrom: '1902', dateTo: '1902'));
         self::assertCount(1, $only->results);
-        self::assertSame($second->id->value, $only->results[0]->sourceId->value);
+        self::assertSame($second->id->value, $only->results[0]->detailsAs(SearchSourceResult::class)->sourceId->value);
         self::assertFalse($only->candidateWindowTruncated);
 
         config()->set('search.candidate_limit', 10);
@@ -189,13 +190,13 @@ final class StructuredSourceSearchTest extends TestCase
         $recent = app(SearchSources::class)->handle(new SearchRequest(query: '', sort: SearchSortMode::SourceAdded));
         self::assertSame(
             [$second->id->value, $first->id->value],
-            array_map(static fn ($result) => $result->sourceId->value, $recent->results),
+            array_map(static fn ($result) => $result->detailsAs(SearchSourceResult::class)->sourceId->value, $recent->results),
         );
 
         $p1 = app(SearchSources::class)->handle(new SearchRequest(query: 'Jan', sort: SearchSortMode::SourceAdded, page: 1, perPage: 1));
         $p2 = app(SearchSources::class)->handle(new SearchRequest(query: 'Jan', sort: SearchSortMode::SourceAdded, page: 2, perPage: 1));
-        self::assertSame($second->id->value, $p1->results[0]->sourceId->value);
-        self::assertSame($first->id->value, $p2->results[0]->sourceId->value);
+        self::assertSame($second->id->value, $p1->results[0]->detailsAs(SearchSourceResult::class)->sourceId->value);
+        self::assertSame($first->id->value, $p2->results[0]->detailsAs(SearchSourceResult::class)->sourceId->value);
     }
 
     public function test_rebuild_replaces_date_projection_without_duplicating_rows(): void

@@ -56,6 +56,9 @@ return [
         'dictionary_variant' => 'Maintained dictionary variant',
         'fuzzy_comparison' => 'Fuzzy similarity',
     ],
+    'result_categories' => [
+        'source' => 'Source',
+    ],
     'fields' => [
         'source_name' => 'Source name',
         'source_title' => 'Source title',
