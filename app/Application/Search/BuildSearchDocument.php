@@ -6,10 +6,13 @@ namespace App\Application\Search;
 
 use App\Application\Acquisition\ResolvedEvidenceState;
 use App\Domain\Acquisition\ClaimRevision;
+use App\Domain\Acquisition\DateClaimValue;
+use App\Domain\Acquisition\HistoricalDate;
 use App\Domain\Acquisition\PredicateKey;
 use App\Domain\Acquisition\SourceLinguisticRepresentation;
 use App\Domain\Acquisition\TextClaimValue;
 use DateTimeImmutable;
+use InvalidArgumentException;
 use LogicException;
 
 final readonly class BuildSearchDocument
@@ -48,8 +51,29 @@ final readonly class BuildSearchDocument
             );
         }
 
+        $dates = $this->sourceMetadataDates($metadata);
         foreach ($evidence->claimRevisions as $revision) {
             $this->appendClaimEntries($entries, $revision);
+            $claim = $revision->reconstruct()->claim;
+            if ($claim->value instanceof DateClaimValue) {
+                $dates[] = new SearchDocumentDate(
+                    field: $claim->predicate->key->value,
+                    span: SearchDateSpan::between($claim->value->from, $claim->value->to ?? $claim->value->from),
+                    claimRevisionId: $revision->id->value,
+                );
+            }
+        }
+
+        $sourceDateOrdinal = null;
+        foreach ($dates as $date) {
+            if (str_starts_with($date->field, 'source.metadata.')) {
+                $sourceDateOrdinal = min($sourceDateOrdinal ?? $date->span->from, $date->span->from);
+            }
+        }
+        if ($sourceDateOrdinal === null) {
+            foreach ($dates as $date) {
+                $sourceDateOrdinal = min($sourceDateOrdinal ?? $date->span->from, $date->span->from);
+            }
         }
 
         return new SearchDocument(
@@ -63,7 +87,46 @@ final readonly class BuildSearchDocument
             entries: $entries,
             stale: false,
             builtAt: $builtAt,
+            sourceDateOrdinal: $sourceDateOrdinal,
+            dates: $dates,
         );
+    }
+
+    /**
+     * Recognized structured Source metadata: 'date' (YYYY[-MM[-DD]]) or
+     * a paired 'date_from'/'date_to'. Unrecognized free-form metadata is
+     * not reinterpreted as historical dates.
+     *
+     * @param  array<string, mixed>  $metadata
+     * @return list<SearchDocumentDate>
+     */
+    private function sourceMetadataDates(array $metadata): array
+    {
+        $dates = [];
+        $single = $metadata['date'] ?? null;
+        if (is_string($single) && trim($single) !== '') {
+            try {
+                $date = HistoricalDate::fromIsoString($single);
+                $dates[] = new SearchDocumentDate('source.metadata.date', SearchDateSpan::forDate($date));
+            } catch (InvalidArgumentException) {
+                // Arbitrary Source metadata is not required to be a typed date.
+            }
+        }
+
+        $start = $metadata['date_from'] ?? null;
+        $end = $metadata['date_to'] ?? null;
+        if (is_string($start) && is_string($end) && trim($start) !== '' && trim($end) !== '') {
+            try {
+                $dates[] = new SearchDocumentDate(
+                    'source.metadata.date_range',
+                    SearchDateSpan::between(HistoricalDate::fromIsoString($start), HistoricalDate::fromIsoString($end)),
+                );
+            } catch (InvalidArgumentException) {
+                // Ignore invalid optional Source metadata date ranges.
+            }
+        }
+
+        return $dates;
     }
 
     /** @param list<SearchDocumentEntry> $entries */

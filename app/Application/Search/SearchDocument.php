@@ -15,7 +15,13 @@ final readonly class SearchDocument
     /** @var list<SearchDocumentEntry> */
     public array $entries;
 
-    /** @param list<SearchDocumentEntry> $entries */
+    /** @var list<SearchDocumentDate> */
+    public array $dates;
+
+    /**
+     * @param  list<SearchDocumentEntry>  $entries
+     * @param  list<SearchDocumentDate>  $dates
+     */
     public function __construct(
         public SourceId $sourceId,
         public EvidenceStateId $evidenceStateId,
@@ -27,11 +33,14 @@ final readonly class SearchDocument
         array $entries,
         public bool $stale,
         public DateTimeImmutable $builtAt,
+        public ?int $sourceDateOrdinal = null,
+        array $dates = [],
     ) {
         if ($sourceTypeKey === '' || $inputFingerprint === '' || $indexSignature === '') {
             throw new InvalidArgumentException('SearchDocument identity metadata must not be empty.');
         }
 
         $this->entries = $entries;
+        $this->dates = $dates;
     }
 }

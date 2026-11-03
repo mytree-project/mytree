@@ -7,7 +7,11 @@ namespace App\Infrastructure\Persistence\Eloquent\Search;
 use App\Application\Search\DirectSearchCandidate;
 use App\Application\Search\DirectSearchCandidateBatch;
 use App\Application\Search\DirectSearchCandidateRepository;
+use App\Application\Search\SearchDateSpan;
 use App\Application\Search\SearchQueryTerm;
+use App\Application\Search\SearchSortMode;
+use App\Application\Search\SearchSourceCandidate;
+use App\Application\Search\SearchSourceCandidateBatch;
 use App\Application\Search\SearchValueOrigin;
 use App\Domain\Acquisition\SourceId;
 use Illuminate\Database\Query\Builder;
@@ -16,7 +20,14 @@ use UnexpectedValueException;
 
 final class EloquentDirectSearchCandidateRepository implements DirectSearchCandidateRepository
 {
-    public function find(array $terms, array $sourceTypeKeys, int $limit): DirectSearchCandidateBatch
+    public function find(
+        array $terms,
+        array $sourceTypeKeys,
+        int $limit,
+        ?SearchDateSpan $dateRange = null,
+        ?SearchQueryTerm $place = null,
+        SearchSortMode $sort = SearchSortMode::Relevance,
+    ): DirectSearchCandidateBatch
     {
         if ($terms === []) {
             return new DirectSearchCandidateBatch([], false);
@@ -45,14 +56,62 @@ final class EloquentDirectSearchCandidateRepository implements DirectSearchCandi
                 }
             });
 
-        if ($sourceTypeKeys !== []) {
-            $query->whereIn('document.source_type_key', $sourceTypeKeys);
-        }
+        $this->applyFilters($query, $sourceTypeKeys, $dateRange, $place);
 
-        return $this->selectCandidates($query, $limit);
+        return $this->selectCandidates($query, $limit, $sort);
     }
 
-    public function findFuzzy(array $terms, array $sourceTypeKeys, int $limit): DirectSearchCandidateBatch
+    public function findSources(
+        array $sourceTypeKeys,
+        int $limit,
+        ?SearchDateSpan $dateRange = null,
+        ?SearchQueryTerm $place = null,
+        SearchSortMode $sort = SearchSortMode::Relevance,
+    ): SearchSourceCandidateBatch {
+        $query = DB::table('search_documents as document');
+        $this->applyFilters($query, $sourceTypeKeys, $dateRange, $place);
+
+        [$ids, $truncated] = $this->selectSourceIds($query, $limit, $sort);
+        if ($ids === []) {
+            return new SearchSourceCandidateBatch([], false);
+        }
+
+        $rows = DB::table('search_documents as document')
+            ->join('sources as source', 'source.id', '=', 'document.source_id')
+            ->whereIn('document.source_id', $ids)
+            ->select([
+                'document.source_id',
+                'document.source_name',
+                'document.source_type_key',
+                'document.stale',
+                'document.source_date_ordinal',
+                'source.created_at as source_created_at',
+            ])
+            ->get();
+
+        $sources = [];
+        foreach ($rows as $row) {
+            $sources[] = new SearchSourceCandidate(
+                sourceId: new SourceId((string) $row->source_id),
+                sourceName: $row->source_name === null ? null : (string) $row->source_name,
+                sourceTypeKey: (string) $row->source_type_key,
+                stale: (bool) $row->stale,
+                sourceDateOrdinal: $row->source_date_ordinal === null ? null : (int) $row->source_date_ordinal,
+                sourceCreatedAt: (string) $row->source_created_at,
+            );
+        }
+
+        return new SearchSourceCandidateBatch($sources, $truncated);
+    }
+
+    public function findFuzzy(
+        array $terms,
+        array $sourceTypeKeys,
+        int $limit,
+        ?SearchDateSpan $dateRange = null,
+        ?SearchQueryTerm $place = null,
+        SearchSortMode $sort = SearchSortMode::Relevance,
+    ): DirectSearchCandidateBatch
     {
         // A portable, deterministic preselection: names/places sharing an initial
         // Unicode letter. A finite Source window is always loaded before computing
@@ -86,30 +145,90 @@ final class EloquentDirectSearchCandidateRepository implements DirectSearchCandi
                 }
             });
 
+        $this->applyFilters($query, $sourceTypeKeys, $dateRange, $place);
+
+        return $this->selectCandidates($query, $limit, $sort);
+    }
+
+    /** @param  list<string>  $sourceTypeKeys */
+    private function applyFilters(
+        Builder $query,
+        array $sourceTypeKeys,
+        ?SearchDateSpan $dateRange,
+        ?SearchQueryTerm $place,
+    ): void {
         if ($sourceTypeKeys !== []) {
             $query->whereIn('document.source_type_key', $sourceTypeKeys);
         }
 
-        return $this->selectCandidates($query, $limit);
+        if ($dateRange !== null) {
+            $query->whereExists(static function (Builder $dates) use ($dateRange): void {
+                $dates->selectRaw('1')
+                    ->from('search_document_dates as date_filter')
+                    ->whereColumn('date_filter.source_id', 'document.source_id')
+                    ->where('date_filter.lower_ordinal', '<=', $dateRange->to)
+                    ->where('date_filter.upper_ordinal', '>=', $dateRange->from);
+            });
+        }
+
+        if ($place !== null) {
+            $query->whereExists(static function (Builder $values) use ($place): void {
+                $values->selectRaw('1')
+                    ->from('search_document_entries as place_filter')
+                    ->whereColumn('place_filter.source_id', 'document.source_id')
+                    ->where('place_filter.field', 'place.name')
+                    ->where(static function (Builder $matching) use ($place): void {
+                        $matching->where('place_filter.value', $place->value);
+                        foreach ($place->comparisonForms as $form) {
+                            $matching->orWhereJsonContains('place_filter.index_forms', $form);
+                        }
+                        foreach ($place->variants as $variant) {
+                            foreach ($variant->forms as $form) {
+                                $matching->orWhereJsonContains('place_filter.index_forms', $form);
+                            }
+                        }
+                    });
+            });
+        }
     }
 
-    private function selectCandidates(Builder $query, int $limit): DirectSearchCandidateBatch
+    /** @return array{list<string>, bool} */
+    private function selectSourceIds(Builder $query, int $limit, SearchSortMode $sort): array
     {
-        // Limit complete Source candidates rather than individual matching entries.
-        $sourceRows = (clone $query)
+        $sourceQuery = (clone $query)
+            ->join('sources as source', 'source.id', '=', 'document.source_id')
             ->select('document.source_id')
-            ->distinct()
-            ->orderBy('document.source_id')
-            ->limit($limit + 1)
-            ->get();
-        $truncated = $sourceRows->count() > $limit;
-        $sourceIds = $sourceRows->take($limit)->pluck('source_id')->all();
+            ->groupBy('document.source_id', 'document.source_date_ordinal', 'source.created_at');
+
+        $this->sortSourceQuery($sourceQuery, $sort);
+        $sourceRows = $sourceQuery->limit($limit + 1)->get();
+
+        return [$sourceRows->take($limit)->pluck('source_id')->all(), $sourceRows->count() > $limit];
+    }
+
+    private function sortSourceQuery(Builder $query, SearchSortMode $sort): void
+    {
+        if ($sort === SearchSortMode::SourceDate) {
+            $query->orderByRaw('document.source_date_ordinal IS NULL')
+                ->orderByDesc('document.source_date_ordinal');
+        } elseif ($sort === SearchSortMode::SourceAdded) {
+            $query->orderByDesc('source.created_at');
+        }
+
+        $query->orderBy('document.source_id');
+    }
+
+    private function selectCandidates(Builder $query, int $limit, SearchSortMode $sort): DirectSearchCandidateBatch
+    {
+        // Select complete Source windows rather than truncating individual entries.
+        [$sourceIds, $truncated] = $this->selectSourceIds($query, $limit, $sort);
 
         if ($sourceIds === []) {
             return new DirectSearchCandidateBatch([], false);
         }
 
-        $rows = $query->whereIn('document.source_id', $sourceIds)
+        $rows = $query->join('sources as source', 'source.id', '=', 'document.source_id')
+            ->whereIn('document.source_id', $sourceIds)
             ->orderBy('document.source_id')
             ->orderBy('entry.id')
             ->select([
@@ -117,6 +236,8 @@ final class EloquentDirectSearchCandidateRepository implements DirectSearchCandi
                 'document.source_name',
                 'document.source_type_key',
                 'document.stale',
+                'document.source_date_ordinal',
+                'source.created_at as source_created_at',
                 'entry.field',
                 'entry.value',
                 'entry.origin',
@@ -160,6 +281,8 @@ final class EloquentDirectSearchCandidateRepository implements DirectSearchCandi
                     ? null
                     : (string) $row->representation_relation,
                 indexForms: $forms,
+                sourceDateOrdinal: $row->source_date_ordinal === null ? null : (int) $row->source_date_ordinal,
+                sourceCreatedAt: (string) $row->source_created_at,
             );
         }
 

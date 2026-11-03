@@ -14,6 +14,9 @@ interface DirectSearchCandidateRepository
         array $terms,
         array $sourceTypeKeys,
         int $limit,
+        ?SearchDateSpan $dateRange = null,
+        ?SearchQueryTerm $place = null,
+        SearchSortMode $sort = SearchSortMode::Relevance,
     ): DirectSearchCandidateBatch;
 
     /**
@@ -23,9 +26,23 @@ interface DirectSearchCandidateRepository
      * @param  list<SearchQueryTerm>  $terms
      * @param  list<string>  $sourceTypeKeys
      */
+    /**
+     * @param  list<string>  $sourceTypeKeys
+     */
+    public function findSources(
+        array $sourceTypeKeys,
+        int $limit,
+        ?SearchDateSpan $dateRange = null,
+        ?SearchQueryTerm $place = null,
+        SearchSortMode $sort = SearchSortMode::Relevance,
+    ): SearchSourceCandidateBatch;
+
     public function findFuzzy(
         array $terms,
         array $sourceTypeKeys,
         int $limit,
+        ?SearchDateSpan $dateRange = null,
+        ?SearchQueryTerm $place = null,
+        SearchSortMode $sort = SearchSortMode::Relevance,
     ): DirectSearchCandidateBatch;
 }

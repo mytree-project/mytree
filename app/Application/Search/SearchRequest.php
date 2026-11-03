@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Search;
 
+use App\Domain\Acquisition\HistoricalDate;
 use InvalidArgumentException;
 
 final readonly class SearchRequest
@@ -11,12 +12,19 @@ final readonly class SearchRequest
     /** @var list<string> */
     public array $sourceTypeKeys;
 
+    /** @var ?SearchDateSpan */
+    public ?SearchDateSpan $dateRange;
+
     /** @param list<string> $sourceTypeKeys */
     public function __construct(
         public string $query,
         public int $page = 1,
         public int $perPage = 20,
         array $sourceTypeKeys = [],
+        public ?string $place = null,
+        public ?string $dateFrom = null,
+        public ?string $dateTo = null,
+        public SearchSortMode $sort = SearchSortMode::Relevance,
     ) {
         if ($page < 1 || $perPage < 1) {
             throw new InvalidArgumentException('Search page and per-page values must be positive integers.');
@@ -26,6 +34,25 @@ final readonly class SearchRequest
             array_map(static fn (string $key): string => trim($key), $sourceTypeKeys),
             static fn (string $key): bool => $key !== '',
         )));
+
+        $from = $dateFrom === null || trim($dateFrom) === ''
+            ? null
+            : HistoricalDate::fromIsoString(trim($dateFrom));
+        $to = $dateTo === null || trim($dateTo) === ''
+            ? null
+            : HistoricalDate::fromIsoString(trim($dateTo));
+
+        $this->dateRange = $from === null && $to === null
+            ? null
+            : SearchDateSpan::between($from, $to);
+    }
+
+    public function hasScope(): bool
+    {
+        return $this->sourceTypeKeys !== []
+            || ($this->place !== null && trim($this->place) !== '')
+            || $this->dateRange !== null
+            || $this->sort !== SearchSortMode::Relevance;
     }
 
     /** @return list<string> */
