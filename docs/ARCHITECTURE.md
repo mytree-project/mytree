@@ -137,7 +137,9 @@ forms and immutable ClaimRevision provenance.
 Candidate limits apply to complete Source candidates, not individual matching index
 rows. A truncated Source window is explicitly signalled rather than presented as
 an exhaustive result count. Maintained dictionary variants, native import/export,
-optional bounded fuzzy matching is now implemented; structured date/place filtering remains pending M5 slices.
+optional bounded fuzzy matching is now implemented; C2 adds typed date interval
+projection, Source-local place/source-type/date filters and deterministic sorting.
+The common category-aware SearchResult envelope remains a follow-up M5 slice.
 
 ## Maintained Search variant dataset
 
@@ -254,8 +256,14 @@ window via a database-side first-letter name/place filter and hydrates
 complete matching Source entries. Application's Unicode Levenshtein matcher
 then applies the configured threshold, weight and provenance; no fuzzy
 matching is applied to Source metadata. Neither mechanism rewrites Claim
-history. Additional date/place filters, sorting and the extensible SearchResult
-envelope remain separate #184 slices.
+history. C2 adds `search_document_dates` as a rebuildable projection of current accepted
+Date Claims and recognized Source metadata dates. The application defines
+historical date overlap and three sort modes; Infrastructure filters the
+bounded Source-candidate window using indexed interval and structured
+`place.name` rows before Application assigns retrieval rank. Query-time place
+dictionary changes do not alter the index. Source-added sort reads the
+immutable creation timestamp from `sources`. The extensible SearchResult
+envelope remains a separate #184 slice.
 
 ### Not yet implemented
 

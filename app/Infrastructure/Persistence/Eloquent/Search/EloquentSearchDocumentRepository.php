@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Persistence\Eloquent\Search;
 
+use App\Application\Search\SearchDateSpan;
 use App\Application\Search\SearchDocument;
+use App\Application\Search\SearchDocumentDate;
 use App\Application\Search\SearchDocumentEntry;
 use App\Application\Search\SearchDocumentRepository;
 use App\Application\Search\SearchValueOrigin;
@@ -34,12 +36,24 @@ final class EloquentSearchDocumentRepository implements SearchDocumentRepository
                     'index_signature' => $document->indexSignature,
                     'stale' => $document->stale,
                     'built_at' => $document->builtAt,
+                    'source_date_ordinal' => $document->sourceDateOrdinal,
                 ],
             );
 
             SearchDocumentEntryRecord::query()
                 ->where('source_id', $document->sourceId->value)
                 ->delete();
+            DB::table('search_document_dates')->where('source_id', $document->sourceId->value)->delete();
+
+            foreach ($document->dates as $date) {
+                DB::table('search_document_dates')->insert([
+                    'source_id' => $document->sourceId->value,
+                    'field' => $date->field,
+                    'lower_ordinal' => $date->span->from,
+                    'upper_ordinal' => $date->span->to,
+                    'claim_revision_id' => $date->claimRevisionId,
+                ]);
+            }
 
             foreach ($document->entries as $entry) {
                 SearchDocumentEntryRecord::query()->create([
@@ -68,7 +82,7 @@ final class EloquentSearchDocumentRepository implements SearchDocumentRepository
         }
 
         $builtAt = $record->getAttribute('built_at');
-        if (! $builtAt instanceof DateTimeInterface) {
+        if ($builtAt instanceof DateTimeInterface === false) {
             throw new UnexpectedValueException('Stored SearchDocument built_at must be a date-time value.');
         }
 
@@ -79,7 +93,7 @@ final class EloquentSearchDocumentRepository implements SearchDocumentRepository
             ->map(static function (SearchDocumentEntryRecord $entry): SearchDocumentEntry {
                 $indexForms = $entry->getAttribute('index_forms');
 
-                if (! is_array($indexForms)) {
+                if (is_array($indexForms) === false) {
                     throw new UnexpectedValueException('Stored SearchDocument index forms must be an array.');
                 }
 
@@ -106,6 +120,17 @@ final class EloquentSearchDocumentRepository implements SearchDocumentRepository
             })
             ->all());
 
+        $dates = DB::table('search_document_dates')
+            ->where('source_id', $sourceId->value)
+            ->orderBy('id')
+            ->get()
+            ->map(static fn (object $date): SearchDocumentDate => new SearchDocumentDate(
+                field: (string) $date->field,
+                span: new SearchDateSpan((int) $date->lower_ordinal, (int) $date->upper_ordinal),
+                claimRevisionId: $date->claim_revision_id === null ? null : (string) $date->claim_revision_id,
+            ))
+            ->all();
+
         return new SearchDocument(
             sourceId: new SourceId((string) $record->source_id),
             evidenceStateId: new EvidenceStateId((string) $record->evidence_state_id),
@@ -117,6 +142,8 @@ final class EloquentSearchDocumentRepository implements SearchDocumentRepository
             entries: $entries,
             stale: (bool) $record->stale,
             builtAt: DateTimeImmutable::createFromInterface($builtAt),
+            sourceDateOrdinal: $record->source_date_ordinal === null ? null : (int) $record->source_date_ordinal,
+            dates: array_values($dates),
         );
     }
 

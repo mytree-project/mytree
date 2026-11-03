@@ -29,6 +29,7 @@ final class SearchDocumentRecord extends Model
         'index_signature',
         'stale',
         'built_at',
+        'source_date_ordinal',
     ];
 
     /** @return array<string, string> */
@@ -37,6 +38,7 @@ final class SearchDocumentRecord extends Model
         return [
             'stale' => 'boolean',
             'built_at' => 'immutable_datetime',
+            'source_date_ordinal' => 'integer',
         ];
     }
 }

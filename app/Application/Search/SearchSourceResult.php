@@ -19,6 +19,8 @@ final readonly class SearchSourceResult
         public int $score,
         public bool $stale,
         array $matchReasons,
+        public ?int $sourceDateOrdinal = null,
+        public string $sourceCreatedAt = '',
     ) {
         $this->matchReasons = $matchReasons;
     }

@@ -8,7 +8,7 @@ use App\Domain\Acquisition\PredicateKey;
 
 final readonly class SearchIndexProfile
 {
-    public const SCHEMA_VERSION = 1;
+    public const SCHEMA_VERSION = 2;
 
     /** @var list<PredicateKey> */
     public array $searchablePredicates;

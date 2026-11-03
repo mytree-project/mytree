@@ -36,7 +36,7 @@ The current implemented baseline contains:
 
 Source Acquisition is therefore implemented through the M4 Basic Source Acquisition baseline. The editing UI composes one Source-scoped draft and saves through Application use cases; templates and supported-field metadata do not become a second domain model or overwrite Source/Mention/Claim truth. Existing unsupported data is not silently discarded, and persisted Claim provenance, qualifiers and SourceLocators remain part of the authoritative acquisition state.
 
-External provider integration and MyTree Engine integration are not implemented by this baseline. M5 Search is **partially implemented**: technical and maintained-dictionary query-time matching are present, while remaining date/place filters and sort modes, and complete SearchResult category contracts remain follow-up slices of mytree-project/mytree-project#184.
+External provider integration and MyTree Engine integration are not implemented by this baseline. M5 Search is **partially implemented**: technical and maintained-dictionary query-time matching are present, while the common SearchResult category contract and final hardening remain follow-up slices of mytree-project/mytree-project#184.
 
 ## Search development status
 
@@ -61,7 +61,24 @@ Levenshtein similarity (four to 64 characters); this initial fallback can miss
 typos in the first letter, and a truncated fuzzy candidate window is explicitly
 signalled. The application assigns a lower match weight than dictionary
 mappings and explains the similarity and underlying Claim provenance.
-Remaining date/place filters and sorting remain tracked under #184. Do not interpret the dictionary integration as complete M5 Search.
+C2 adds combinable Source-type, place and historical-date range filters plus
+relevance, Source date and Source-added sorting. Filters may be applied without
+entering a text query. Place filtering uses the same technical forms and
+application-owned query-time dictionary as `place.name` searching. Date filtering
+uses inclusive interval overlap against projected `DateClaimValue` (including
+year/month precision and date ranges) and explicitly recognized Source metadata
+(`date` or paired `date_from` / `date_to`, formatted as YYYY[-MM[-DD]]).
+Uncertain/approximate Claim dates use their recorded anchor, not a fabricated
+uncertainty interval. Source date sort (newest first, null last) uses the
+earliest Source-metadata date, falling back to the earliest accepted date
+Claim; Source-added sort uses `sources.created_at`. Candidate windows remain
+bounded and indicate truncation.
+
+**After deploying C2, run `php artisan migrate` and
+`php artisan search:rebuild-all`** (with a queue worker) to populate
+historical date intervals for existing projections. The Search index profile
+signature is bumped so old projections can be identified as outdated.
+The category-aware SearchResult envelope and final hardening remain under #184. Do not interpret the dictionary integration as complete M5 Search.
 
 Useful existing administrative commands (with a running queue worker) are `php artisan search:rebuild <source-uuid>`, `php artisan search:rebuild-stale`, and `php artisan search:rebuild-all`. They queue Source SearchDocument refreshes.
 

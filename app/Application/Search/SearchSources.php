@@ -22,60 +22,65 @@ final readonly class SearchSources
         $terms = $request->terms();
         $perPage = min($request->perPage, $this->configuration->maxPageSize);
 
-        if ($terms === []) {
+        if ($terms === [] && ! $request->hasScope()) {
             return new SearchPage([], $request->page, $perPage, 0, false, false);
         }
 
-        $queryTerms = [];
-        foreach ($terms as $term) {
-            $technical = array_slice(
-                $this->nameProcessor->indexForms(
-                    new SearchNameInput($term, SearchNameType::Other),
-                    $this->indexProfile->nameProcessing,
-                ),
-                0,
-                $this->configuration->queryExpansionLimit + 1,
-            );
-            $variants = [];
-            foreach ([SearchNameType::GivenName, SearchNameType::Surname, SearchNameType::PlaceName] as $type) {
-                foreach ($this->dictionary->variants($term, $type) as $candidate) {
-                    $forms = $this->nameProcessor->indexForms(
-                        new SearchNameInput($candidate->value, $type),
-                        $this->indexProfile->nameProcessing,
-                    );
-                    $variants[] = new SearchQueryVariant($candidate, $forms);
-                }
-            }
+        $placeTerm = $request->place !== null && trim($request->place) !== ''
+            ? $this->makeTerm(trim($request->place), SearchNameType::PlaceName)
+            : null;
 
-            // Literal/technical forms take precedence; remaining capacity is
-            // assigned to deterministic dictionary candidates.
-            usort($variants, static fn (SearchQueryVariant $a, SearchQueryVariant $b): int => strcmp(
-                $a->field().'|'.$a->candidate->value.'|'.$a->candidate->groupId,
-                $b->field().'|'.$b->candidate->value.'|'.$b->candidate->groupId,
-            ));
-            $available = max(0, $this->configuration->queryExpansionLimit - max(0, count($technical) - 1));
-            $queryTerms[] = new SearchQueryTerm(
-                value: $term,
-                comparisonForms: $technical,
-                variants: array_slice($variants, 0, $available),
+        if ($terms === []) {
+            $batch = $this->candidates->findSources(
+                sourceTypeKeys: $request->sourceTypeKeys,
+                limit: $this->configuration->candidateLimit,
+                dateRange: $request->dateRange,
+                place: $placeTerm,
+                sort: $request->sort,
             );
+            $results = array_map(
+                static fn (SearchSourceCandidate $candidate): SearchSourceResult => new SearchSourceResult(
+                    sourceId: $candidate->sourceId,
+                    sourceName: $candidate->sourceName,
+                    sourceTypeKey: $candidate->sourceTypeKey,
+                    score: 0,
+                    stale: $candidate->stale,
+                    matchReasons: [],
+                    sourceDateOrdinal: $candidate->sourceDateOrdinal,
+                    sourceCreatedAt: $candidate->sourceCreatedAt,
+                ),
+                $batch->sources,
+            );
+
+            return $this->page($results, $request, $perPage, $batch->truncated);
         }
+
+        $queryTerms = array_map(
+            fn (string $term): SearchQueryTerm => $this->makeTerm($term),
+            $terms,
+        );
 
         $batch = $this->candidates->find(
             terms: $queryTerms,
             sourceTypeKeys: $request->sourceTypeKeys,
             limit: $this->configuration->candidateLimit,
+            dateRange: $request->dateRange,
+            place: $placeTerm,
+            sort: $request->sort,
         );
         $fuzzyBatch = $this->configuration->fuzzyEnabled
             ? $this->candidates->findFuzzy(
                 terms: $queryTerms,
                 sourceTypeKeys: $request->sourceTypeKeys,
                 limit: $this->configuration->fuzzyCandidateLimit,
+                dateRange: $request->dateRange,
+                place: $placeTerm,
+                sort: $request->sort,
             )
             : new DirectSearchCandidateBatch([], false);
         $truncated = $batch->truncated || $fuzzyBatch->truncated;
 
-        /** @var array<string, array{source_id: SourceId, source_name: ?string, source_type_key: string, stale: bool, reasons: list<SearchMatchReason>, matched_terms: array<string, true>}> $grouped */
+        /** @var array<string, array{source_id: SourceId, source_name: ?string, source_type_key: string, stale: bool, source_date_ordinal: ?int, source_created_at: string, reasons: list<SearchMatchReason>, matched_terms: array<string, true>}> $grouped */
         $grouped = [];
 
         foreach ([...$batch->candidates, ...$fuzzyBatch->candidates] as $candidate) {
@@ -102,6 +107,8 @@ final readonly class SearchSources
                         'source_name' => $candidate->sourceName,
                         'source_type_key' => $candidate->sourceTypeKey,
                         'stale' => $candidate->stale,
+                        'source_date_ordinal' => $candidate->sourceDateOrdinal,
+                        'source_created_at' => $candidate->sourceCreatedAt,
                         'reasons' => [],
                         'matched_terms' => [],
                     ];
@@ -126,13 +133,83 @@ final readonly class SearchSources
                 score: $this->score($reasons, $terms),
                 stale: $group['stale'],
                 matchReasons: $reasons,
+                sourceDateOrdinal: $group['source_date_ordinal'],
+                sourceCreatedAt: $group['source_created_at'],
             );
         }
 
-        usort($results, static function (SearchSourceResult $left, SearchSourceResult $right): int {
-            $byScore = $right->score <=> $left->score;
+        return $this->page($results, $request, $perPage, $truncated);
+    }
 
-            return $byScore !== 0 ? $byScore : strcmp($left->sourceId->value, $right->sourceId->value);
+    private function makeTerm(string $term, ?SearchNameType $onlyType = null): SearchQueryTerm
+    {
+        $technical = array_slice(
+            $this->nameProcessor->indexForms(
+                new SearchNameInput($term, $onlyType ?? SearchNameType::Other),
+                $this->indexProfile->nameProcessing,
+            ),
+            0,
+            $this->configuration->queryExpansionLimit + 1,
+        );
+        $variants = [];
+        $types = $onlyType === null
+            ? [SearchNameType::GivenName, SearchNameType::Surname, SearchNameType::PlaceName]
+            : [$onlyType];
+        foreach ($types as $type) {
+            foreach ($this->dictionary->variants($term, $type) as $candidate) {
+                $forms = $this->nameProcessor->indexForms(
+                    new SearchNameInput($candidate->value, $type),
+                    $this->indexProfile->nameProcessing,
+                );
+                $variants[] = new SearchQueryVariant($candidate, $forms);
+            }
+        }
+
+        // Literal/technical forms take precedence; remaining capacity is
+        // assigned to deterministic dictionary candidates.
+        usort($variants, static fn (SearchQueryVariant $a, SearchQueryVariant $b): int => strcmp(
+            $a->field().'|'.$a->candidate->value.'|'.$a->candidate->groupId,
+            $b->field().'|'.$b->candidate->value.'|'.$b->candidate->groupId,
+        ));
+        $available = max(0, $this->configuration->queryExpansionLimit - max(0, count($technical) - 1));
+
+        return new SearchQueryTerm(
+            value: $term,
+            comparisonForms: $technical,
+            variants: array_slice($variants, 0, $available),
+        );
+    }
+
+    /**
+     * @param  list<SearchSourceResult>  $results
+     */
+    private function page(array $results, SearchRequest $request, int $perPage, bool $truncated): SearchPage
+    {
+        usort($results, static function (SearchSourceResult $left, SearchSourceResult $right) use ($request): int {
+            if ($request->sort === SearchSortMode::SourceDate) {
+                if ($left->sourceDateOrdinal === null && $right->sourceDateOrdinal !== null) {
+                    return 1;
+                }
+                if ($right->sourceDateOrdinal === null && $left->sourceDateOrdinal !== null) {
+                    return -1;
+                }
+                $byDate = $right->sourceDateOrdinal <=> $left->sourceDateOrdinal;
+                if ($byDate !== 0) {
+                    return $byDate;
+                }
+            } elseif ($request->sort === SearchSortMode::SourceAdded) {
+                $byCreated = strcmp($right->sourceCreatedAt, $left->sourceCreatedAt);
+                if ($byCreated !== 0) {
+                    return $byCreated;
+                }
+            } else {
+                $byScore = $right->score <=> $left->score;
+                if ($byScore !== 0) {
+                    return $byScore;
+                }
+            }
+
+            return strcmp($left->sourceId->value, $right->sourceId->value);
         });
 
         $total = $truncated ? null : count($results);

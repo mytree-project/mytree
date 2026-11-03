@@ -24,5 +24,7 @@ final readonly class DirectSearchCandidate
         public ?string $representationRelation = null,
         /** @var list<string> */
         public array $indexForms = [],
+        public ?int $sourceDateOrdinal = null,
+        public string $sourceCreatedAt = '',
     ) {}
 }

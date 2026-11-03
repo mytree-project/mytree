@@ -14,11 +14,22 @@ interface DirectSearchCandidateRepository
         array $terms,
         array $sourceTypeKeys,
         int $limit,
+        ?SearchDateSpan $dateRange = null,
+        ?SearchQueryTerm $place = null,
+        SearchSortMode $sort = SearchSortMode::Relevance,
     ): DirectSearchCandidateBatch;
 
+    /** @param  list<string>  $sourceTypeKeys */
+    public function findSources(
+        array $sourceTypeKeys,
+        int $limit,
+        ?SearchDateSpan $dateRange = null,
+        ?SearchQueryTerm $place = null,
+        SearchSortMode $sort = SearchSortMode::Relevance,
+    ): SearchSourceCandidateBatch;
+
     /**
-     * Retrieves a bounded Source-complete fuzzy candidate window; similarity
-     * and matching policy are evaluated by Application Search.
+     * Retrieves a bounded Source-complete fuzzy candidate window.
      *
      * @param  list<SearchQueryTerm>  $terms
      * @param  list<string>  $sourceTypeKeys
@@ -27,5 +38,8 @@ interface DirectSearchCandidateRepository
         array $terms,
         array $sourceTypeKeys,
         int $limit,
+        ?SearchDateSpan $dateRange = null,
+        ?SearchQueryTerm $place = null,
+        SearchSortMode $sort = SearchSortMode::Relevance,
     ): DirectSearchCandidateBatch;
 }
