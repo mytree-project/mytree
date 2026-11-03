@@ -13,6 +13,7 @@ final readonly class SearchSources
         private SearchRuntimeConfiguration $configuration,
         private SearchNameProcessor $nameProcessor,
         private SearchIndexProfile $indexProfile,
+        private SearchVariantDictionary $dictionary,
     ) {}
 
     public function handle(SearchRequest $request): SearchPage
@@ -24,20 +25,40 @@ final readonly class SearchSources
             return new SearchPage([], $request->page, $perPage, 0, false, false);
         }
 
-        $queryTerms = array_map(
-            fn (string $term): SearchQueryTerm => new SearchQueryTerm(
-                value: $term,
-                comparisonForms: array_slice(
-                    $this->nameProcessor->indexForms(
-                        new SearchNameInput($term, SearchNameType::Other),
-                        $this->indexProfile->nameProcessing,
-                    ),
-                    0,
-                    $this->configuration->queryExpansionLimit + 1,
+        $queryTerms = [];
+        foreach ($terms as $term) {
+            $technical = array_slice(
+                $this->nameProcessor->indexForms(
+                    new SearchNameInput($term, SearchNameType::Other),
+                    $this->indexProfile->nameProcessing,
                 ),
-            ),
-            $terms,
-        );
+                0,
+                $this->configuration->queryExpansionLimit + 1,
+            );
+            $variants = [];
+            foreach ([SearchNameType::GivenName, SearchNameType::Surname, SearchNameType::PlaceName] as $type) {
+                foreach ($this->dictionary->variants($term, $type) as $candidate) {
+                    $forms = $this->nameProcessor->indexForms(
+                        new SearchNameInput($candidate->value, $type),
+                        $this->indexProfile->nameProcessing,
+                    );
+                    $variants[] = new SearchQueryVariant($candidate, $forms);
+                }
+            }
+
+            // Literal/technical forms take precedence; remaining capacity is
+            // assigned to deterministic dictionary candidates.
+            usort($variants, static fn (SearchQueryVariant $a, SearchQueryVariant $b): int => strcmp(
+                $a->field().'|'.$a->candidate->value.'|'.$a->candidate->groupId,
+                $b->field().'|'.$b->candidate->value.'|'.$b->candidate->groupId,
+            ));
+            $available = max(0, $this->configuration->queryExpansionLimit - max(0, count($technical) - 1));
+            $queryTerms[] = new SearchQueryTerm(
+                value: $term,
+                comparisonForms: $technical,
+                variants: array_slice($variants, 0, $available),
+            );
+        }
 
         $batch = $this->candidates->find(
             terms: $queryTerms,
@@ -51,12 +72,12 @@ final readonly class SearchSources
         foreach ($batch->candidates as $candidate) {
             $sourceKey = $candidate->sourceId->value;
             foreach ($queryTerms as $term) {
-                $matchedForm = $this->matchedForm($candidate, $term);
-                if ($matchedForm === null) {
+                $match = $this->matchedForm($candidate, $term);
+                if ($match === null) {
                     continue;
                 }
 
-                $reason = $this->reasonFor($candidate, $term->value, $matchedForm);
+                $reason = $this->reasonFor($candidate, $term->value, $match['form'], $match['variant']);
                 if (! isset($grouped[$sourceKey])) {
                     $grouped[$sourceKey] = [
                         'source_id' => $candidate->sourceId,
@@ -111,10 +132,11 @@ final readonly class SearchSources
         );
     }
 
-    private function matchedForm(DirectSearchCandidate $candidate, SearchQueryTerm $term): ?string
+    /** @return array{form: string, variant: ?SearchVariantCandidate}|null */
+    private function matchedForm(DirectSearchCandidate $candidate, SearchQueryTerm $term): ?array
     {
         if ($candidate->matchedValue === $term->value) {
-            return $term->value;
+            return ['form' => $term->value, 'variant' => null];
         }
 
         if ($candidate->origin === SearchValueOrigin::SourceMetadata) {
@@ -123,7 +145,18 @@ final readonly class SearchSources
 
         foreach ($term->comparisonForms as $form) {
             if (in_array($form, $candidate->indexForms, true)) {
-                return $form;
+                return ['form' => $form, 'variant' => null];
+            }
+        }
+
+        foreach ($term->variants as $variant) {
+            if ($variant->field() !== $candidate->field) {
+                continue;
+            }
+            foreach ($variant->forms as $form) {
+                if (in_array($form, $candidate->indexForms, true)) {
+                    return ['form' => $form, 'variant' => $variant->candidate];
+                }
             }
         }
 
@@ -134,6 +167,7 @@ final readonly class SearchSources
         DirectSearchCandidate $candidate,
         string $queryTerm,
         string $matchedForm,
+        ?SearchVariantCandidate $variant,
     ): SearchMatchReason {
         if ($candidate->matchedValue === $queryTerm) {
             [$type, $weight] = match ($candidate->origin) {
@@ -150,6 +184,9 @@ final readonly class SearchSources
                     $this->configuration->sourceRepresentationWeight,
                 ],
             };
+        } elseif ($variant !== null) {
+            $type = SearchMatchType::DictionaryVariant;
+            $weight = $this->configuration->dictionaryVariantWeight;
         } else {
             $type = SearchMatchType::TechnicalComparison;
             $weight = $this->configuration->technicalComparisonWeight;
@@ -168,6 +205,10 @@ final readonly class SearchSources
             script: $candidate->script,
             representationRelation: $candidate->representationRelation,
             matchedForm: $matchedForm,
+            datasetId: $variant?->datasetId,
+            datasetVersion: $variant?->datasetVersion,
+            datasetSignature: $variant?->datasetSignature,
+            variantGroupId: $variant?->groupId,
         );
     }
 
@@ -202,6 +243,8 @@ final readonly class SearchSources
                 $reason->field,
                 $reason->matchedValue,
                 $reason->matchedForm ?? '',
+                $reason->datasetSignature ?? '',
+                $reason->variantGroupId ?? '',
                 $reason->mentionId ?? '',
                 $reason->claimId ?? '',
                 $reason->claimRevisionId ?? '',

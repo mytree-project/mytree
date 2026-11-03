@@ -139,6 +139,17 @@ rows. A truncated Source window is explicitly signalled rather than presented as
 an exhaustive result count. Maintained dictionary variants, native import/export,
 fuzzy matching and structured date/place filtering remain pending M5 slices.
 
+## Maintained Search variant dataset
+
+The Settings page edits and imports/exports a single application-owned
+`mytree.name-variants.v1` dataset. Native format validation, serialization and
+variant resolution remain in `mytree/name-processing`; Eloquent persists an
+atomic, versioned working copy, falling back to the package's read-only seed
+dataset before an editor saves/imports it. The Search application boundary
+exposes candidate variants and native import/export without depending on
+package DTOs. Updates take effect at query time and never rewrite accepted
+EvidenceState, Claim history or SearchDocument index forms.
+
 ## Current baseline mapping
 
 The repository now contains real framework-independent MyTree Domain and Application code. The earlier M0/M1 baseline in which these layers were intentionally empty is no longer current.

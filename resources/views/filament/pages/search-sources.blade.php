@@ -97,6 +97,9 @@
                                         @if ($reason->matchedForm !== null && $reason->matchedForm !== $reason->matchedValue)
                                             <span>{{ __('search.matched_form', ['form' => $reason->matchedForm]) }}</span>
                                         @endif
+                                        @if ($reason->datasetId !== null)
+                                            <span>{{ __('search.dictionary_origin', ['dataset' => $reason->datasetId, 'version' => $reason->datasetVersion, 'group' => $reason->variantGroupId]) }}</span>
+                                        @endif
                                         @if ($reason->mentionId !== null)
                                             <span>{{ __('search.mention_id', ['id' => $reason->mentionId]) }}</span>
                                         @endif

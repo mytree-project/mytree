@@ -28,6 +28,14 @@ final class EloquentDirectSearchCandidateRepository implements DirectSearchCandi
             ->where(static function (Builder $match) use ($terms, $values): void {
                 $match->whereIn('entry.value', $values);
                 foreach ($terms as $term) {
+                    foreach ($term->variants as $variant) {
+                        foreach ($variant->forms as $form) {
+                            $match->orWhere(static function (Builder $comparison) use ($form, $variant): void {
+                                $comparison->where('entry.field', $variant->field())
+                                    ->whereJsonContains('entry.index_forms', $form);
+                            });
+                        }
+                    }
                     foreach ($term->comparisonForms as $form) {
                         $match->orWhere(static function (Builder $comparison) use ($form): void {
                             $comparison->where('entry.origin', '!=', SearchValueOrigin::SourceMetadata->value)

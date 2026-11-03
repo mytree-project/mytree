@@ -13,12 +13,17 @@ use App\Application\Search\SearchNameProcessor;
 use App\Application\Search\SearchProjectionRebuildTargetRepository;
 use App\Application\Search\SearchProjectionScheduler;
 use App\Application\Search\SearchRuntimeConfiguration;
+use App\Application\Search\SearchVariantDatasetStore;
+use App\Application\Search\SearchVariantDictionary;
 use App\Infrastructure\Persistence\Eloquent\Search\EloquentCurrentEvidenceStateLookup;
 use App\Infrastructure\Persistence\Eloquent\Search\EloquentDirectSearchCandidateRepository;
 use App\Infrastructure\Persistence\Eloquent\Search\EloquentSearchDocumentRepository;
 use App\Infrastructure\Persistence\Eloquent\Search\EloquentSearchProjectionRebuildTargetRepository;
+use App\Infrastructure\Persistence\Eloquent\Search\EloquentSearchVariantDatasetStore;
 use App\Infrastructure\Search\LaravelSearchProjectionScheduler;
 use App\Infrastructure\Search\NameProcessingSearchNameProcessor;
+use App\Infrastructure\Search\NameProcessingSearchVariantDictionary;
+use App\Infrastructure\Search\StoredSearchVariantRepository;
 use Composer\InstalledVersions;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
@@ -27,6 +32,8 @@ use MyTree\NameProcessing\Folding\IcuNameFolder;
 use MyTree\NameProcessing\Normalization\IcuNameNormalizer;
 use MyTree\NameProcessing\Profile\JsonProfileRepository;
 use MyTree\NameProcessing\Transliteration\IcuTransliterator;
+use MyTree\NameProcessing\Variants\JsonVariantRepository;
+use MyTree\NameProcessing\Variants\VariantDatasetJsonCodec;
 
 final class SearchServiceProvider extends ServiceProvider
 {
@@ -82,9 +89,35 @@ final class SearchServiceProvider extends ServiceProvider
                 directClaimValueWeight: (int) config('search.ranking.direct_claim_value', 100),
                 sourceRepresentationWeight: (int) config('search.ranking.source_representation', 90),
                 technicalComparisonWeight: (int) config('search.ranking.technical_comparison', 80),
+                dictionaryVariantWeight: (int) config('search.ranking.dictionary_variant', 65),
                 sameMentionBonus: (int) config('search.ranking.same_mention_bonus', 5),
             ),
         );
+        $this->app->bind(SearchVariantDatasetStore::class, EloquentSearchVariantDatasetStore::class);
+        $this->app->bind(SearchVariantDictionary::class, static function (Application $app): SearchVariantDictionary {
+            $packageRoot = InstalledVersions::getInstallPath('mytree/name-processing');
+            if ($packageRoot === null) {
+                throw new LogicException('Installed mytree/name-processing package path is unavailable.');
+            }
+
+            $codec = new VariantDatasetJsonCodec;
+            $store = $app->make(SearchVariantDatasetStore::class);
+            $profiles = new JsonProfileRepository($packageRoot.'/resources/profiles');
+            $repository = new StoredSearchVariantRepository(
+                $store,
+                new JsonVariantRepository($packageRoot.'/resources/variants', $codec),
+                $codec,
+            );
+
+            return new NameProcessingSearchVariantDictionary(
+                repository: $repository,
+                store: $store,
+                codec: $codec,
+                profiles: $profiles,
+                normalizer: new IcuNameNormalizer($profiles),
+                profileId: (string) config('search.variants_profile', 'genealogy-pl-ru'),
+            );
+        });
         $this->app->bind(SearchDocumentRepository::class, EloquentSearchDocumentRepository::class);
         $this->app->bind(CurrentEvidenceStateLookup::class, EloquentCurrentEvidenceStateLookup::class);
         $this->app->bind(DirectSearchCandidateRepository::class, EloquentDirectSearchCandidateRepository::class);
