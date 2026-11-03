@@ -6,8 +6,8 @@ namespace App\Infrastructure\Persistence\Eloquent\Search;
 
 use App\Application\Search\SearchDateSpan;
 use App\Application\Search\SearchDocument;
-use App\Application\Search\SearchDocumentEntry;
 use App\Application\Search\SearchDocumentDate;
+use App\Application\Search\SearchDocumentEntry;
 use App\Application\Search\SearchDocumentRepository;
 use App\Application\Search\SearchValueOrigin;
 use App\Domain\Acquisition\EvidenceStateId;
