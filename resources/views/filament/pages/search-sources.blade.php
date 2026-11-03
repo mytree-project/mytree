@@ -18,6 +18,48 @@
             </p>
         </div>
 
+        <section class="grid gap-4 rounded-xl border border-gray-200 p-4 dark:border-white/10 sm:grid-cols-2 lg:grid-cols-5" aria-label="{{ __('search.filters_title') }}">
+            <div class="space-y-2">
+                <label for="mytree-search-type" class="text-sm font-medium">{{ __('search.filter_source_type') }}</label>
+                <x-filament::input.wrapper>
+                    <x-filament::input id="mytree-search-type" type="text" wire:model.live.debounce.300ms="sourceTypeFilter" placeholder="civil.birth" />
+                </x-filament::input.wrapper>
+            </div>
+            <div class="space-y-2">
+                <label for="mytree-search-place" class="text-sm font-medium">{{ __('search.filter_place') }}</label>
+                <x-filament::input.wrapper>
+                    <x-filament::input id="mytree-search-place" type="text" wire:model.live.debounce.300ms="placeFilter" placeholder="{{ __('search.filter_place_example') }}" />
+                </x-filament::input.wrapper>
+            </div>
+            <div class="space-y-2">
+                <label for="mytree-search-from" class="text-sm font-medium">{{ __('search.filter_from') }}</label>
+                <x-filament::input.wrapper>
+                    <x-filament::input id="mytree-search-from" type="text" wire:model.live.debounce.300ms="dateFrom" placeholder="YYYY[-MM[-DD]]" />
+                </x-filament::input.wrapper>
+            </div>
+            <div class="space-y-2">
+                <label for="mytree-search-to" class="text-sm font-medium">{{ __('search.filter_to') }}</label>
+                <x-filament::input.wrapper>
+                    <x-filament::input id="mytree-search-to" type="text" wire:model.live.debounce.300ms="dateTo" placeholder="YYYY[-MM[-DD]]" />
+                </x-filament::input.wrapper>
+            </div>
+            <div class="space-y-2">
+                <label for="mytree-search-sort" class="text-sm font-medium">{{ __('search.sort_label') }}</label>
+                <select
+                    id="mytree-search-sort"
+                    wire:model.live="sortMode"
+                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-950 dark:border-white/20 dark:bg-gray-900 dark:text-white"
+                >
+                    <option value="relevance">{{ __('search.sort_relevance') }}</option>
+                    <option value="source_date">{{ __('search.sort_source_date') }}</option>
+                    <option value="source_added">{{ __('search.sort_source_added') }}</option>
+                </select>
+            </div>
+        </section>
+        @if ($this->hasInvalidDateFilter())
+            <p class="text-sm text-danger-600 dark:text-danger-400" role="alert">{{ __('search.invalid_date_filter') }}</p>
+        @endif
+
         @php($searchPage = $this->searchPage())
 
         @if ($searchPage === null)

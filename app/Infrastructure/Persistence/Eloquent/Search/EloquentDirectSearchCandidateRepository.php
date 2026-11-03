@@ -27,8 +27,7 @@ final class EloquentDirectSearchCandidateRepository implements DirectSearchCandi
         ?SearchDateSpan $dateRange = null,
         ?SearchQueryTerm $place = null,
         SearchSortMode $sort = SearchSortMode::Relevance,
-    ): DirectSearchCandidateBatch
-    {
+    ): DirectSearchCandidateBatch {
         if ($terms === []) {
             return new DirectSearchCandidateBatch([], false);
         }

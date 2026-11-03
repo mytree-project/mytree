@@ -19,16 +19,7 @@ interface DirectSearchCandidateRepository
         SearchSortMode $sort = SearchSortMode::Relevance,
     ): DirectSearchCandidateBatch;
 
-    /**
-     * Retrieves a bounded Source-complete fuzzy candidate window; similarity
-     * and matching policy are evaluated by Application Search.
-     *
-     * @param  list<SearchQueryTerm>  $terms
-     * @param  list<string>  $sourceTypeKeys
-     */
-    /**
-     * @param  list<string>  $sourceTypeKeys
-     */
+    /** @param  list<string>  $sourceTypeKeys */
     public function findSources(
         array $sourceTypeKeys,
         int $limit,
@@ -37,6 +28,12 @@ interface DirectSearchCandidateRepository
         SearchSortMode $sort = SearchSortMode::Relevance,
     ): SearchSourceCandidateBatch;
 
+    /**
+     * Retrieves a bounded Source-complete fuzzy candidate window.
+     *
+     * @param  list<SearchQueryTerm>  $terms
+     * @param  list<string>  $sourceTypeKeys
+     */
     public function findFuzzy(
         array $terms,
         array $sourceTypeKeys,

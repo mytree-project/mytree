@@ -8,9 +8,11 @@ use App\Application\Search\SearchMatchType;
 use App\Application\Search\SearchPage;
 use App\Application\Search\SearchRequest;
 use App\Application\Search\SearchSourceResult;
+use App\Application\Search\SearchSortMode;
 use App\Application\Search\SearchSources as SearchSourcesUseCase;
 use App\Filament\Pages\Acquisition\SourceEditor;
 use Filament\Pages\Page;
+use InvalidArgumentException;
 use Livewire\Attributes\Url;
 
 final class SearchSources extends Page
@@ -24,6 +26,21 @@ final class SearchSources extends Page
     #[Url(as: 'q')]
     public string $query = '';
 
+    #[Url(as: 'type')]
+    public string $sourceTypeFilter = '';
+
+    #[Url(as: 'place')]
+    public string $placeFilter = '';
+
+    #[Url(as: 'from')]
+    public string $dateFrom = '';
+
+    #[Url(as: 'to')]
+    public string $dateTo = '';
+
+    #[Url(as: 'sort')]
+    public string $sortMode = 'relevance';
+
     public int $resultPage = 1;
 
     public static function getNavigationLabel(): string
@@ -36,14 +53,40 @@ final class SearchSources extends Page
         return __('search.title');
     }
 
-    public function updatedQuery(): void
+    public function updated(): void
     {
         $this->resultPage = 1;
     }
 
+    public function hasInvalidDateFilter(): bool
+    {
+        try {
+            new SearchRequest(
+                query: '',
+                dateFrom: $this->dateFrom,
+                dateTo: $this->dateTo,
+            );
+
+            return false;
+        } catch (InvalidArgumentException) {
+            return true;
+        }
+    }
+
     public function searchPage(): ?SearchPage
     {
-        if (trim($this->query) === '') {
+        if (
+            trim($this->query) === ''
+            && trim($this->sourceTypeFilter) === ''
+            && trim($this->placeFilter) === ''
+            && trim($this->dateFrom) === ''
+            && trim($this->dateTo) === ''
+            && $this->sortMode === SearchSortMode::Relevance->value
+        ) {
+            return null;
+        }
+
+        if ($this->hasInvalidDateFilter()) {
             return null;
         }
 
@@ -51,6 +94,11 @@ final class SearchSources extends Page
             query: $this->query,
             page: $this->resultPage,
             perPage: self::PER_PAGE,
+            sourceTypeKeys: trim($this->sourceTypeFilter) === '' ? [] : [trim($this->sourceTypeFilter)],
+            place: $this->placeFilter,
+            dateFrom: $this->dateFrom,
+            dateTo: $this->dateTo,
+            sort: SearchSortMode::tryFrom($this->sortMode) ?? SearchSortMode::Relevance,
         ));
     }
 

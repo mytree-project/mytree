@@ -143,24 +143,27 @@ final readonly class SearchSources
 
     private function makeTerm(string $term, ?SearchNameType $onlyType = null): SearchQueryTerm
     {
-            $technical = array_slice(
-                $this->nameProcessor->indexForms(
-                    new SearchNameInput($term, $onlyType ?? SearchNameType::Other),
+        $technical = array_slice(
+            $this->nameProcessor->indexForms(
+                new SearchNameInput($term, $onlyType ?? SearchNameType::Other),
+                $this->indexProfile->nameProcessing,
+            ),
+            0,
+            $this->configuration->queryExpansionLimit + 1,
+        );
+        $variants = [];
+        $types = $onlyType === null
+            ? [SearchNameType::GivenName, SearchNameType::Surname, SearchNameType::PlaceName]
+            : [$onlyType];
+        foreach ($types as $type) {
+            foreach ($this->dictionary->variants($term, $type) as $candidate) {
+                $forms = $this->nameProcessor->indexForms(
+                    new SearchNameInput($candidate->value, $type),
                     $this->indexProfile->nameProcessing,
-                ),
-                0,
-                $this->configuration->queryExpansionLimit + 1,
-            );
-            $variants = [];
-            foreach ($onlyType === null ? [SearchNameType::GivenName, SearchNameType::Surname, SearchNameType::PlaceName] : [$onlyType] as $type) {
-                foreach ($this->dictionary->variants($term, $type) as $candidate) {
-                    $forms = $this->nameProcessor->indexForms(
-                        new SearchNameInput($candidate->value, $type),
-                        $this->indexProfile->nameProcessing,
-                    );
-                    $variants[] = new SearchQueryVariant($candidate, $forms);
-                }
+                );
+                $variants[] = new SearchQueryVariant($candidate, $forms);
             }
+        }
 
         // Literal/technical forms take precedence; remaining capacity is
         // assigned to deterministic dictionary candidates.
