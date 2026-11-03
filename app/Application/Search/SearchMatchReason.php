@@ -23,5 +23,7 @@ final readonly class SearchMatchReason
         public ?string $datasetVersion = null,
         public ?string $datasetSignature = null,
         public ?string $variantGroupId = null,
+        public ?float $similarity = null,
+        public ?string $queryComparisonForm = null,
     ) {}
 }

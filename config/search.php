@@ -13,9 +13,9 @@ return [
         'fold_profile' => 'latin-search',
     ],
     'fuzzy' => [
-        'enabled' => false,
-        'threshold' => 0.78,
-        'candidate_limit' => 200,
+        'enabled' => (bool) env('SEARCH_FUZZY_ENABLED', false),
+        'threshold' => (float) env('SEARCH_FUZZY_THRESHOLD', 0.78),
+        'candidate_limit' => (int) env('SEARCH_FUZZY_CANDIDATE_LIMIT', 200),
     ],
     'ranking' => [
         'direct_source_metadata' => 100,
@@ -23,6 +23,7 @@ return [
         'source_representation' => 90,
         'technical_comparison' => 80,
         'dictionary_variant' => 65,
+        'fuzzy_comparison' => 50,
         'same_mention_bonus' => 5,
     ],
 ];
