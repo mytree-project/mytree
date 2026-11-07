@@ -28,9 +28,9 @@ final readonly class ClaimDerivation
     public array $assumptions;
 
     /**
-     * @param list<ClaimRevisionId> $inputClaimRevisionIds
-     * @param list<MentionRevisionId> $inputMentionRevisionIds
-     * @param array<string, mixed> $assumptions
+     * @param  list<ClaimRevisionId>  $inputClaimRevisionIds
+     * @param  list<MentionRevisionId>  $inputMentionRevisionIds
+     * @param  array<string, mixed>  $assumptions
      */
     public function __construct(
         public string $ruleId,
@@ -158,9 +158,11 @@ final readonly class ClaimDerivation
 
     /**
      * @template T of ClaimRevisionId|MentionRevisionId
-     * @param list<T> $ids
-     * @param class-string<T> $type
-     * @return list<T>
+     *
+     * @param  list<T>  $ids
+     * @param  class-string<T>  $type
+     *
+     * @return  list<T>
      */
     private static function normalizeIds(array $ids, string $type, string $name, bool $required = false): array
     {
@@ -170,7 +172,7 @@ final readonly class ClaimDerivation
 
         $byValue = [];
         foreach ($ids as $id) {
-            if (! $id instanceof $type) {
+            if (! ($id instanceof $type)) {
                 throw new InvalidArgumentException(sprintf('Claim derivation %s identity has an invalid type.', $name));
             }
             if (isset($byValue[$id->value])) {
@@ -196,8 +198,8 @@ final readonly class ClaimDerivation
     }
 
     /**
-     * @param array<string, mixed> $payload
-     * @return list<string>
+     * @param  array<string, mixed>  $payload
+     * @return  list<string>
      */
     private static function stringListAt(array $payload, string $key): array
     {
