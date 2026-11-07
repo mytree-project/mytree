@@ -67,6 +67,11 @@ final readonly class ClaimOrigin
         return new self(ClaimOriginKind::ManualDirectSource);
     }
 
+    public static function derived(): self
+    {
+        return new self(ClaimOriginKind::Derived);
+    }
+
     public function serialize(): string
     {
         return CanonicalJson::encode($this->toArray());
