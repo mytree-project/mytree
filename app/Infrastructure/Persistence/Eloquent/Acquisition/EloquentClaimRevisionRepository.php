@@ -79,6 +79,9 @@ final class EloquentClaimRevisionRepository implements ClaimRevisionRepository
                     if ($root === null) {
                         throw new UnexpectedValueException('Derived Claim input revision does not belong to its Source.');
                     }
+                    if ((string) $root->claim_id === $claim->id->value) {
+                        throw new UnexpectedValueException('Derived Claim cannot reference its own previous revision.');
+                    }
 
                     $rootClaim = ClaimRevisionSnapshot::rehydrate(
                         schemaVersion: (int) $root->snapshot_schema_version,
