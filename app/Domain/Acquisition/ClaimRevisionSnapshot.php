@@ -10,11 +10,15 @@ final readonly class ClaimRevisionSnapshot
 {
     public const LEGACY_SCHEMA_ID = 'mytree.claim-revision.v1';
 
-    public const SCHEMA_ID = 'mytree.claim-revision.v2';
+    public const PREVIOUS_SCHEMA_ID = 'mytree.claim-revision.v2';
+
+    public const SCHEMA_ID = 'mytree.claim-revision.v3';
 
     public const LEGACY_SCHEMA_VERSION = 1;
 
-    public const SCHEMA_VERSION = 2;
+    public const PREVIOUS_SCHEMA_VERSION = 2;
+
+    public const SCHEMA_VERSION = 3;
 
     private function __construct(
         public int $schemaVersion,
@@ -84,6 +88,7 @@ final readonly class ClaimRevisionSnapshot
                 'qualifiers' => $state->claim->qualifiers->toArray(),
                 'raw_text' => $state->claim->rawText,
                 'origin' => $state->claim->origin->toArray(),
+                'derivation' => $state->claim->derivation?->toArray(),
                 'transcription_certainty' => [
                     'code' => $state->claim->transcriptionCertainty->code,
                     'schema_version' => $state->claim->transcriptionCertainty->schemaVersion,
@@ -117,7 +122,7 @@ final readonly class ClaimRevisionSnapshot
         string $canonicalPayload,
         string $payloadHash,
     ): self {
-        if (! in_array($schemaVersion, [self::LEGACY_SCHEMA_VERSION, self::SCHEMA_VERSION], true)) {
+        if (! in_array($schemaVersion, [self::LEGACY_SCHEMA_VERSION, self::PREVIOUS_SCHEMA_VERSION, self::SCHEMA_VERSION], true)) {
             throw new InvalidArgumentException(sprintf(
                 'Unsupported ClaimRevision snapshot schema version %d.',
                 $schemaVersion,
@@ -136,9 +141,11 @@ final readonly class ClaimRevisionSnapshot
 
         $payload = CanonicalJson::decodeObject($canonicalPayload);
 
-        $expectedSchemaId = $schemaVersion === self::LEGACY_SCHEMA_VERSION
-            ? self::LEGACY_SCHEMA_ID
-            : self::SCHEMA_ID;
+        $expectedSchemaId = match ($schemaVersion) {
+            self::LEGACY_SCHEMA_VERSION => self::LEGACY_SCHEMA_ID,
+            self::PREVIOUS_SCHEMA_VERSION => self::PREVIOUS_SCHEMA_ID,
+            default => self::SCHEMA_ID,
+        };
 
         if (($payload['schema'] ?? null) !== $expectedSchemaId) {
             throw new InvalidArgumentException('Unsupported ClaimRevision snapshot schema identifier.');
@@ -162,9 +169,11 @@ final readonly class ClaimRevisionSnapshot
     {
         $payload = CanonicalJson::decodeObject($this->canonicalPayload);
 
-        $expectedSchemaId = $this->schemaVersion === self::LEGACY_SCHEMA_VERSION
-            ? self::LEGACY_SCHEMA_ID
-            : self::SCHEMA_ID;
+        $expectedSchemaId = match ($this->schemaVersion) {
+            self::LEGACY_SCHEMA_VERSION => self::LEGACY_SCHEMA_ID,
+            self::PREVIOUS_SCHEMA_VERSION => self::PREVIOUS_SCHEMA_ID,
+            default => self::SCHEMA_ID,
+        };
 
         if (($payload['schema'] ?? null) !== $expectedSchemaId) {
             throw new InvalidArgumentException('Unsupported ClaimRevision snapshot schema identifier.');
@@ -208,6 +217,11 @@ final readonly class ClaimRevisionSnapshot
             ),
             schemaVersion: self::intAt($claimPayload, 'schema_version'),
             sourceLinguisticRepresentations: $sourceLinguisticRepresentations,
+            derivation: $this->schemaVersion === self::SCHEMA_VERSION
+                ? (($derivationPayload = self::nullableObjectAt($claimPayload, 'derivation')) === null
+                    ? null
+                    : ClaimDerivation::fromArray($derivationPayload))
+                : null,
         );
 
         $sourceLocators = [];
