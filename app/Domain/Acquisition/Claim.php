@@ -10,7 +10,9 @@ final readonly class Claim
 {
     public const LEGACY_SCHEMA_VERSION = 1;
 
-    public const SCHEMA_VERSION = 2;
+    public const PREVIOUS_SCHEMA_VERSION = 2;
+
+    public const SCHEMA_VERSION = 3;
 
     public ClaimQualifiers $qualifiers;
 
@@ -38,13 +40,25 @@ final readonly class Claim
         ?ClaimCertainty $interpretationCertainty = null,
         public int $schemaVersion = self::SCHEMA_VERSION,
         array $sourceLinguisticRepresentations = [],
+        public ?ClaimDerivation $derivation = null,
     ) {
-        if (! in_array($schemaVersion, [self::LEGACY_SCHEMA_VERSION, self::SCHEMA_VERSION], true)) {
+        if (! in_array($schemaVersion, [self::LEGACY_SCHEMA_VERSION, self::PREVIOUS_SCHEMA_VERSION, self::SCHEMA_VERSION], true)) {
             throw new InvalidArgumentException('Unsupported Claim schema version.');
         }
 
         if ($schemaVersion === self::LEGACY_SCHEMA_VERSION && $sourceLinguisticRepresentations !== []) {
             throw new InvalidArgumentException('Legacy Claim schema cannot contain source linguistic representations.');
+        }
+
+        $actualOrigin = $origin ?? ClaimOrigin::manualDirectSource();
+        if (($actualOrigin->kind === ClaimOriginKind::Derived) !== ($derivation !== null)) {
+            throw new InvalidArgumentException('Derived Claim origin requires derivation lineage and direct origin forbids it.');
+        }
+        if ($derivation !== null && $schemaVersion !== self::SCHEMA_VERSION) {
+            throw new InvalidArgumentException('Derived Claim requires the current Claim schema version.');
+        }
+        if ($derivation !== null && $sourceLinguisticRepresentations !== []) {
+            throw new InvalidArgumentException('Derived Claim cannot own source-supplied linguistic representations.');
         }
 
         if ($rawText !== null && trim($rawText) === '') {
@@ -71,7 +85,7 @@ final readonly class Claim
             $sourceLinguisticRepresentations,
         );
         $this->qualifiers = $qualifiers ?? ClaimQualifiers::empty();
-        $this->origin = $origin ?? ClaimOrigin::manualDirectSource();
+        $this->origin = $actualOrigin;
         $this->transcriptionCertainty = $transcriptionCertainty ?? ClaimCertainty::unspecified();
         $this->interpretationCertainty = $interpretationCertainty ?? ClaimCertainty::unspecified();
     }
