@@ -9,6 +9,8 @@ use App\Domain\Acquisition\ClaimCertainty;
 use App\Domain\Acquisition\ClaimDerivation;
 use App\Domain\Acquisition\ClaimId;
 use App\Domain\Acquisition\ClaimOrigin;
+use App\Domain\Acquisition\ClaimOriginKind;
+use InvalidArgumentException;
 use App\Domain\Acquisition\ClaimQualifiers;
 use App\Domain\Acquisition\ClaimValue;
 use App\Domain\Acquisition\MentionId;
@@ -45,6 +47,12 @@ final readonly class UpdateClaim
     ): Claim {
         $current = $this->claims->find($sourceId, $claimId)
             ?? throw ClaimNotFound::forSourceAndId($sourceId, $claimId);
+        $nextOrigin = $origin ?? $current->origin;
+        if (($current->origin->kind === ClaimOriginKind::Derived)
+            !== ($nextOrigin->kind === ClaimOriginKind::Derived)) {
+            throw new InvalidArgumentException('A Claim cannot switch between Direct and Derived origin.');
+        }
+
         $representations = $sourceLinguisticRepresentations ?? $current->sourceLinguisticRepresentations;
         $schemaVersion = $representations === [] && $derivation === null
             ? $current->schemaVersion
