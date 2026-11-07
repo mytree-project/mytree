@@ -10,13 +10,13 @@ use App\Domain\Acquisition\ClaimDerivation;
 use App\Domain\Acquisition\ClaimId;
 use App\Domain\Acquisition\ClaimOrigin;
 use App\Domain\Acquisition\ClaimOriginKind;
-use InvalidArgumentException;
 use App\Domain\Acquisition\ClaimQualifiers;
 use App\Domain\Acquisition\ClaimValue;
 use App\Domain\Acquisition\MentionId;
 use App\Domain\Acquisition\Predicate;
 use App\Domain\Acquisition\SourceId;
 use App\Domain\Acquisition\SourceLinguisticRepresentation;
+use InvalidArgumentException;
 
 final readonly class UpdateClaim
 {
