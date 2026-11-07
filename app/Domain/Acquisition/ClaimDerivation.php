@@ -170,8 +170,7 @@ final readonly class ClaimDerivation
      *
      * @param  list<T>  $ids
      * @param  class-string<T>  $type
-     *
-     * @return  list<T>
+     * @return list<T>
      */
     private static function normalizeIds(array $ids, string $type, string $name, bool $required = false): array
     {
@@ -181,7 +180,7 @@ final readonly class ClaimDerivation
 
         $byValue = [];
         foreach ($ids as $id) {
-            if (! ($id instanceof $type)) {
+            if (($id instanceof $type) === false) {
                 throw new InvalidArgumentException(sprintf('Claim derivation %s identity has an invalid type.', $name));
             }
             if (isset($byValue[$id->value])) {
@@ -208,7 +207,7 @@ final readonly class ClaimDerivation
 
     /**
      * @param  array<string, mixed>  $payload
-     * @return  list<string>
+     * @return list<string>
      */
     private static function stringListAt(array $payload, string $key): array
     {
