@@ -263,8 +263,8 @@ final class DerivedClaimLineageTest extends TestCase
     }
 
     private function lineage(
-        \App\Domain\Acquisition\ClaimRevisionId $directRevisionId,
-        \App\Domain\Acquisition\MentionRevisionId $mentionRevisionId,
+        ClaimRevisionId $directRevisionId,
+        MentionRevisionId $mentionRevisionId,
         string $ruleVersion = '1',
     ): ClaimDerivation {
         return new ClaimDerivation(
