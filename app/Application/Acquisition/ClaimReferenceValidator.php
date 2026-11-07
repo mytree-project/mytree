@@ -46,6 +46,9 @@ final readonly class ClaimReferenceValidator
             if ($input === null || $input->sourceId->value !== $claim->sourceId->value) {
                 throw new InvalidArgumentException('Derived Claim input ClaimRevision must belong to the same Source.');
             }
+            if ($input->claimId->value === $claim->id->value) {
+                throw new InvalidArgumentException('Derived Claim cannot refer to its own previous Direct revision.');
+            }
             if ($input->reconstruct()->claim->origin->kind === ClaimOriginKind::Derived) {
                 throw new InvalidArgumentException('Derived Claims cannot depend on other Derived Claims.');
             }
