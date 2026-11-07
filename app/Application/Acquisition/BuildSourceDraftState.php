@@ -58,6 +58,34 @@ final readonly class BuildSourceDraftState
         );
 
         $claims = $this->keyBy($current->claims, static fn (Claim $claim): string => $claim->id->value);
+        // The generic SourceDraft editor changes Direct Claims only.
+        // Accepted derived results are maintained by the versioned derivation
+        // workflow, not by arbitrary user form operations (#239/#240).
+        foreach ($changes->addClaims as $index => $claim) {
+            if ($claim->derivation !== null) {
+                throw new SourceDraftOperationInvalid(
+                    "changes.addClaims.$index",
+                    'Derived Claims cannot be created through generic SourceDraft edits.',
+                );
+            }
+        }
+        foreach ($changes->updateClaims as $index => $claim) {
+            $currentClaim = $claims[$claim->id->value] ?? null;
+            if ($claim->derivation !== null || $currentClaim?->derivation !== null) {
+                throw new SourceDraftOperationInvalid(
+                    "changes.updateClaims.$index",
+                    'Derived Claims cannot be updated through generic SourceDraft edits.',
+                );
+            }
+        }
+        foreach ($changes->removeClaimIds as $index => $claimId) {
+            if (($claims[$claimId->value] ?? null)?->derivation !== null) {
+                throw new SourceDraftOperationInvalid(
+                    "changes.removeClaimIds.$index",
+                    'Derived Claims cannot be removed through generic SourceDraft edits.',
+                );
+            }
+        }
         $this->applyEntityChanges(
             $claims,
             $changes->addClaims,
