@@ -245,7 +245,7 @@ final class DerivedClaimLineageTest extends TestCase
         self::assertSame('Jan', $rehydrated->reconstruct()->claim->value?->raw());
     }
 
-    /** @return  array{Source, Mention, Claim, ClaimRevision, MentionRevision} */
+    /** @return array{Source, Mention, Claim, ClaimRevision, MentionRevision} */
     private function fixture(): array
     {
         $source = app(CreateSource::class)->handle(SourceType::generic());
