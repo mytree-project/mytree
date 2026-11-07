@@ -26,6 +26,7 @@ The current implemented baseline contains:
 - framework-independent Source Acquisition Domain and Application foundations for Source, assets/text, Mention, controlled Predicate and typed Claim values, Claim and SourceLocator workflows,
 - immutable Source/Mention/Claim revision history using `SourceRevision`, `MentionRevision` and `ClaimRevision`,
 - immutable `EvidenceState` capture and reconstruction that identifies an exact composition of retained Source/Mention/Claim revisions,
+- an initial #234 accepted Derived Claim lineage foundation: shared Claim/ClaimRevision persistence, immutable direct-input/rule provenance, idempotent logical rule-output updates, and eligibility checks before including derived revisions in EvidenceState,
 - transactional `SourceDraft` load/validate/save application workflows with optimistic base-state conflict detection and semantic no-op handling,
 - an application-owned supported acquisition field catalog with typed Mention/Claim editing, repeatable fields and reified event contexts,
 - versioned Source Type Templates used only as presentation configuration for Basic Source Acquisition,
@@ -41,6 +42,14 @@ bounded fuzzy matching, structured Source filters/sorting and the category-aware
 `SearchResult` envelope. Only local Source result data is populated by M5;
 integration with external Index Providers and Engine Interpretations remains
 a separate future capability.
+
+## Derived Claim lineage foundation (#234)
+
+Accepted Source-local Derived Claims use ordinary `Claim` and `ClaimRevision` identities with `origin=derived`, a typed canonical `mytree.claim-derivation.v1` lineage payload, and revision snapshots `mytree.claim-revision.v3`. The derivation stores the rule ID/version, implementation signature, stable logical output key, exact Direct ClaimRevision roots, optional MentionRevision roots, and assumptions. All root IDs must belong to the same Source; derived-to-derived dependencies are rejected. New accepted versions of the same logical output use the same Claim identity and append a new immutable revision whenever provenance changes.
+
+`EvidenceStateSnapshot.claimRevisionIds` continues to contain both Direct and **current eligible accepted** Derived Claim revisions without changing the `mytree.evidence-state.v2` snapshot shape. An outdated materialized Derived Claim whose direct input or referenced Mention revision is no longer current is excluded from newly captured EvidenceState; historical snapshots retain the old revision.
+
+This is **infrastructure for future derivation rules**, not their implementation: no automatic age, parent or surname rules, proposal/approval UI, or background reconciliation exists yet. Pending/rejected suggestions are intentionally not persisted as accepted `Claim` rows; proposal/decision management is tracked by #239, automatic derivation by #235–#238, and Editor UX by #240–#243. The generic SourceDraft editor cannot create/update/delete accepted Derived Claims; an application derivation workflow must perform those operations instead. Canonical design is in MyTree project #173 / documentation PR #233.
 
 ## Search development status
 
