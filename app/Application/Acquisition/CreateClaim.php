@@ -6,6 +6,7 @@ namespace App\Application\Acquisition;
 
 use App\Domain\Acquisition\Claim;
 use App\Domain\Acquisition\ClaimCertainty;
+use App\Domain\Acquisition\ClaimDerivation;
 use App\Domain\Acquisition\ClaimOrigin;
 use App\Domain\Acquisition\ClaimQualifiers;
 use App\Domain\Acquisition\ClaimValue;
@@ -39,6 +40,7 @@ final readonly class CreateClaim
         ?string $changeNote = null,
         ?string $changedBy = null,
         array $sourceLinguisticRepresentations = [],
+        ?ClaimDerivation $derivation = null,
     ): Claim {
         $claim = new Claim(
             id: $this->identifiers->claimId(),
@@ -53,6 +55,7 @@ final readonly class CreateClaim
             transcriptionCertainty: $transcriptionCertainty,
             interpretationCertainty: $interpretationCertainty,
             sourceLinguisticRepresentations: $sourceLinguisticRepresentations,
+            derivation: $derivation,
         );
 
         $this->references->validate($claim);
