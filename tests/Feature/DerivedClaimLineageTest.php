@@ -19,8 +19,10 @@ use App\Domain\Acquisition\ClaimDerivation;
 use App\Domain\Acquisition\ClaimId;
 use App\Domain\Acquisition\ClaimOrigin;
 use App\Domain\Acquisition\ClaimOriginKind;
+use App\Domain\Acquisition\ClaimRevisionId;
 use App\Domain\Acquisition\ClaimRevisionSnapshot;
 use App\Domain\Acquisition\MentionKind;
+use App\Domain\Acquisition\MentionRevisionId;
 use App\Domain\Acquisition\PredicateKey;
 use App\Domain\Acquisition\PredicateVocabulary;
 use App\Domain\Acquisition\SourceType;
@@ -239,7 +241,7 @@ final class DerivedClaimLineageTest extends TestCase
         self::assertSame('Jan', $rehydrated->reconstruct()->claim->value?->raw());
     }
 
-    /** @return array{0: mixed, 1: mixed, 2: Claim, 3: mixed, 4: mixed} */
+    /** @return  array{0: mixed, 1: mixed, 2: Claim, 3: mixed, 4: mixed} */
     private function fixture(): array
     {
         $source = app(CreateSource::class)->handle(SourceType::generic());
