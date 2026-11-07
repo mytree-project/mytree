@@ -128,6 +128,15 @@ final readonly class ClaimDerivation
             throw new InvalidArgumentException('Claim derivation assumptions must be an object.');
         }
 
+        /** @var array<string, mixed> $typedAssumptions */
+        $typedAssumptions = [];
+        foreach ($assumptions as $key => $value) {
+            if (! is_string($key) || $key === '') {
+                throw new InvalidArgumentException('Claim derivation assumption keys must be strings.');
+            }
+            $typedAssumptions[$key] = $value;
+        }
+
         $result = new self(
             ruleId: self::stringAt($payload, 'rule_id'),
             ruleVersion: self::stringAt($payload, 'rule_version'),
@@ -141,7 +150,7 @@ final readonly class ClaimDerivation
                 static fn (string $id): MentionRevisionId => new MentionRevisionId($id),
                 self::stringListAt($payload, 'input_mention_revision_ids'),
             ),
-            assumptions: $assumptions,
+            assumptions: $typedAssumptions,
         );
 
         if (CanonicalJson::encode($payload) !== $result->serialize()) {
@@ -208,12 +217,14 @@ final readonly class ClaimDerivation
             throw new InvalidArgumentException(sprintf('Claim derivation "%s" must be a list.', $key));
         }
 
+        $strings = [];
         foreach ($value as $entry) {
             if (! is_string($entry)) {
                 throw new InvalidArgumentException(sprintf('Claim derivation "%s" entries must be strings.', $key));
             }
+            $strings[] = $entry;
         }
 
-        return $value;
+        return $strings;
     }
 }
