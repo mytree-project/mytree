@@ -56,8 +56,10 @@ final readonly class UpsertDerivedClaim
             $changedBy,
         ): Claim {
             foreach ($this->claims->forSource($sourceId) as $existing) {
-                if ($existing->derivation?->ruleId !== $derivation->ruleId
-                    || $existing->derivation->outputKey !== $derivation->outputKey) {
+                $existingDerivation = $existing->derivation;
+                if ($existingDerivation === null
+                    || $existingDerivation->ruleId !== $derivation->ruleId
+                    || $existingDerivation->outputKey !== $derivation->outputKey) {
                     continue;
                 }
 
