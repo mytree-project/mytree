@@ -9,6 +9,7 @@ use App\Application\Acquisition\ClaimRepository;
 use App\Domain\Acquisition\Claim;
 use App\Domain\Acquisition\ClaimCertainty;
 use App\Domain\Acquisition\ClaimId;
+use App\Domain\Acquisition\ClaimDerivation;
 use App\Domain\Acquisition\ClaimOrigin;
 use App\Domain\Acquisition\ClaimQualifiers;
 use App\Domain\Acquisition\ClaimValueSerializer;
@@ -103,6 +104,9 @@ final class EloquentClaimRepository implements ClaimRepository
             sourceLinguisticRepresentations: $sourceRepresentationPayload === null
                 ? []
                 : SourceLinguisticRepresentationSerializer::deserializeList($sourceRepresentationPayload),
+            derivation: $record->derivation_payload === null
+                ? null
+                : ClaimDerivation::deserialize((string) $record->derivation_payload),
         );
     }
 
@@ -122,6 +126,9 @@ final class EloquentClaimRepository implements ClaimRepository
             'qualifiers_payload' => $claim->qualifiers->serialize(),
             'raw_text' => $claim->rawText,
             'origin_payload' => $claim->origin->serialize(),
+            'derivation_payload' => $claim->derivation?->serialize(),
+            'derivation_rule_id' => $claim->derivation?->ruleId,
+            'derivation_output_key' => $claim->derivation?->outputKey,
             'transcription_certainty' => $claim->transcriptionCertainty->code,
             'transcription_certainty_schema_version' => $claim->transcriptionCertainty->schemaVersion,
             'interpretation_certainty' => $claim->interpretationCertainty->code,
