@@ -69,8 +69,10 @@ final class DerivedClaimLineageTest extends TestCase
             array_map(static fn ($id): string => $id->value, $first->snapshot->claimRevisionIds),
         );
         self::assertSame(ClaimOriginKind::Derived, $derivedRevision->reconstruct()->claim->origin->kind);
-        self::assertSame($directRevision->id->value, $derivedRevision->reconstruct()->claim->derivation?->inputClaimRevisionIds[0]->value);
-        self::assertSame($mentionRevision->id->value, $derivedRevision->reconstruct()->claim->derivation?->inputMentionRevisionIds[0]->value);
+        $derivation = $derivedRevision->reconstruct()->claim->derivation;
+        self::assertNotNull($derivation);
+        self::assertSame($directRevision->id->value, $derivation->inputClaimRevisionIds[0]->value);
+        self::assertSame($mentionRevision->id->value, $derivation->inputMentionRevisionIds[0]->value);
         self::assertSame(ClaimRevisionSnapshot::SCHEMA_VERSION, $derivedRevision->snapshot->schemaVersion);
 
         $repeat = app(UpsertDerivedClaim::class)->handle(
