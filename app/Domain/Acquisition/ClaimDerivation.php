@@ -30,7 +30,7 @@ final readonly class ClaimDerivation
     /**
      * @param  list<ClaimRevisionId>  $inputClaimRevisionIds
      * @param  list<MentionRevisionId>  $inputMentionRevisionIds
-     * @param  array<string, mixed>  $assumptions
+     * @param  array<array-key, mixed>  $assumptions
      */
     public function __construct(
         public string $ruleId,
@@ -67,15 +67,17 @@ final readonly class ClaimDerivation
         if ($assumptions !== [] && array_is_list($assumptions)) {
             throw new InvalidArgumentException('Claim derivation assumptions must be a JSON object.');
         }
-        foreach (array_keys($assumptions) as $key) {
+        $validatedAssumptions = [];
+        foreach ($assumptions as $key => $value) {
             if (! is_string($key) || $key === '') {
                 throw new InvalidArgumentException('Claim derivation assumption keys must be nonempty strings.');
             }
+            $validatedAssumptions[$key] = $value;
         }
 
         // Validate every nested value for canonical JSON serialization.
-        CanonicalJson::encode(['assumptions' => $assumptions]);
-        $this->assumptions = $assumptions;
+        CanonicalJson::encode(['assumptions' => $validatedAssumptions]);
+        $this->assumptions = $validatedAssumptions;
     }
 
     public function serialize(): string
