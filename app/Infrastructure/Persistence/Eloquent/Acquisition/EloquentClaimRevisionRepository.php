@@ -70,7 +70,10 @@ final class EloquentClaimRevisionRepository implements ClaimRevisionRepository
             // Enforce immutable direct-root ownership at the persistence boundary,
             // including callers that bypass CreateClaim/UpdateClaim application services.
             if ($claim->origin->kind === ClaimOriginKind::Derived) {
-                foreach ($claim->derivation->inputClaimRevisionIds as $inputId) {
+                $derivation = $claim->derivation
+                    ?? throw new UnexpectedValueException('Derived Claim must carry immutable derivation provenance.');
+
+                foreach ($derivation->inputClaimRevisionIds as $inputId) {
                     $root = ClaimRevisionRecord::query()
                         ->whereKey($inputId->value)
                         ->where('source_id', $claim->sourceId->value)
@@ -94,7 +97,7 @@ final class EloquentClaimRevisionRepository implements ClaimRevisionRepository
                     }
                 }
 
-                foreach ($claim->derivation->inputMentionRevisionIds as $inputId) {
+                foreach ($derivation->inputMentionRevisionIds as $inputId) {
                     $exists = MentionRevisionRecord::query()
                         ->whereKey($inputId->value)
                         ->where('source_id', $claim->sourceId->value)
