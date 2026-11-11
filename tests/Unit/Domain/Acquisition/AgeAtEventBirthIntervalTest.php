@@ -40,9 +40,9 @@ final class AgeAtEventBirthIntervalTest extends TestCase
         );
 
         self::assertSame('1822-05-02', $month?->from->toIsoString());
-        self::assertSame('1823-05-31', $month?->to?->toIsoString());
+        self::assertSame('1823-05-31', $month->to?->toIsoString());
         self::assertSame('1822-01-02', $year?->from->toIsoString());
-        self::assertSame('1823-12-31', $year?->to?->toIsoString());
+        self::assertSame('1823-12-31', $year->to?->toIsoString());
     }
 
     public function test_explicit_age_and_event_date_ranges_expand_without_arbitrary_tolerance(): void
@@ -57,7 +57,7 @@ final class AgeAtEventBirthIntervalTest extends TestCase
         );
 
         self::assertSame('1820-05-11', $window?->from->toIsoString());
-        self::assertSame('1823-05-20', $window?->to?->toIsoString());
+        self::assertSame('1823-05-20', $window->to?->toIsoString());
     }
 
     public function test_inexact_age_or_event_is_not_promoted_to_falsely_exact_bounds(): void
@@ -91,7 +91,7 @@ final class AgeAtEventBirthIntervalTest extends TestCase
             DateClaimValue::exact('1 March 1864', HistoricalDate::day(1864, 3, 1)),
         );
         self::assertSame('1823-03-02', $ordinary?->from->toIsoString());
-        self::assertSame('1824-03-01', $ordinary?->to?->toIsoString());
+        self::assertSame('1824-03-01', $ordinary->to?->toIsoString());
     }
 
     public function test_direct_birth_compatibility_respects_precision_and_uncertainty(): void
