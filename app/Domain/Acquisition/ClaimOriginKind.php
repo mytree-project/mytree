@@ -8,4 +8,5 @@ enum ClaimOriginKind: string
 {
     case ManualDirectSource = 'manual_direct_source';
     case ProviderObservation = 'provider_observation';
+    case Derived = 'derived';
 }

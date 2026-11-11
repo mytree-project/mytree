@@ -8,9 +8,9 @@ use InvalidArgumentException;
 
 final readonly class Claim
 {
-    public const LEGACY_SCHEMA_VERSION = 1;
+    public const MIN_SUPPORTED_SCHEMA_VERSION = 1;
 
-    public const SCHEMA_VERSION = 2;
+    public const SCHEMA_VERSION = 3;
 
     public ClaimQualifiers $qualifiers;
 
@@ -38,13 +38,28 @@ final readonly class Claim
         ?ClaimCertainty $interpretationCertainty = null,
         public int $schemaVersion = self::SCHEMA_VERSION,
         array $sourceLinguisticRepresentations = [],
+        public ?ClaimDerivation $derivation = null,
     ) {
-        if (! in_array($schemaVersion, [self::LEGACY_SCHEMA_VERSION, self::SCHEMA_VERSION], true)) {
+        if ($schemaVersion < self::MIN_SUPPORTED_SCHEMA_VERSION || $schemaVersion > self::SCHEMA_VERSION) {
             throw new InvalidArgumentException('Unsupported Claim schema version.');
         }
 
-        if ($schemaVersion === self::LEGACY_SCHEMA_VERSION && $sourceLinguisticRepresentations !== []) {
+        // Source-supplied linguistic representations were introduced in schema v2.
+        if ($schemaVersion < 2 && $sourceLinguisticRepresentations !== []) {
             throw new InvalidArgumentException('Legacy Claim schema cannot contain source linguistic representations.');
+        }
+
+        $actualOrigin = $origin ?? ClaimOrigin::manualDirectSource();
+        if (($actualOrigin->kind === ClaimOriginKind::Derived) !== ($derivation !== null)) {
+            throw new InvalidArgumentException('Derived Claim origin requires derivation lineage and direct origin forbids it.');
+        }
+        // Immutable Derived Claim lineage was introduced in schema v3.
+        // Older v3 Claims must remain readable after the current version advances.
+        if ($derivation !== null && $schemaVersion < 3) {
+            throw new InvalidArgumentException('Derived Claim requires Claim schema version 3 or newer.');
+        }
+        if ($derivation !== null && $sourceLinguisticRepresentations !== []) {
+            throw new InvalidArgumentException('Derived Claim cannot own source-supplied linguistic representations.');
         }
 
         if ($rawText !== null && trim($rawText) === '') {
@@ -71,7 +86,7 @@ final readonly class Claim
             $sourceLinguisticRepresentations,
         );
         $this->qualifiers = $qualifiers ?? ClaimQualifiers::empty();
-        $this->origin = $origin ?? ClaimOrigin::manualDirectSource();
+        $this->origin = $actualOrigin;
         $this->transcriptionCertainty = $transcriptionCertainty ?? ClaimCertainty::unspecified();
         $this->interpretationCertainty = $interpretationCertainty ?? ClaimCertainty::unspecified();
     }

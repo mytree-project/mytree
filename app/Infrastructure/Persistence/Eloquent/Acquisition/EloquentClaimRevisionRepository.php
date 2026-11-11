@@ -7,6 +7,7 @@ namespace App\Infrastructure\Persistence\Eloquent\Acquisition;
 use App\Application\Acquisition\ClaimNotFound;
 use App\Application\Acquisition\ClaimRevisionRepository;
 use App\Domain\Acquisition\ClaimId;
+use App\Domain\Acquisition\ClaimOriginKind;
 use App\Domain\Acquisition\ClaimRevision;
 use App\Domain\Acquisition\ClaimRevisionId;
 use App\Domain\Acquisition\ClaimRevisionSnapshot;
@@ -64,6 +65,47 @@ final class EloquentClaimRevisionRepository implements ClaimRevisionRepository
                     $claim->objectMentionId->value,
                     'object',
                 );
+            }
+
+            // Enforce immutable direct-root ownership at the persistence boundary,
+            // including callers that bypass CreateClaim/UpdateClaim application services.
+            if ($claim->origin->kind === ClaimOriginKind::Derived) {
+                $derivation = $claim->derivation
+                    ?? throw new UnexpectedValueException('Derived Claim must carry immutable derivation provenance.');
+
+                foreach ($derivation->inputClaimRevisionIds as $inputId) {
+                    $root = ClaimRevisionRecord::query()
+                        ->whereKey($inputId->value)
+                        ->where('source_id', $claim->sourceId->value)
+                        ->first();
+
+                    if ($root === null) {
+                        throw new UnexpectedValueException('Derived Claim input revision does not belong to its Source.');
+                    }
+                    if ((string) $root->claim_id === $claim->id->value) {
+                        throw new UnexpectedValueException('Derived Claim cannot reference its own previous revision.');
+                    }
+
+                    $rootClaim = ClaimRevisionSnapshot::rehydrate(
+                        schemaVersion: (int) $root->snapshot_schema_version,
+                        canonicalPayload: (string) $root->canonical_payload,
+                        payloadHash: (string) $root->payload_hash,
+                    )->reconstruct()->claim;
+
+                    if ($rootClaim->origin->kind === ClaimOriginKind::Derived) {
+                        throw new UnexpectedValueException('Derived Claim cannot reference another Derived Claim.');
+                    }
+                }
+
+                foreach ($derivation->inputMentionRevisionIds as $inputId) {
+                    $exists = MentionRevisionRecord::query()
+                        ->whereKey($inputId->value)
+                        ->where('source_id', $claim->sourceId->value)
+                        ->exists();
+                    if (! $exists) {
+                        throw new UnexpectedValueException('Derived Claim MentionRevision input must belong to its Source.');
+                    }
+                }
             }
 
             $lastRevision = ClaimRevisionRecord::query()

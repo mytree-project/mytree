@@ -6,7 +6,7 @@ namespace App\Application\Acquisition;
 
 use App\Application\Search\SearchProjectionScheduler;
 use App\Domain\Acquisition\Claim;
-use App\Domain\Acquisition\ClaimRevisionId;
+use App\Domain\Acquisition\ClaimOriginKind;
 use App\Domain\Acquisition\EvidenceState;
 use App\Domain\Acquisition\EvidenceStateSnapshot;
 use App\Domain\Acquisition\Mention;
@@ -45,15 +45,53 @@ final readonly class CaptureEvidenceStateForSource
             $this->mentions->forSource($sourceId),
         );
 
-        $claimRevisionIds = array_map(
-            function (Claim $claim) use ($sourceId): ClaimRevisionId {
-                $revision = $this->claimRevisions->latestForClaim($sourceId, $claim->id)
-                    ?? throw EvidenceStateCaptureIncomplete::missingClaimRevision($claim->id);
+        $directRevisionIds = [];
+        $derivedRevisions = [];
+        foreach ($this->claims->forSource($sourceId) as $claim) {
+            $revision = $this->claimRevisions->latestForClaim($sourceId, $claim->id)
+                ?? throw EvidenceStateCaptureIncomplete::missingClaimRevision($claim->id);
 
-                return $revision->id;
-            },
-            $this->claims->forSource($sourceId),
+            if ($claim->origin->kind === ClaimOriginKind::Derived) {
+                $derivedRevisions[] = $revision;
+
+                continue;
+            }
+
+            $directRevisionIds[$revision->id->value] = $revision->id;
+        }
+
+        $activeMentionRevisionIds = array_fill_keys(
+            array_map(
+                static fn (MentionRevisionId $id): string => $id->value,
+                $mentionRevisionIds,
+            ),
+            true,
         );
+
+        // A materialized Derived Claim is accepted evidence only as long as its
+        // *exact* direct inputs and relevant Mention revisions are current.
+        // Reconciliation/recomputation of stale rows is handled by #238.
+        $claimRevisionIds = array_values($directRevisionIds);
+        foreach ($derivedRevisions as $revision) {
+            $derivation = $revision->reconstruct()->claim->derivation;
+            if ($derivation === null) {
+                continue;
+            }
+
+            foreach ($derivation->inputClaimRevisionIds as $inputId) {
+                if (! isset($directRevisionIds[$inputId->value])) {
+                    continue 2;
+                }
+            }
+
+            foreach ($derivation->inputMentionRevisionIds as $inputId) {
+                if (! isset($activeMentionRevisionIds[$inputId->value])) {
+                    continue 2;
+                }
+            }
+
+            $claimRevisionIds[] = $revision->id;
+        }
 
         $evidenceState = $this->evidenceStates->append(
             id: $this->identifiers->evidenceStateId(),

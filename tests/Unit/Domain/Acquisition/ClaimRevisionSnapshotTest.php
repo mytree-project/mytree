@@ -104,20 +104,21 @@ final class ClaimRevisionSnapshotTest extends TestCase
         $claimPayload = $payload['claim'] ?? null;
         self::assertIsArray($claimPayload);
 
-        $payload['schema'] = ClaimRevisionSnapshot::LEGACY_SCHEMA_ID;
-        $claimPayload['schema_version'] = Claim::LEGACY_SCHEMA_VERSION;
-        unset($claimPayload['source_linguistic_representations']);
+        // Pin the historical v1 wire format independently of current schema constants.
+        $payload['schema'] = 'mytree.claim-revision.v1';
+        $claimPayload['schema_version'] = 1;
+        unset($claimPayload['source_linguistic_representations'], $claimPayload['derivation']);
         $payload['claim'] = $claimPayload;
         $canonicalPayload = CanonicalJson::encode($payload);
 
         $legacy = ClaimRevisionSnapshot::rehydrate(
-            ClaimRevisionSnapshot::LEGACY_SCHEMA_VERSION,
+            1,
             $canonicalPayload,
             hash('sha256', $canonicalPayload),
         );
         $state = $legacy->reconstruct();
 
-        self::assertSame(Claim::LEGACY_SCHEMA_VERSION, $state->claim->schemaVersion);
+        self::assertSame(1, $state->claim->schemaVersion);
         self::assertSame([], $state->claim->sourceLinguisticRepresentations);
         self::assertSame('włościan', $state->claim->value?->raw());
     }

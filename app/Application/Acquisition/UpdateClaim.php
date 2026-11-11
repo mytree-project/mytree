@@ -6,14 +6,17 @@ namespace App\Application\Acquisition;
 
 use App\Domain\Acquisition\Claim;
 use App\Domain\Acquisition\ClaimCertainty;
+use App\Domain\Acquisition\ClaimDerivation;
 use App\Domain\Acquisition\ClaimId;
 use App\Domain\Acquisition\ClaimOrigin;
+use App\Domain\Acquisition\ClaimOriginKind;
 use App\Domain\Acquisition\ClaimQualifiers;
 use App\Domain\Acquisition\ClaimValue;
 use App\Domain\Acquisition\MentionId;
 use App\Domain\Acquisition\Predicate;
 use App\Domain\Acquisition\SourceId;
 use App\Domain\Acquisition\SourceLinguisticRepresentation;
+use InvalidArgumentException;
 
 final readonly class UpdateClaim
 {
@@ -40,11 +43,18 @@ final readonly class UpdateClaim
         ?string $changeNote = null,
         ?string $changedBy = null,
         ?array $sourceLinguisticRepresentations = null,
+        ?ClaimDerivation $derivation = null,
     ): Claim {
         $current = $this->claims->find($sourceId, $claimId)
             ?? throw ClaimNotFound::forSourceAndId($sourceId, $claimId);
+        $nextOrigin = $origin ?? $current->origin;
+        if (($current->origin->kind === ClaimOriginKind::Derived)
+            !== ($nextOrigin->kind === ClaimOriginKind::Derived)) {
+            throw new InvalidArgumentException('A Claim cannot switch between Direct and Derived origin.');
+        }
+
         $representations = $sourceLinguisticRepresentations ?? $current->sourceLinguisticRepresentations;
-        $schemaVersion = $representations === []
+        $schemaVersion = $representations === [] && $derivation === null
             ? $current->schemaVersion
             : Claim::SCHEMA_VERSION;
 
@@ -62,6 +72,7 @@ final readonly class UpdateClaim
             interpretationCertainty: $interpretationCertainty ?? $current->interpretationCertainty,
             schemaVersion: $schemaVersion,
             sourceLinguisticRepresentations: $representations,
+            derivation: $derivation ?? $current->derivation,
         );
 
         $this->references->validate($claim);
