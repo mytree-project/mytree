@@ -34,6 +34,10 @@ final readonly class AgeAtEventBirthInterval
         }
 
         $maximumAge = $age->to ?? $age->from;
+        if ($maximumAge >= $eventBounds[0]->year) {
+            return null;
+        }
+
         $earliestBase = self::subtractYears($eventBounds[0], $maximumAge + 1);
         $latestBirth = self::subtractYears($eventBounds[1], $age->from);
 
