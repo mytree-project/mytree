@@ -33,11 +33,15 @@ final readonly class DateClaimDayBounds
     {
         $month = $date->month ?? 12;
 
-        return HistoricalDate::day(
-            $date->year,
-            $month,
-            $date->day ?? cal_days_in_month(CAL_GREGORIAN, $month, $date->year),
-        );
+        $day = $date->day;
+        if ($day === null) {
+            $day = 31;
+            while (! checkdate($month, $day, $date->year)) {
+                $day--;
+            }
+        }
+
+        return HistoricalDate::day($date->year, $month, $day);
     }
 
     /**
