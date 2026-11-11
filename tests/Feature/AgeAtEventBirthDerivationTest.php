@@ -43,7 +43,7 @@ final class AgeAtEventBirthDerivationTest extends TestCase
         self::assertSame($person->id->value, $born->subjectMentionId->value);
         self::assertSame(PredicateKey::PersonBirthDate, $born->predicate->key);
         self::assertSame('1822-05-11', $born->value?->data()['from']);
-        self::assertSame('1823-05-10', $born->value?->data()['to']);
+        self::assertSame('1823-05-10', $born->value->data()['to']);
         self::assertSame(ClaimOriginKind::Derived, $born->origin->kind);
         $lineage = $born->derivation;
         self::assertNotNull($lineage);
@@ -162,7 +162,7 @@ final class AgeAtEventBirthDerivationTest extends TestCase
         $updated = $this->derivedFor($source)[0];
         self::assertSame($derived->id->value, $updated->id->value);
         self::assertSame('1821-05-11', $updated->value?->data()['from']);
-        self::assertSame('1822-05-10', $updated->value?->data()['to']);
+        self::assertSame('1822-05-10', $updated->value->data()['to']);
         self::assertCount(2, app(ClaimRevisionRepository::class)->forClaim($source->id, $updated->id));
         self::assertCount(4, $next->snapshot->claimRevisionIds);
 
