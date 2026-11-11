@@ -59,8 +59,9 @@ final readonly class ReconcileAgeAtEventBirthClaims
 
             foreach ($this->claims->forSource($sourceId) as $claim) {
                 if ($claim->origin->kind === ClaimOriginKind::Derived) {
-                    if ($claim->derivation?->ruleId === self::RULE_ID) {
-                        $materialized[$claim->derivation->outputKey] = $claim;
+                    $derivation = $claim->derivation;
+                    if ($derivation !== null && $derivation->ruleId === self::RULE_ID) {
+                        $materialized[$derivation->outputKey] = $claim;
                     }
 
                     continue;
