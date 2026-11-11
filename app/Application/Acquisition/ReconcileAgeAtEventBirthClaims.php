@@ -142,10 +142,6 @@ final readonly class ReconcileAgeAtEventBirthClaims
                     }
 
                     $eventId = array_key_first($contexts);
-                    if ($eventId === null) {
-                        continue;
-                    }
-
                     $context = $contexts[$eventId];
                     $dateRevision = $context['date'];
                     $dateClaim = $dateRevision->reconstruct()->claim;
