@@ -47,17 +47,19 @@ final class AgeAtEventBirthDerivationTest extends TestCase
         self::assertSame(ClaimOriginKind::Derived, $born->origin->kind);
         $lineage = $born->derivation;
         self::assertNotNull($lineage);
-        self::assertTrue($lineage->assumptions['soft_evidence']);
-        self::assertFalse($lineage->assumptions['hard_identity_exclusion_allowed']);
+        self::assertSame(true, $lineage->assumptions['soft_evidence']);
+        self::assertSame(false, $lineage->assumptions['hard_identity_exclusion_allowed']);
         self::assertSame('completed_years', $lineage->assumptions['age_unit_semantics']);
         self::assertSame('conditional_single_birth_instant', $lineage->assumptions['birth_value_semantics']);
 
         $revisions = app(ClaimRevisionRepository::class);
-        $roots = array_map(static fn ($r): string => $r->id->value, [
-            $revisions->latestForClaim($source->id, $age->id),
-            $revisions->latestForClaim($source->id, $date->id),
-            $revisions->latestForClaim($source->id, $role->id),
-        ]);
+        $ageRoot = $revisions->latestForClaim($source->id, $age->id);
+        $dateRoot = $revisions->latestForClaim($source->id, $date->id);
+        $roleRoot = $revisions->latestForClaim($source->id, $role->id);
+        self::assertNotNull($ageRoot);
+        self::assertNotNull($dateRoot);
+        self::assertNotNull($roleRoot);
+        $roots = [$ageRoot->id->value, $dateRoot->id->value, $roleRoot->id->value];
         sort($roots, SORT_STRING);
         self::assertSame($roots, array_map(static fn ($id): string => $id->value, $lineage->inputClaimRevisionIds));
 
