@@ -93,10 +93,6 @@ final readonly class AgeAtEventBirthInterval
         }
 
         $next = $day->modify('+1 day');
-        if ($next === false) {
-            return null;
-        }
-
         $year = (int) $next->format('Y');
         if ($year < 1 || $year > 9999) {
             return null;
