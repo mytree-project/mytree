@@ -21,6 +21,7 @@ final readonly class CaptureEvidenceStateForSource
         private MentionRevisionRepository $mentionRevisions,
         private ClaimRepository $claims,
         private ClaimRevisionRepository $claimRevisions,
+        private ReconcileAgeAtEventBirthClaims $ageAtEventBirth,
         private EvidenceStateRepository $evidenceStates,
         private SourceIdentifierGenerator $identifiers,
         private EvidenceStateClock $clock,
@@ -34,6 +35,11 @@ final readonly class CaptureEvidenceStateForSource
     ): EvidenceState {
         $sourceRevision = $this->sourceRevisions->latestForSource($sourceId)
             ?? throw EvidenceStateCaptureIncomplete::missingSourceRevision($sourceId);
+
+        // Materialize eligible automatic age-at-event conclusions before
+        // selecting the coherent accepted ClaimRevision composition.
+        // Reconciliation is idempotent and may retire suppressed results.
+        $this->ageAtEventBirth->reconcile($sourceId);
 
         $mentionRevisionIds = array_map(
             function (Mention $mention) use ($sourceId): MentionRevisionId {
