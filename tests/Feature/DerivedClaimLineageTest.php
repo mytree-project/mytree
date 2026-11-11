@@ -232,11 +232,11 @@ final class DerivedClaimLineageTest extends TestCase
         $payload = CanonicalJson::decodeObject($revision->snapshot->canonicalPayload);
         unset($payload['claim']['derivation']);
         $payload['claim']['schema_version'] = 2;
-        $payload['schema'] = ClaimRevisionSnapshot::PREVIOUS_SCHEMA_ID;
+        $payload['schema'] = 'mytree.claim-revision.v2';
         $oldCanonical = CanonicalJson::encode($payload);
         $oldHash = hash('sha256', $oldCanonical);
         $rehydrated = ClaimRevisionSnapshot::rehydrate(
-            ClaimRevisionSnapshot::PREVIOUS_SCHEMA_VERSION,
+            2,
             $oldCanonical,
             $oldHash,
         );
@@ -245,6 +245,30 @@ final class DerivedClaimLineageTest extends TestCase
         self::assertSame($oldHash, $rehydrated->payloadHash);
         self::assertNull($rehydrated->reconstruct()->claim->derivation);
         self::assertSame('Jan', $rehydrated->reconstruct()->claim->value?->raw());
+    }
+
+    public function test_schema_versions_use_supported_range_without_requiring_historical_constants(): void
+    {
+        [$source, $person] = $this->fixture();
+
+        foreach ([0, Claim::SCHEMA_VERSION + 1] as $unsupportedVersion) {
+            try {
+                new Claim(
+                    id: new ClaimId('b8888888-8888-4888-8888-888888888888'),
+                    sourceId: $source->id,
+                    subjectMentionId: $person->id,
+                    predicate: PredicateVocabulary::get(PredicateKey::PersonGivenName),
+                    value: new TextClaimValue('Jan'),
+                    schemaVersion: $unsupportedVersion,
+                );
+                self::fail('Unsupported Claim schema version must be rejected.');
+            } catch (InvalidArgumentException $exception) {
+                self::assertStringContainsString('Unsupported Claim schema version', $exception->getMessage());
+            }
+        }
+
+        $current = ClaimRevisionSnapshot::SCHEMA_VERSION;
+        self::assertSame('mytree.claim-revision.v'.$current, ClaimRevisionSnapshot::SCHEMA_ID);
     }
 
     /** @return array{Source, Mention, Claim, ClaimRevision, MentionRevision} */
