@@ -8,17 +8,11 @@ use InvalidArgumentException;
 
 final readonly class ClaimRevisionSnapshot
 {
-    public const LEGACY_SCHEMA_ID = 'mytree.claim-revision.v1';
-
-    public const PREVIOUS_SCHEMA_ID = 'mytree.claim-revision.v2';
-
-    public const SCHEMA_ID = 'mytree.claim-revision.v3';
-
-    public const LEGACY_SCHEMA_VERSION = 1;
-
-    public const PREVIOUS_SCHEMA_VERSION = 2;
+    public const MIN_SUPPORTED_SCHEMA_VERSION = 1;
 
     public const SCHEMA_VERSION = 3;
+
+    public const SCHEMA_ID = 'mytree.claim-revision.v'.self::SCHEMA_VERSION;
 
     private function __construct(
         public int $schemaVersion,
@@ -122,7 +116,7 @@ final readonly class ClaimRevisionSnapshot
         string $canonicalPayload,
         string $payloadHash,
     ): self {
-        if (! in_array($schemaVersion, [self::LEGACY_SCHEMA_VERSION, self::PREVIOUS_SCHEMA_VERSION, self::SCHEMA_VERSION], true)) {
+        if ($schemaVersion < self::MIN_SUPPORTED_SCHEMA_VERSION || $schemaVersion > self::SCHEMA_VERSION) {
             throw new InvalidArgumentException(sprintf(
                 'Unsupported ClaimRevision snapshot schema version %d.',
                 $schemaVersion,
@@ -141,11 +135,7 @@ final readonly class ClaimRevisionSnapshot
 
         $payload = CanonicalJson::decodeObject($canonicalPayload);
 
-        $expectedSchemaId = match ($schemaVersion) {
-            self::LEGACY_SCHEMA_VERSION => self::LEGACY_SCHEMA_ID,
-            self::PREVIOUS_SCHEMA_VERSION => self::PREVIOUS_SCHEMA_ID,
-            default => self::SCHEMA_ID,
-        };
+        $expectedSchemaId = self::schemaIdFor($schemaVersion);
 
         if (($payload['schema'] ?? null) !== $expectedSchemaId) {
             throw new InvalidArgumentException('Unsupported ClaimRevision snapshot schema identifier.');
@@ -169,11 +159,7 @@ final readonly class ClaimRevisionSnapshot
     {
         $payload = CanonicalJson::decodeObject($this->canonicalPayload);
 
-        $expectedSchemaId = match ($this->schemaVersion) {
-            self::LEGACY_SCHEMA_VERSION => self::LEGACY_SCHEMA_ID,
-            self::PREVIOUS_SCHEMA_VERSION => self::PREVIOUS_SCHEMA_ID,
-            default => self::SCHEMA_ID,
-        };
+        $expectedSchemaId = self::schemaIdFor($this->schemaVersion);
 
         if (($payload['schema'] ?? null) !== $expectedSchemaId) {
             throw new InvalidArgumentException('Unsupported ClaimRevision snapshot schema identifier.');
@@ -188,7 +174,8 @@ final readonly class ClaimRevisionSnapshot
         $originPayload = self::objectAt($claimPayload, 'origin');
         $transcriptionCertaintyPayload = self::objectAt($claimPayload, 'transcription_certainty');
         $interpretationCertaintyPayload = self::objectAt($claimPayload, 'interpretation_certainty');
-        $sourceLinguisticRepresentations = $this->schemaVersion === self::LEGACY_SCHEMA_VERSION
+        // Source linguistic representations appear in snapshot schema v2 and later.
+        $sourceLinguisticRepresentations = $this->schemaVersion < 2
             ? []
             : SourceLinguisticRepresentationSerializer::fromArrayList(
                 self::objectListAt($claimPayload, 'source_linguistic_representations'),
@@ -217,7 +204,8 @@ final readonly class ClaimRevisionSnapshot
             ),
             schemaVersion: self::intAt($claimPayload, 'schema_version'),
             sourceLinguisticRepresentations: $sourceLinguisticRepresentations,
-            derivation: $this->schemaVersion === self::SCHEMA_VERSION
+            // Derivation lineage appears in snapshot schema v3 and later.
+            derivation: $this->schemaVersion >= 3
                 ? (($derivationPayload = self::nullableObjectAt($claimPayload, 'derivation')) === null
                     ? null
                     : ClaimDerivation::fromArray($derivationPayload))
@@ -247,6 +235,11 @@ final readonly class ClaimRevisionSnapshot
                 : new MentionRevisionId(self::stringAt($objectPayload, 'mention_revision_id')),
             sourceLocators: $sourceLocators,
         );
+    }
+
+    private static function schemaIdFor(int $schemaVersion): string
+    {
+        return sprintf('mytree.claim-revision.v%d', $schemaVersion);
     }
 
     /**
