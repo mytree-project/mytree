@@ -114,6 +114,10 @@ return [
         ],
     ],
     'enum_values' => [
+        'birth' => 'Narodziny',
+        'baptism' => 'Chrzest',
+        'marriage' => 'Małżeństwo',
+        'death' => 'Śmierć',
         'sex' => [
             'male' => 'Płeć męska',
             'female' => 'Płeć żeńska',
