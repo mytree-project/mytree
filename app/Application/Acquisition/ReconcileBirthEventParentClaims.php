@@ -107,16 +107,15 @@ final readonly class ReconcileBirthEventParentClaims
 
             ksort($typesByEvent, SORT_STRING);
             foreach ($typesByEvent as $eventId => $types) {
-                // Even a consistent pair of different type assertions needs
-                // review before being used as a single, accepted event type.
-                if (count($types) !== 1) {
-                    continue;
-                }
-
-                $eventTypeClaim = $types[0]->reconstruct()->claim;
-                if (! $eventTypeClaim->value instanceof EnumClaimValue
-                    || $eventTypeClaim->value->key !== EventTypeClaimValueKey::Birth->value) {
-                    continue;
+                // Repeatable same-kind Direct assertions are allowed and
+                // pinned separately. A mixed birth/baptism/etc classification
+                // is not an unambiguous typed birth event.
+                foreach ($types as $typeRevision) {
+                    $eventTypeClaim = $typeRevision->reconstruct()->claim;
+                    if (! $eventTypeClaim->value instanceof EnumClaimValue
+                        || $eventTypeClaim->value->key !== EventTypeClaimValueKey::Birth->value) {
+                        continue 2;
+                    }
                 }
 
                 $children = $childrenByEvent[$eventId] ?? [];
@@ -151,7 +150,7 @@ final readonly class ReconcileBirthEventParentClaims
                         ];
                     }
 
-                    $roots = array_merge([$types[0]], $children[$childId], $parentRoles);
+                    $roots = array_merge($types, $children[$childId], $parentRoles);
                     foreach ($roots as $root) {
                         $candidates[$key]['claims'][$root->id->value] = $root;
                     }
