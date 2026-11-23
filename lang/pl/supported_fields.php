@@ -92,6 +92,10 @@ return [
                 'label' => 'Preset wzmianki o zdarzeniu',
                 'help' => 'Wyłącznie prezentacyjny preset szablonu dla zwykłej wzmianki o zdarzeniu i jej twierdzeń.',
             ],
+            'type' => [
+                'label' => 'Typ zdarzenia',
+                'help' => 'Wybierz typ zdarzenia zapisany w źródle. Narodziny i chrzest to różne zdarzenia; nie wnioskuj na podstawie typu dokumentu ani etykiety wzmianki.',
+            ],
             'date' => ['label' => 'Data zdarzenia'],
             'place' => ['label' => 'Miejsce zdarzenia'],
             'participant' => ['label' => 'Uczestnik'],
