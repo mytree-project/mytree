@@ -43,6 +43,7 @@ final class SupportedAcquisitionFieldCatalog
             subjectMentionKind: MentionKind::EVENT,
             helpText: 'Presentation-only template preset for an ordinary source-local event Mention and its event Claims.',
             contextPredicateKeys: [
+                PredicateKey::EventType,
                 PredicateKey::EventDate,
                 PredicateKey::EventPlace,
                 PredicateKey::EventParticipant,
@@ -180,6 +181,7 @@ final class SupportedAcquisitionFieldCatalog
             PredicateKey::PersonRank => 'Rank',
             PredicateKey::PersonTitle => 'Title',
             PredicateKey::PersonAcademicDegree => 'Academic degree',
+            PredicateKey::EventType => 'Event type',
             PredicateKey::EventDate => 'Event date',
             PredicateKey::EventPlace => 'Event place',
             PredicateKey::EventParticipant => 'Participant',
@@ -200,6 +202,7 @@ final class SupportedAcquisitionFieldCatalog
     {
         return match ($key) {
             PredicateKey::PersonSex => 'Sex classification explicitly recorded by the Source; preserve the exact source wording and choose the controlled key without inferring from name, grammar or role.',
+            PredicateKey::EventType => 'Explicit semantic event kind: birth is distinct from baptism. Set only when Source evidence supports the kind; Source type alone is not sufficient.',
             PredicateKey::PersonReligiousAffiliation => 'Religion, denomination, confession or comparable affiliation explicitly recorded by the Source; preserve the exact source wording.',
             PredicateKey::PersonOccupation => 'Work or profession actually performed; do not use for estate, office, rank, title or degree.',
             PredicateKey::PersonSocialStatus => 'Source-recorded social position that is not adequately represented as a formal estate.',
