@@ -92,6 +92,10 @@ return [
                 'label' => 'Event Mention preset',
                 'help' => 'Presentation-only template preset for one ordinary event Mention and its event Claims.',
             ],
+            'type' => [
+                'label' => 'Event type',
+                'help' => 'Record the explicit event kind. Birth and baptism are distinct; do not infer from the document type or Mention label.',
+            ],
             'date' => ['label' => 'Event date'],
             'place' => ['label' => 'Event place'],
             'participant' => ['label' => 'Participant'],
