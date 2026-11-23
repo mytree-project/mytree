@@ -114,6 +114,10 @@ return [
         ],
     ],
     'enum_values' => [
+        'birth' => 'Birth',
+        'baptism' => 'Baptism',
+        'marriage' => 'Marriage',
+        'death' => 'Death',
         'sex' => [
             'male' => 'Male',
             'female' => 'Female',
