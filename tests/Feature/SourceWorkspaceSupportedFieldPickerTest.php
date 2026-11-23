@@ -76,6 +76,14 @@ final class SourceWorkspaceSupportedFieldPickerTest extends TestCase
             array_column($this->group($eventGroups, 'event_general')['fields'], 'key'),
         );
         self::assertContains(
+            PredicateKey::EventType->value,
+            array_column($this->group($eventGroups, 'event_general')['fields'], 'key'),
+        );
+        self::assertSame(
+            'Typ zdarzenia',
+            array_column($this->group($eventGroups, 'event_general')['fields'], 'label', 'key')[PredicateKey::EventType->value],
+        );
+        self::assertContains(
             PredicateKey::EventSpouse->value,
             array_column($this->group($eventGroups, 'event_roles')['fields'], 'key'),
         );
