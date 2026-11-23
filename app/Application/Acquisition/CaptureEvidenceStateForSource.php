@@ -22,6 +22,7 @@ final readonly class CaptureEvidenceStateForSource
         private ClaimRepository $claims,
         private ClaimRevisionRepository $claimRevisions,
         private ReconcileAgeAtEventBirthClaims $ageAtEventBirth,
+        private ReconcileBirthEventParentClaims $birthEventParents,
         private EvidenceStateRepository $evidenceStates,
         private SourceIdentifierGenerator $identifiers,
         private EvidenceStateClock $clock,
@@ -40,6 +41,10 @@ final readonly class CaptureEvidenceStateForSource
         // selecting the coherent accepted ClaimRevision composition.
         // Reconciliation is idempotent and may retire suppressed results.
         $this->ageAtEventBirth->reconcile($sourceId);
+
+        // Only explicitly typed birth events and accepted child/parent roles
+        // generate child -> parent evidence; no inverse edge is persisted.
+        $this->birthEventParents->reconcile($sourceId);
 
         $mentionRevisionIds = array_map(
             function (Mention $mention) use ($sourceId): MentionRevisionId {
