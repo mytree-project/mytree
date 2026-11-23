@@ -111,6 +111,14 @@ final class PredicateVocabulary
                 MentionKind::PLACE,
             ),
 
+            PredicateKey::EventType => self::literal(
+                $key,
+                $schemaVersion,
+                MentionKind::EVENT,
+                ClaimValueType::Enum,
+                EventTypeClaimValueKey::values(),
+            ),
+
             PredicateKey::EventDate => self::literal(
                 $key,
                 $schemaVersion,
