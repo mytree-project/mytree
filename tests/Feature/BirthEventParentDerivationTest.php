@@ -43,7 +43,9 @@ final class BirthEventParentDerivationTest extends TestCase
         self::assertSame($expectedParents, $this->parentIdsOf($parents, $f['child']));
 
         $revisions = app(ClaimRevisionRepository::class);
-        $typeRevision = $revisions->latestForClaim($f['source']->id, $f['typeClaim']->id);
+        $typeClaim = $f['typeClaim'];
+        self::assertNotNull($typeClaim);
+        $typeRevision = $revisions->latestForClaim($f['source']->id, $typeClaim->id);
         $childRevision = $revisions->latestForClaim($f['source']->id, $f['childRole']->id);
         $fatherRevision = $revisions->latestForClaim($f['source']->id, $f['fatherRole']->id);
         self::assertNotNull($typeRevision);
@@ -194,7 +196,9 @@ final class BirthEventParentDerivationTest extends TestCase
         self::assertCount(2, $parents);
 
         $father = $this->withParent($parents, $f['father']);
-        self::assertCount(4, $father->derivation?->inputClaimRevisionIds);
+        $derivation = $father->derivation;
+        self::assertNotNull($derivation);
+        self::assertCount(4, $derivation->inputClaimRevisionIds);
         $secondTypeRevision = app(ClaimRevisionRepository::class)
             ->latestForClaim($f['source']->id, $secondType->id);
         self::assertNotNull($secondTypeRevision);
@@ -202,7 +206,7 @@ final class BirthEventParentDerivationTest extends TestCase
             $secondTypeRevision->id->value,
             array_map(
                 static fn ($id): string => $id->value,
-                $father->derivation?->inputClaimRevisionIds ?? [],
+                $derivation->inputClaimRevisionIds,
             ),
         );
     }
@@ -215,9 +219,11 @@ final class BirthEventParentDerivationTest extends TestCase
         $oldRevision = app(ClaimRevisionRepository::class)->latestForClaim($f['source']->id, $oldFather->id);
         self::assertNotNull($oldRevision);
 
+        $typeClaim = $f['typeClaim'];
+        self::assertNotNull($typeClaim);
         app(UpdateClaim::class)->handle(
             sourceId: $f['source']->id,
-            claimId: $f['typeClaim']->id,
+            claimId: $typeClaim->id,
             subjectMentionId: $f['event']->id,
             predicate: PredicateVocabulary::get(PredicateKey::EventType),
             value: new EnumClaimValue('narodziny', EventTypeClaimValueKey::Birth->value),
@@ -248,9 +254,11 @@ final class BirthEventParentDerivationTest extends TestCase
         $f = $this->fixture();
         $historic = app(CaptureEvidenceStateForSource::class)->capture($f['source']->id);
 
+        $typeClaim = $f['typeClaim'];
+        self::assertNotNull($typeClaim);
         app(UpdateClaim::class)->handle(
             sourceId: $f['source']->id,
-            claimId: $f['typeClaim']->id,
+            claimId: $typeClaim->id,
             subjectMentionId: $f['event']->id,
             predicate: PredicateVocabulary::get(PredicateKey::EventType),
             value: new EnumClaimValue('chrzest', EventTypeClaimValueKey::Baptism->value),
@@ -312,9 +320,11 @@ final class BirthEventParentDerivationTest extends TestCase
         $parents = $this->derivedParents($f['source']);
         self::assertCount(2, $parents);
         $father = $this->withParent($parents, $f['father']);
-        self::assertCount(6, $father->derivation?->inputClaimRevisionIds);
-        self::assertCount(2, $father->derivation?->assumptions['birth_event_mention_ids']);
-        self::assertSame('child:'.$f['child']->id->value.':parent:'.$f['father']->id->value, $father->derivation?->outputKey);
+        $derivation = $father->derivation;
+        self::assertNotNull($derivation);
+        self::assertCount(6, $derivation->inputClaimRevisionIds);
+        self::assertCount(2, $derivation->assumptions['birth_event_mention_ids']);
+        self::assertSame('child:'.$f['child']->id->value.':parent:'.$f['father']->id->value, $derivation->outputKey);
     }
 
     /**
