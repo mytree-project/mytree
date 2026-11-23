@@ -168,15 +168,43 @@ final class BirthEventParentDerivationTest extends TestCase
         app(CaptureEvidenceStateForSource::class)->capture($manyParents['source']->id);
         self::assertSame([], $this->derivedParents($manyParents['source']));
 
-        $duplicateType = $this->fixture();
+        $contradictoryTypes = $this->fixture();
         app(CreateClaim::class)->handle(
-            sourceId: $duplicateType['source']->id,
-            subjectMentionId: $duplicateType['event']->id,
+            sourceId: $contradictoryTypes['source']->id,
+            subjectMentionId: $contradictoryTypes['event']->id,
+            predicate: PredicateVocabulary::get(PredicateKey::EventType),
+            value: new EnumClaimValue('chrzest', EventTypeClaimValueKey::Baptism->value),
+        );
+        app(CaptureEvidenceStateForSource::class)->capture($contradictoryTypes['source']->id);
+        self::assertSame([], $this->derivedParents($contradictoryTypes['source']));
+    }
+
+    public function test_repeated_agreeing_event_type_claims_still_support_one_relation_per_parent(): void
+    {
+        $f = $this->fixture();
+        $secondType = app(CreateClaim::class)->handle(
+            sourceId: $f['source']->id,
+            subjectMentionId: $f['event']->id,
             predicate: PredicateVocabulary::get(PredicateKey::EventType),
             value: new EnumClaimValue('narodziny', EventTypeClaimValueKey::Birth->value),
         );
-        app(CaptureEvidenceStateForSource::class)->capture($duplicateType['source']->id);
-        self::assertSame([], $this->derivedParents($duplicateType['source']));
+
+        app(CaptureEvidenceStateForSource::class)->capture($f['source']->id);
+        $parents = $this->derivedParents($f['source']);
+        self::assertCount(2, $parents);
+
+        $father = $this->withParent($parents, $f['father']);
+        self::assertCount(4, $father->derivation?->inputClaimRevisionIds);
+        $secondTypeRevision = app(ClaimRevisionRepository::class)
+            ->latestForClaim($f['source']->id, $secondType->id);
+        self::assertNotNull($secondTypeRevision);
+        self::assertContains(
+            $secondTypeRevision->id->value,
+            array_map(
+                static fn ($id): string => $id->value,
+                $father->derivation?->inputClaimRevisionIds ?? [],
+            ),
+        );
     }
 
     public function test_changed_event_type_with_same_meaning_advances_derived_lineage(): void
