@@ -35,6 +35,7 @@ enum PredicateKey: string
     case PersonTitle = 'person.title';
     case PersonAcademicDegree = 'person.academic_degree';
 
+    case EventType = 'event.type';
     case EventDate = 'event.date';
     case EventPlace = 'event.place';
     case EventParticipant = 'event.participant';
