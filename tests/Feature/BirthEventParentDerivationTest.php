@@ -38,10 +38,9 @@ final class BirthEventParentDerivationTest extends TestCase
 
         self::assertCount(2, $parents);
         self::assertCount(6, $state->snapshot->claimRevisionIds);
-        self::assertSame(
-            [$f['father']->id->value, $f['mother']->id->value],
-            $this->parentIdsOf($parents, $f['child']),
-        );
+        $expectedParents = [$f['father']->id->value, $f['mother']->id->value];
+        sort($expectedParents, SORT_STRING);
+        self::assertSame($expectedParents, $this->parentIdsOf($parents, $f['child']));
 
         $revisions = app(ClaimRevisionRepository::class);
         $typeRevision = $revisions->latestForClaim($f['source']->id, $f['typeClaim']->id);
@@ -359,7 +358,8 @@ final class BirthEventParentDerivationTest extends TestCase
         ));
     }
 
-    /** @param list<Claim> $parents
+    /**
+     * @param  list<Claim>  $parents
      * @return list<string>
      */
     private function parentIdsOf(array $parents, Mention $child): array
@@ -384,6 +384,6 @@ final class BirthEventParentDerivationTest extends TestCase
             }
         }
 
-        self::fail('Missing Derived Claim for expected parent.');
+        throw new \LogicException('Missing Derived Claim for expected parent.');
     }
 }
