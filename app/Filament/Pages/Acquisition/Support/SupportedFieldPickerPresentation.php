@@ -228,6 +228,7 @@ final readonly class SupportedFieldPickerPresentation
             PredicateKey::PersonTitle,
             PredicateKey::PersonAcademicDegree => 'person_status',
 
+            PredicateKey::EventType,
             PredicateKey::EventDate,
             PredicateKey::EventPlace,
             PredicateKey::EventOriginPlace,
