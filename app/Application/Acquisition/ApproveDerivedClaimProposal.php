@@ -57,11 +57,14 @@ final readonly class ApproveDerivedClaimProposal
                 acceptedClaimId: $claim->id,
             );
 
-            return $this->captureEvidenceState->capture(
+            $state = $this->captureEvidenceState->capture(
                 $sourceId,
                 'Approved reviewed Derived Claim proposal',
                 $approvedBy,
             );
+            $this->proposals->linkAcceptedEvidenceState($proposal, $state->id);
+
+            return $state;
         });
     }
 }
