@@ -194,6 +194,33 @@ final class DerivedClaimReviewLifecycleTest extends TestCase
         app(ApproveDerivedClaimProposal::class)->handle($f['source']->id, $pending->id, 'reviewer');
     }
 
+    public function test_new_direct_surname_suppresses_previously_approved_derived_output(): void
+    {
+        $f = $this->fixture();
+        $pending = $this->propose($f);
+        $historical = app(ApproveDerivedClaimProposal::class)->handle(
+            $f['source']->id,
+            $pending->id,
+            'reviewer',
+        );
+
+        app(CreateClaim::class)->handle(
+            sourceId: $f['source']->id,
+            subjectMentionId: $f['child']->id,
+            predicate: PredicateVocabulary::get(PredicateKey::PersonSurname),
+            value: new TextClaimValue('Kowalski'),
+        );
+
+        $now = app(CaptureEvidenceStateForSource::class)->capture($f['source']->id);
+        self::assertCount(4, $now->snapshot->claimRevisionIds);
+        self::assertSame([], $this->derived($f['source']));
+        self::assertSame(
+            DerivedClaimReviewStatus::Invalidated,
+            app(DerivedClaimProposalRepository::class)->find($f['source']->id, $pending->id)?->status,
+        );
+        self::assertCount(4, app(GetEvidenceState::class)->get($historical->id)->claimRevisions);
+    }
+
     public function test_direct_same_surname_disallows_reviewed_duplicate(): void
     {
         $f = $this->fixture();
