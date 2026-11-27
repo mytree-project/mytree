@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Application\Acquisition;
 
 use App\Domain\Acquisition\Claim;
-use App\Domain\Acquisition\DerivedClaimProposal;
 use App\Domain\Acquisition\ClaimOriginKind;
+use App\Domain\Acquisition\DerivedClaimProposal;
 use App\Domain\Acquisition\DerivedClaimReviewStatus;
 use App\Domain\Acquisition\SourceId;
 
