@@ -40,6 +40,7 @@ final readonly class ReconcileReviewedDerivedClaims
                 $matches = $active !== null && $this->verifier->matchesAcceptedClaim($proposal, $active);
 
                 if ($this->verifier->isCurrent($proposal)
+                    && ! $this->verifier->hasIdenticalDirect($proposal)
                     && ($proposal->status !== DerivedClaimReviewStatus::Accepted || $matches)) {
                     continue;
                 }
@@ -88,6 +89,7 @@ final readonly class ReconcileReviewedDerivedClaims
         foreach ($reviews as $proposal) {
             if ($proposal->status === DerivedClaimReviewStatus::Accepted
                 && $this->verifier->isCurrent($proposal)
+                && ! $this->verifier->hasIdenticalDirect($proposal)
                 && $this->verifier->matchesAcceptedClaim($proposal, $claim)) {
                 return true;
             }
