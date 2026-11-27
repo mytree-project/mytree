@@ -40,10 +40,11 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('proposal_id')->constrained('derived_claim_proposals')->cascadeOnDelete();
             $table->string('status', 32);
+            $table->unsignedInteger('sequence');
             $table->string('actor', 200);
             $table->uuid('evidence_state_id')->nullable();
             $table->timestampTz('recorded_at');
-            $table->index(['proposal_id', 'recorded_at']);
+            $table->unique(['proposal_id', 'sequence'], 'derived_proposal_decision_order_unique');
         });
     }
 
