@@ -17,6 +17,8 @@ use App\Application\Acquisition\MentionRevisionRepository;
 use App\Application\Acquisition\ProposeDerivedClaim;
 use App\Application\Acquisition\RejectDerivedClaimProposal;
 use App\Application\Acquisition\UpdateClaim;
+use App\Application\Acquisition\UpdateMention;
+use App\Application\Acquisition\UpsertDerivedClaim;
 use App\Domain\Acquisition\Claim;
 use App\Domain\Acquisition\ClaimDerivation;
 use App\Domain\Acquisition\ClaimOriginKind;
@@ -213,7 +215,7 @@ final class DerivedClaimReviewLifecycleTest extends TestCase
 
         $old = app(MentionRevisionRepository::class)->latestForMention($f['source']->id, $f['father']->id);
         self::assertNotNull($old);
-        app(\App\Application\Acquisition\UpdateMention::class)->handle(
+        app(UpdateMention::class)->handle(
             sourceId: $f['source']->id,
             mentionId: $f['father']->id,
             kind: MentionKind::person(),
@@ -236,7 +238,7 @@ final class DerivedClaimReviewLifecycleTest extends TestCase
 
         // Even an accidental direct call to the low-level accepted output
         // writer must not leak a pending contextual inference into evidence.
-        app(\App\Application\Acquisition\UpsertDerivedClaim::class)->handle(
+        app(UpsertDerivedClaim::class)->handle(
             sourceId: $f['source']->id,
             subjectMentionId: $f['child']->id,
             predicate: PredicateVocabulary::get(PredicateKey::PersonSurname),
