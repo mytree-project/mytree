@@ -120,7 +120,8 @@ final class EloquentDerivedClaimProposalRepository implements DerivedClaimPropos
             ->where('status', $proposal->status->value)
             ->update([
                 'status' => $next->value,
-                'accepted_claim_id' => $acceptedClaimId?->value,
+                'accepted_claim_id' => ($next === DerivedClaimReviewStatus::Invalidated
+                    ? $proposal->acceptedClaimId : $acceptedClaimId)?->value,
                 'updated_at' => now(),
             ]);
 
