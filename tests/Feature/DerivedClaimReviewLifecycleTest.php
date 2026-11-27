@@ -229,6 +229,56 @@ final class DerivedClaimReviewLifecycleTest extends TestCase
         );
     }
 
+    public function test_review_required_upsert_cannot_bypass_explicit_approval_on_capture(): void
+    {
+        $f = $this->fixture();
+        $pending = $this->propose($f);
+
+        // Even an accidental direct call to the low-level accepted output
+        // writer must not leak a pending contextual inference into evidence.
+        app(\App\Application\Acquisition\UpsertDerivedClaim::class)->handle(
+            sourceId: $f['source']->id,
+            subjectMentionId: $f['child']->id,
+            predicate: PredicateVocabulary::get(PredicateKey::PersonSurname),
+            derivation: $pending->derivation,
+            value: new TextClaimValue('Kowalski'),
+        );
+
+        $state = app(CaptureEvidenceStateForSource::class)->capture($f['source']->id);
+        self::assertCount(3, $state->snapshot->claimRevisionIds);
+        self::assertSame([], $this->derived($f['source']));
+        self::assertSame(
+            DerivedClaimReviewStatus::Pending,
+            app(DerivedClaimProposalRepository::class)->find($f['source']->id, $pending->id)?->status,
+        );
+    }
+
+    public function test_mutating_an_accepted_reviewed_output_requires_new_approval(): void
+    {
+        $f = $this->fixture();
+        $pending = $this->propose($f);
+        $historical = app(ApproveDerivedClaimProposal::class)->handle($f['source']->id, $pending->id, 'reviewer');
+        $claim = $this->derived($f['source'])[0];
+
+        app(UpdateClaim::class)->handle(
+            sourceId: $f['source']->id,
+            claimId: $claim->id,
+            subjectMentionId: $f['child']->id,
+            predicate: PredicateVocabulary::get(PredicateKey::PersonSurname),
+            value: new TextClaimValue('Changed without review'),
+            derivation: $pending->derivation,
+        );
+
+        $now = app(CaptureEvidenceStateForSource::class)->capture($f['source']->id);
+        self::assertCount(3, $now->snapshot->claimRevisionIds);
+        self::assertSame([], $this->derived($f['source']));
+        self::assertSame(
+            DerivedClaimReviewStatus::Invalidated,
+            app(DerivedClaimProposalRepository::class)->find($f['source']->id, $pending->id)?->status,
+        );
+        self::assertCount(4, app(GetEvidenceState::class)->get($historical->id)->claimRevisions);
+    }
+
     public function test_proposals_are_source_scoped_and_not_visible_as_claims(): void
     {
         $f = $this->fixture();
