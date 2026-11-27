@@ -82,8 +82,7 @@ final readonly class ProposeDerivedClaim
                 if ($prior->status === DerivedClaimReviewStatus::Accepted
                     && $prior->acceptedClaimId !== null) {
                     $current = $this->claims->find($sourceId, $prior->acceptedClaimId);
-                    if ($current !== null && $current->origin->kind === ClaimOriginKind::Derived
-                        && $current->derivation?->fingerprint() === $prior->derivation->fingerprint()) {
+                    if ($current !== null && $current->origin->kind === ClaimOriginKind::Derived) {
                         $this->claims->remove($sourceId, $current->id);
                         $retiredAccepted = true;
                     }
