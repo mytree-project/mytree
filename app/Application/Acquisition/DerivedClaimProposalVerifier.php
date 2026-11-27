@@ -95,6 +95,21 @@ final readonly class DerivedClaimProposalVerifier
     }
 
     /**
+     * Source capture must also retire an already accepted review output if a
+     * subsequently entered identical Direct Claim now takes precedence.
+     */
+    public function hasIdenticalDirect(DerivedClaimProposal $proposal): bool
+    {
+        try {
+            $this->assertNotIdenticalDirect($proposal);
+        } catch (InvalidArgumentException) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * A literally identical Direct Claim is never a reason to materialize a
      * second assertion. Predicate-specific fuzzy compatibility stays with the
      * rule producer (#237), not this generic review workflow.
