@@ -37,7 +37,13 @@ interface DerivedClaimProposalRepository
     ): void;
 
     /**
-     * @return list<array{status: string, actor: string, evidence_state_id: ?string}>
+     * Complete the acceptance audit entry within the *same transaction* as
+     * EvidenceState capture, before either record becomes externally visible.
+     */
+    public function linkAcceptedEvidenceState(DerivedClaimProposal $proposal, EvidenceStateId $stateId): void;
+
+    /**
+     * @return list<array{status: string, actor: string, evidence_state_id: ?string, recorded_at: string}>
      */
     public function history(SourceId $sourceId, string $proposalId): array;
 }
