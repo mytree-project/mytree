@@ -32,8 +32,10 @@ final readonly class DerivedClaimProposal
         // family into the existing SourceIdentifierGenerator contract.
         new ClaimId($id);
 
-        if (($status === DerivedClaimReviewStatus::Accepted) !== ($acceptedClaimId !== null)) {
-            throw new InvalidArgumentException('Only accepted proposals may reference an accepted Claim.');
+        if (($status === DerivedClaimReviewStatus::Accepted && $acceptedClaimId === null)
+            || (in_array($status, [DerivedClaimReviewStatus::Pending, DerivedClaimReviewStatus::Rejected], true)
+                && $acceptedClaimId !== null)) {
+            throw new InvalidArgumentException('A proposal may reference an accepted Claim only after approval.');
         }
 
         if ($predicate->literalValueType !== null) {
