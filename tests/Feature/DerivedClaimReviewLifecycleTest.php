@@ -215,7 +215,6 @@ final class DerivedClaimReviewLifecycleTest extends TestCase
             sourceId: $f['source']->id,
             mentionId: $f['father']->id,
             kind: MentionKind::person(),
-            localKey: $f['father']->localKey,
             displayLabel: 'Jan Kowalski (revised source descriptor)',
         );
 
@@ -276,12 +275,14 @@ final class DerivedClaimReviewLifecycleTest extends TestCase
     private function propose(array $f, string $surname = 'Kowalski', string $ruleVersion = '1'): DerivedClaimProposal
     {
         $revisions = app(ClaimRevisionRepository::class);
-        $direct = $revisions->forSource($f['source']->id);
         $roots = [];
-        foreach ($direct as $revision) {
-            if ($revision->reconstruct()->claim->origin->kind !== ClaimOriginKind::Derived) {
-                $roots[] = $revision->id;
+        foreach (app(ClaimRepository::class)->forSource($f['source']->id) as $claim) {
+            if ($claim->origin->kind === ClaimOriginKind::Derived) {
+                continue;
             }
+            $revision = $revisions->latestForClaim($f['source']->id, $claim->id);
+            self::assertNotNull($revision);
+            $roots[] = $revision->id;
         }
 
         $mentionRevisions = app(MentionRevisionRepository::class);
