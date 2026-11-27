@@ -13,7 +13,6 @@ use App\Domain\Acquisition\DerivedClaimReviewStatus;
 use App\Domain\Acquisition\MentionId;
 use App\Domain\Acquisition\Predicate;
 use App\Domain\Acquisition\SourceId;
-use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 /**
