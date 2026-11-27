@@ -22,6 +22,7 @@ final readonly class CaptureEvidenceStateForSource
         private ClaimRepository $claims,
         private ClaimRevisionRepository $claimRevisions,
         private ReconcileAgeAtEventBirthClaims $ageAtEventBirth,
+        private ReconcileReviewedDerivedClaims $reviewedDerivedClaims,
         private EvidenceStateRepository $evidenceStates,
         private SourceIdentifierGenerator $identifiers,
         private EvidenceStateClock $clock,
@@ -35,6 +36,10 @@ final readonly class CaptureEvidenceStateForSource
     ): EvidenceState {
         $sourceRevision = $this->sourceRevisions->latestForSource($sourceId)
             ?? throw EvidenceStateCaptureIncomplete::missingSourceRevision($sourceId);
+
+        // First detach stale human-reviewed results; pending/rejected rows are
+        // never accepted Claims, and historical decisions remain intact.
+        $this->reviewedDerivedClaims->reconcile($sourceId);
 
         // Materialize eligible automatic age-at-event conclusions before
         // selecting the coherent accepted ClaimRevision composition.
