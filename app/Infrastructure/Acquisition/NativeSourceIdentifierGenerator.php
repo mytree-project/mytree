@@ -68,6 +68,11 @@ final class NativeSourceIdentifierGenerator implements SourceIdentifierGenerator
         return new SourceLocatorId($this->uuidV4());
     }
 
+    public function derivedClaimProposalId(): string
+    {
+        return $this->uuidV4();
+    }
+
     private function uuidV4(): string
     {
         $bytes = random_bytes(16);
