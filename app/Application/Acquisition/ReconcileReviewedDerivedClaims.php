@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Acquisition;
 
+use App\Domain\Acquisition\Claim;
+use App\Domain\Acquisition\DerivedClaimProposal;
 use App\Domain\Acquisition\ClaimOriginKind;
 use App\Domain\Acquisition\DerivedClaimReviewStatus;
 use App\Domain\Acquisition\SourceId;
@@ -35,16 +37,16 @@ final readonly class ReconcileReviewedDerivedClaims
 
                 $active = $proposal->acceptedClaimId === null
                     ? null : $this->claims->find($sourceId, $proposal->acceptedClaimId);
-                $matches = $active !== null
-                    && $active->origin->kind === ClaimOriginKind::Derived
-                    && $active->derivation?->fingerprint() === $proposal->derivation->fingerprint();
+                $matches = $active !== null && $this->verifier->matchesAcceptedClaim($proposal, $active);
 
                 if ($this->verifier->isCurrent($proposal)
                     && ($proposal->status !== DerivedClaimReviewStatus::Accepted || $matches)) {
                     continue;
                 }
 
-                if ($matches && $active !== null) {
+                // Remove the old accepted Claim by identity even if its value
+                // or lineage was modified without a new review decision.
+                if ($active !== null && $active->origin->kind === ClaimOriginKind::Derived) {
                     $this->claims->remove($sourceId, $active->id);
                 }
 
@@ -54,6 +56,43 @@ final readonly class ReconcileReviewedDerivedClaims
                     'system:dependency-reconciliation',
                 );
             }
+
+            // Defensive guard for review-gated materializations created outside
+            // the explicit approval service (e.g. an accidental direct upsert).
+            // They cannot enter the accepted Source composition.
+            foreach ($this->claims->forSource($sourceId) as $claim) {
+                $derivation = $claim->derivation;
+                if ($derivation === null) {
+                    continue;
+                }
+
+                $reviews = $this->proposals->forOutput(
+                    $sourceId,
+                    $derivation->ruleId,
+                    $derivation->outputKey,
+                );
+                if ($reviews === [] && ($derivation->assumptions['requires_review'] ?? false) !== true) {
+                    continue; // Existing strictly automatic #235 outputs.
+                }
+
+                if (! $this->hasCurrentApproval($claim, $reviews)) {
+                    $this->claims->remove($sourceId, $claim->id);
+                }
+            }
         });
+    }
+
+    /** @param list<DerivedClaimProposal> $reviews */
+    private function hasCurrentApproval(Claim $claim, array $reviews): bool
+    {
+        foreach ($reviews as $proposal) {
+            if ($proposal->status === DerivedClaimReviewStatus::Accepted
+                && $this->verifier->isCurrent($proposal)
+                && $this->verifier->matchesAcceptedClaim($proposal, $claim)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
