@@ -132,6 +132,19 @@ final class EloquentDerivedClaimProposalRepository implements DerivedClaimPropos
         $this->appendDecision($proposal->id, $next->value, $actor, $evidenceStateId);
     }
 
+    public function linkAcceptedEvidenceState(DerivedClaimProposal $proposal, EvidenceStateId $stateId): void
+    {
+        $updated = DB::table('derived_claim_proposal_decisions')
+            ->where('proposal_id', $proposal->id)
+            ->where('status', DerivedClaimReviewStatus::Accepted->value)
+            ->whereNull('evidence_state_id')
+            ->update(['evidence_state_id' => $stateId->value]);
+
+        if ($updated !== 1) {
+            throw new LogicException('Accepted proposal EvidenceState could not be linked atomically.');
+        }
+    }
+
     public function history(SourceId $sourceId, string $proposalId): array
     {
         if ($this->find($sourceId, $proposalId) === null) {
@@ -148,6 +161,7 @@ final class EloquentDerivedClaimProposalRepository implements DerivedClaimPropos
                 'actor' => (string) $row->actor,
                 'evidence_state_id' => $row->evidence_state_id === null
                     ? null : (string) $row->evidence_state_id,
+                'recorded_at' => (string) $row->recorded_at,
             ];
         }
 
