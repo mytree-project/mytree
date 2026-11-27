@@ -69,6 +69,8 @@ final class DerivedClaimReviewLifecycleTest extends TestCase
         $history = app(DerivedClaimProposalRepository::class)->history($f['source']->id, $pending->id);
         self::assertSame(['pending', 'accepted'], array_column($history, 'status'));
         self::assertSame('reviewer@example.test', $history[1]['actor']);
+        self::assertSame($accepted->id->value, $history[1]['evidence_state_id']);
+        self::assertNotSame('', $history[1]['recorded_at']);
         self::assertCount(3, app(GetEvidenceState::class)->get($before->id)->claimRevisions);
     }
 
