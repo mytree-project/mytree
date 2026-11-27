@@ -10,6 +10,7 @@ use App\Domain\Acquisition\ClaimOrigin;
 use App\Domain\Acquisition\ClaimOriginKind;
 use App\Domain\Acquisition\ClaimValueSerializer;
 use App\Domain\Acquisition\DerivedClaimProposal;
+use App\Domain\Acquisition\DerivedClaimReviewStatus;
 use InvalidArgumentException;
 
 /**
@@ -63,6 +64,34 @@ final readonly class DerivedClaimProposalVerifier
         if (! $this->isCurrent($proposal)) {
             throw new InvalidArgumentException('Derived Claim proposal dependencies no longer match accepted Direct revisions.');
         }
+    }
+
+    /**
+     * A reviewed Claim may only remain active if its complete accepted output
+     * matches the approved fingerprint, not merely its input derivation.
+     */
+    public function matchesAcceptedClaim(DerivedClaimProposal $proposal, Claim $claim): bool
+    {
+        if ($proposal->acceptedClaimId?->value !== $claim->id->value
+            || $proposal->sourceId->value !== $claim->sourceId->value
+            || $claim->origin->kind !== ClaimOriginKind::Derived
+            || $claim->derivation === null) {
+            return false;
+        }
+
+        $candidate = new DerivedClaimProposal(
+            id: $proposal->id,
+            sourceId: $claim->sourceId,
+            subjectMentionId: $claim->subjectMentionId,
+            predicate: $claim->predicate,
+            derivation: $claim->derivation,
+            status: DerivedClaimReviewStatus::Pending,
+            objectMentionId: $claim->objectMentionId,
+            value: $claim->value,
+            qualifiers: $claim->qualifiers,
+        );
+
+        return hash_equals($proposal->fingerprint, $candidate->fingerprint);
     }
 
     /**
