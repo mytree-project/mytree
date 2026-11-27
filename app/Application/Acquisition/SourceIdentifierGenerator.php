@@ -36,4 +36,7 @@ interface SourceIdentifierGenerator
     public function evidenceStateId(): EvidenceStateId;
 
     public function sourceLocatorId(): SourceLocatorId;
+
+    /** Opaque review identifier, independent from any Claim identity. */
+    public function derivedClaimProposalId(): string;
 }
