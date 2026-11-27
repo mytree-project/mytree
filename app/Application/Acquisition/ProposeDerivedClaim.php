@@ -24,6 +24,7 @@ final readonly class ProposeDerivedClaim
     public function __construct(
         private DerivedClaimProposalRepository $proposals,
         private DerivedClaimProposalVerifier $verifier,
+        private SourceIdentifierGenerator $identifiers,
         private ClaimRepository $claims,
         private CaptureEvidenceStateForSource $captureEvidenceState,
         private AcquisitionTransaction $transaction,
@@ -48,7 +49,7 @@ final readonly class ProposeDerivedClaim
             $objectMentionId, $qualifiers, $proposedBy,
         ): DerivedClaimProposal {
             $candidate = new DerivedClaimProposal(
-                id: (string) Str::uuid(),
+                id: $this->identifiers->derivedClaimProposalId(),
                 sourceId: $sourceId,
                 subjectMentionId: $subjectMentionId,
                 predicate: $predicate,
