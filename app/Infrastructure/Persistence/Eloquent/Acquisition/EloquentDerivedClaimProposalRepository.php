@@ -140,7 +140,7 @@ final class EloquentDerivedClaimProposalRepository implements DerivedClaimPropos
 
         $rows = DB::table('derived_claim_proposal_decisions')
             ->where('proposal_id', $proposalId)
-            ->orderBy('recorded_at')->orderBy('id')->get();
+            ->orderBy('sequence')->get();
         $result = [];
         foreach ($rows as $row) {
             $result[] = [
@@ -193,9 +193,14 @@ final class EloquentDerivedClaimProposalRepository implements DerivedClaimPropos
         string $actor,
         ?EvidenceStateId $evidenceStateId = null,
     ): void {
+        $sequence = (int) DB::table('derived_claim_proposal_decisions')
+            ->where('proposal_id', $proposalId)
+            ->max('sequence') + 1;
+
         DB::table('derived_claim_proposal_decisions')->insert([
             'id' => (string) Str::uuid(),
             'proposal_id' => $proposalId,
+            'sequence' => $sequence,
             'status' => $status,
             'actor' => $actor,
             'evidence_state_id' => $evidenceStateId?->value,
