@@ -74,8 +74,10 @@ final class DerivedClaimRulePolicyTest extends TestCase
         self::assertCount(4, $state->snapshot->claimRevisionIds);
         $output = $this->derived($source);
         self::assertCount(1, $output);
-        self::assertSame(true, $output[0]->derivation?->assumptions['soft_evidence']);
-        self::assertSame(false, $output[0]->derivation?->assumptions['hard_identity_exclusion_allowed']);
+        $derivation = $output[0]->derivation;
+        self::assertNotNull($derivation);
+        self::assertSame(true, $derivation->assumptions['soft_evidence']);
+        self::assertSame(false, $derivation->assumptions['hard_identity_exclusion_allowed']);
         self::assertSame('1822-05-11', $output[0]->value?->data()['from']);
 
         $proposals = app(DerivedClaimProposalRepository::class)->forSource($source->id);
