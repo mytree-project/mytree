@@ -14,6 +14,8 @@ use App\Application\Acquisition\SourceTypeTemplateVersion;
 use App\Application\Acquisition\SupportedAcquisitionFieldCatalog;
 use App\Application\Acquisition\UpdateSourceTypeTemplate;
 use App\Application\Search\SearchVariantDictionary;
+use App\Application\Settings\Acquisition\DerivedClaimRulePolicies;
+use App\Application\Settings\Acquisition\DerivedClaimRuleRegistry;
 use App\Application\Settings\Application\ApplicationSettings;
 use App\Application\Settings\Application\ApplicationSettingsProvider;
 use App\Application\Settings\Application\UpdateApplicationSettings;
@@ -38,6 +40,9 @@ final class Settings extends Page
 
     public bool $editingLanguage = false;
 
+    /** @var array<string, array{enabled: bool, autoApprove: bool}> */
+    public array $derivedRuleControls = [];
+
     public string $variantDatasetJson = '';
 
     public mixed $variantImportFile = null;
@@ -55,6 +60,7 @@ final class Settings extends Page
     public function mount(): void
     {
         $this->reloadLanguage();
+        $this->reloadDerivedRules();
         $this->resetTemplateEditor();
         $this->variantDatasetJson = app(SearchVariantDictionary::class)->export();
     }
@@ -154,6 +160,63 @@ final class Settings extends Page
             ->title(__('ui.settings.language_saved'))
             ->success()
             ->send();
+    }
+
+    /** @return list<array{id: string, key: string, implemented: bool}> */
+    public function derivedRules(): array
+    {
+        return array_map(
+            static fn ($rule): array => [
+                'id' => $rule->id,
+                'key' => $rule->key,
+                'implemented' => $rule->implemented,
+            ],
+            app(DerivedClaimRuleRegistry::class)->all(),
+        );
+    }
+
+    public function saveDerivedRule(string $ruleKey): void
+    {
+        $rule = app(DerivedClaimRuleRegistry::class)->byKey($ruleKey);
+        $controls = $this->derivedRuleControls[$rule->key] ?? null;
+        if (is_array($controls) === false) {
+            throw new InvalidArgumentException('Missing derived rule controls.');
+        }
+
+        $this->validate([
+            'derivedRuleControls.'.$rule->key.'.enabled' => ['required', 'boolean'],
+            'derivedRuleControls.'.$rule->key.'.autoApprove' => ['required', 'boolean'],
+        ]);
+
+        app(DerivedClaimRulePolicies::class)->update(
+            ruleId: $rule->id,
+            enabled: (bool) $controls['enabled'],
+            autoApprove: (bool) $controls['autoApprove'],
+            changedBy: (string) ($this->changedBy() ?? ''),
+        );
+
+        $this->reloadDerivedRules();
+        Notification::make()->title(__('ui.settings.derived_rules_saved'))->success()->send();
+    }
+
+    public function cancelDerivedRule(string $ruleKey): void
+    {
+        app(DerivedClaimRuleRegistry::class)->byKey($ruleKey);
+        $this->reloadDerivedRules();
+        $this->resetValidation('derivedRuleControls');
+    }
+
+    private function reloadDerivedRules(): void
+    {
+        $this->derivedRuleControls = [];
+        $policies = app(DerivedClaimRulePolicies::class);
+        foreach (app(DerivedClaimRuleRegistry::class)->all() as $rule) {
+            $policy = $policies->current($rule->id);
+            $this->derivedRuleControls[$rule->key] = [
+                'enabled' => $policy->enabled,
+                'autoApprove' => $policy->autoApprove,
+            ];
+        }
     }
 
     /** @return list<array<string, mixed>> */

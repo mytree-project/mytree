@@ -142,6 +142,22 @@ return [
     'settings' => [
         'general' => 'Ogólne',
         'acquisition' => 'Akwizycja',
+        'derived_rules_title' => 'Reguły Derived Claims',
+        'derived_rules_help' => 'Włącz reguły i zdecyduj, czy poprawne wyniki są akceptowane automatycznie, czy wymagają przeglądu. Automatyczna akceptacja nie oznacza pewności historycznej. Zmiany dotyczące nieotwieranych źródeł obsłuży mechanizm przeliczania (#238).',
+        'derived_rules_enabled' => 'Włączona',
+        'derived_rules_auto_approve' => 'Automatyczne zatwierdzanie',
+        'derived_rules_planned' => 'Implementacja reguły jest planowana w #237; jej ustawienia można już przygotować.',
+        'derived_rules_saved' => 'Zapisano ustawienia reguły Derived Claims',
+        'derived_rules' => [
+            'age_at_event' => [
+                'name' => 'Przedział daty urodzenia na podstawie wieku i daty zdarzenia',
+                'help' => 'Warunkowy przedział daty urodzenia obliczany z wieku uczestnika i daty zdarzenia. Zawsze miękki dowód.',
+            ],
+            'child_surname' => [
+                'name' => 'Nazwisko dziecka na podstawie rodzica w akcie urodzenia',
+                'help' => 'Nazwisko rodzica wskazanego w źródle, gdy nazwiska dziecka nie podano; domyślnie wymaga przeglądu.',
+            ],
+        ],
         'language' => 'Język',
         'language_help' => 'Język interfejsu określa również sposób prezentacji danych zależnych od ustawień regionalnych.',
         'english' => 'Angielski',

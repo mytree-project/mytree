@@ -8,6 +8,8 @@ use App\Application\Acquisition\CreateSourceTypeTemplate;
 use App\Application\Acquisition\ListSourceTypeTemplates;
 use App\Application\Acquisition\SourceTypeTemplateDefinition;
 use App\Application\Acquisition\SupportedAcquisitionFieldCatalog;
+use App\Application\Settings\Acquisition\DerivedClaimRulePolicies;
+use App\Application\Settings\Acquisition\DerivedClaimRuleRegistry;
 use App\Domain\Acquisition\PredicateKey;
 use App\Domain\Acquisition\SourceType;
 use App\Filament\Pages\Settings;
@@ -40,6 +42,8 @@ final class SettingsPageTest extends TestCase
             ->assertSee('General')
             ->assertSee('Acquisition')
             ->assertSee('Language')
+            ->assertSee('Derived Claim rules')
+            ->assertSee('Birth-date interval from age at a dated event')
             ->assertSee('Source type templates')
             ->assertSee('never limit')
             ->assertSee('data-mytree-source-type-template-combobox-assets', false)
@@ -150,6 +154,42 @@ final class SettingsPageTest extends TestCase
         $templates = app(ListSourceTypeTemplates::class)->handle();
         self::assertCount(1, $templates);
         self::assertSame(1, $templates[0]->version);
+    }
+
+    public function test_admin_can_save_and_cancel_individual_derived_rule_settings(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+        Livewire::test(Settings::class)
+            ->assertSet('derivedRuleControls.age_at_event.enabled', true)
+            ->assertSet('derivedRuleControls.age_at_event.autoApprove', true)
+            ->assertSet('derivedRuleControls.child_surname.autoApprove', false)
+            ->set('derivedRuleControls.age_at_event.enabled', false)
+            ->set('derivedRuleControls.age_at_event.autoApprove', false)
+            ->call('cancelDerivedRule', 'age_at_event')
+            ->assertSet('derivedRuleControls.age_at_event.enabled', true)
+            ->assertSet('derivedRuleControls.age_at_event.autoApprove', true)
+            ->set('derivedRuleControls.age_at_event.autoApprove', false)
+            ->call('saveDerivedRule', 'age_at_event')
+            ->assertHasNoErrors();
+
+        $rule = DerivedClaimRuleRegistry::AGE_AT_EVENT;
+        self::assertFalse(app(DerivedClaimRulePolicies::class)->current($rule)->autoApprove);
+        $this->assertDatabaseHas('application_settings', [
+            'section' => 'acquisition',
+            'key' => 'age_at_event_auto_approve',
+            'value' => 'false',
+            'revision' => 1,
+        ]);
+
+        Livewire::test(Settings::class)
+            ->assertSet('derivedRuleControls.age_at_event.autoApprove', false);
+
+        Livewire::test(Settings::class)
+            ->set('derivedRuleControls.child_surname.autoApprove', true)
+            ->call('saveDerivedRule', 'child_surname')
+            ->assertHasNoErrors();
+        self::assertTrue(app(DerivedClaimRulePolicies::class)
+            ->current(DerivedClaimRuleRegistry::CHILD_SURNAME)->autoApprove);
     }
 
     public function test_regular_user_cannot_open_settings_page(): void

@@ -22,10 +22,13 @@ final readonly class CaptureEvidenceStateForSource
         private ClaimRepository $claims,
         private ClaimRevisionRepository $claimRevisions,
         private ReconcileAgeAtEventBirthClaims $ageAtEventBirth,
+        private ReconcileReviewedDerivedClaims $reviewedDerivedClaims,
         private EvidenceStateRepository $evidenceStates,
         private SourceIdentifierGenerator $identifiers,
         private EvidenceStateClock $clock,
         private SearchProjectionScheduler $searchProjectionScheduler,
+        private DerivedClaimProposalRepository $proposals,
+        private AcquisitionTransaction $transaction,
     ) {}
 
     public function capture(
@@ -33,8 +36,22 @@ final readonly class CaptureEvidenceStateForSource
         ?string $changeNote = null,
         ?string $changedBy = null,
     ): EvidenceState {
+        return $this->transaction->run(
+            fn (): EvidenceState => $this->captureWithinTransaction($sourceId, $changeNote, $changedBy),
+        );
+    }
+
+    private function captureWithinTransaction(
+        SourceId $sourceId,
+        ?string $changeNote,
+        ?string $changedBy,
+    ): EvidenceState {
         $sourceRevision = $this->sourceRevisions->latestForSource($sourceId)
             ?? throw EvidenceStateCaptureIncomplete::missingSourceRevision($sourceId);
+
+        // First detach stale human-reviewed results; pending/rejected rows are
+        // never accepted Claims, and historical decisions remain intact.
+        $this->reviewedDerivedClaims->reconcile($sourceId);
 
         // Materialize eligible automatic age-at-event conclusions before
         // selecting the coherent accepted ClaimRevision composition.
@@ -110,6 +127,10 @@ final readonly class CaptureEvidenceStateForSource
             changeNote: $changeNote,
             changedBy: $changedBy,
         );
+
+        // New automatic approvals share this exact immutable publication.
+        // The enclosing transaction keeps decision links and snapshot atomic.
+        $this->proposals->linkAutomaticAcceptances($sourceId, $evidenceState->id);
 
         $this->searchProjectionScheduler->sourceChanged($sourceId);
 
