@@ -31,6 +31,7 @@ use App\Domain\Acquisition\PredicateVocabulary;
 use App\Domain\Acquisition\Source;
 use App\Domain\Acquisition\SourceType;
 use App\Domain\Acquisition\TextClaimValue;
+use App\Application\Settings\Acquisition\DerivedClaimRuleRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use InvalidArgumentException;
 use Tests\TestCase;
@@ -379,7 +380,7 @@ final class DerivedClaimReviewLifecycleTest extends TestCase
             subjectMentionId: $f['child']->id,
             predicate: PredicateVocabulary::get(PredicateKey::PersonSurname),
             derivation: new ClaimDerivation(
-                ruleId: 'person.surname.from_parent.review',
+                ruleId: DerivedClaimRuleRegistry::CHILD_SURNAME,
                 ruleVersion: $ruleVersion,
                 implementationSignature: 'reviewable-parent-surname-v1',
                 outputKey: 'surname:'.$f['child']->id->value,
