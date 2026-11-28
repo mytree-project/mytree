@@ -166,6 +166,31 @@ final class DerivedClaimRulePolicyTest extends TestCase
         self::assertCount(2, app(DerivedClaimProposalRepository::class)->forSource($source->id));
     }
 
+    public function test_compatible_direct_birth_date_invalidates_pending_manual_proposal(): void
+    {
+        $policies = app(DerivedClaimRulePolicies::class);
+        $policies->update(DerivedClaimRuleRegistry::AGE_AT_EVENT, true, false, 'admin');
+        [$source, $person] = $this->fixture();
+        app(CaptureEvidenceStateForSource::class)->capture($source->id);
+        $proposal = app(DerivedClaimProposalRepository::class)->forSource($source->id)[0];
+        self::assertSame(DerivedClaimReviewStatus::Pending, $proposal->status);
+
+        app(CreateClaim::class)->handle(
+            sourceId: $source->id,
+            subjectMentionId: $person->id,
+            predicate: PredicateVocabulary::get(PredicateKey::PersonBirthDate),
+            value: DateClaimValue::exact('1823', HistoricalDate::year(1823)),
+        );
+
+        $after = app(CaptureEvidenceStateForSource::class)->capture($source->id);
+        self::assertCount(4, $after->snapshot->claimRevisionIds);
+        self::assertSame([], $this->derived($source));
+        self::assertSame(
+            DerivedClaimReviewStatus::Invalidated,
+            app(DerivedClaimProposalRepository::class)->find($source->id, $proposal->id)?->status,
+        );
+    }
+
     public function test_mode_switch_only_affects_new_inputs_and_manual_change_needs_reapproval(): void
     {
         [$source, $person, $age] = $this->fixture();

@@ -49,7 +49,8 @@ final readonly class ReconcileAgeAtEventBirthClaims
         private ClaimRevisionRepository $claimRevisions,
         private MentionRevisionRepository $mentionRevisions,
         private AgeAtEventBirthInterval $calculator,
-        private GenerateDerivedClaim $generateDerivedClaim;
+        private GenerateDerivedClaim $generateDerivedClaim,
+        private DerivedClaimProposalRepository $proposals,
         private AcquisitionTransaction $transaction,
     ) {}
 
@@ -101,6 +102,7 @@ final readonly class ReconcileAgeAtEventBirthClaims
 
             ksort($agesByPerson, SORT_STRING);
             $keep = [];
+            $eligibleFingerprints = [];
 
             foreach ($agesByPerson as $personId => $ages) {
                 foreach ($ages as $ageRevision) {
@@ -227,12 +229,36 @@ final readonly class ReconcileAgeAtEventBirthClaims
                         derivation: $derivation,
                     );
 
+                    if ($proposal !== null) {
+                        $eligibleFingerprints[$proposal->fingerprint] = true;
+                    }
+
                     // Manual results stay pending, rejected fingerprints stay
                     // rejected, and disabled rules retain no active result.
                     if ($proposal?->status === DerivedClaimReviewStatus::Accepted) {
                         $keep[$outputKey] = true;
                     }
                 }
+            }
+
+            // A proposal from a now-inapplicable context is also stale even
+            // when there was never an accepted Derived Claim. In particular,
+            // a later compatible Direct birth Claim invalidates pending review.
+            foreach ($this->proposals->forSource($sourceId) as $proposal) {
+                if ($proposal->derivation->ruleId !== self::RULE_ID
+                    || ! in_array($proposal->status, [
+                        DerivedClaimReviewStatus::Pending,
+                        DerivedClaimReviewStatus::Accepted,
+                    ], true)
+                    || isset($eligibleFingerprints[$proposal->fingerprint])) {
+                    continue;
+                }
+
+                $this->proposals->transition(
+                    $proposal,
+                    DerivedClaimReviewStatus::Invalidated,
+                    'system:age-rule-no-longer-applicable',
+                );
             }
 
             // Retire materialized results whose inputs became ambiguous,
