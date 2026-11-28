@@ -561,6 +561,46 @@
             <div class="mytree-settings-card">
                 <div class="mytree-template-card-header">
                     <div class="mytree-template-header-copy">
+                        <div class="mytree-template-heading">{{ __('ui.settings.derived_rules_title') }}</div>
+                        <p class="mytree-template-help">{{ __('ui.settings.derived_rules_help') }}</p>
+                    </div>
+                </div>
+                @foreach ($this->derivedRules() as $rule)
+                    <div class="mytree-setting-row" wire:key="derived-rule-{{ $rule['key'] }}" style="border-top: 1px solid rgb(229 231 235)">
+                        <div class="mytree-setting-copy">
+                            <div class="mytree-setting-label">{{ __('ui.settings.derived_rules.'.$rule['key'].'.name') }}</div>
+                            <div class="mytree-setting-help">{{ __('ui.settings.derived_rules.'.$rule['key'].'.help') }}</div>
+                            <div class="mytree-template-meta"><code>{{ $rule['id'] }}</code></div>
+                            @if (! $rule['implemented'])
+                                <div class="mytree-template-meta">{{ __('ui.settings.derived_rules_planned') }}</div>
+                            @endif
+                        </div>
+                        <div class="mytree-setting-actions" style="flex-wrap: wrap">
+                            <label class="mytree-checkbox-row">
+                                <input type="checkbox" wire:model.live="derivedRuleControls.{{ $rule['key'] }}.enabled">
+                                <span>{{ __('ui.settings.derived_rules_enabled') }}</span>
+                            </label>
+                            <label class="mytree-checkbox-row">
+                                <input type="checkbox" wire:model="derivedRuleControls.{{ $rule['key'] }}.autoApprove"
+                                    @disabled(! ($derivedRuleControls[$rule['key']]['enabled'] ?? false))>
+                                <span>{{ __('ui.settings.derived_rules_auto_approve') }}</span>
+                            </label>
+                            <x-filament::button size="sm" wire:click="saveDerivedRule('{{ $rule['key'] }}')">{{ __('ui.settings.save') }}</x-filament::button>
+                            <x-filament::button size="sm" color="gray" wire:click="cancelDerivedRule('{{ $rule['key'] }}')">{{ __('ui.settings.cancel') }}</x-filament::button>
+                        </div>
+                        @error('derivedRuleControls.'.$rule['key'].'.enabled')
+                            <p class="mytree-row-error">{{ $message }}</p>
+                        @enderror
+                        @error('derivedRuleControls.'.$rule['key'].'.autoApprove')
+                            <p class="mytree-row-error">{{ $message }}</p>
+                        @enderror
+                    </div>
+                @endforeach
+            </div>
+
+            <div class="mytree-settings-card">
+                <div class="mytree-template-card-header">
+                    <div class="mytree-template-header-copy">
                         <div class="mytree-template-heading">{{ __('ui.settings.source_type_templates') }}</div>
                         <p class="mytree-template-help">{{ __('ui.settings.template_help') }}</p>
                     </div>

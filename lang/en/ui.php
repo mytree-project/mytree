@@ -142,6 +142,22 @@ return [
     'settings' => [
         'general' => 'General',
         'acquisition' => 'Acquisition',
+        'derived_rules_title' => 'Derived Claim rules',
+        'derived_rules_help' => 'Enable each rule and decide whether valid derived evidence is accepted automatically or needs review. Automatic acceptance does not make uncertain historical evidence certain. Changes to unopened Sources are reconciled by the background workflow (#238).',
+        'derived_rules_enabled' => 'Enabled',
+        'derived_rules_auto_approve' => 'Automatically approve',
+        'derived_rules_planned' => 'Rule implementation is planned in #237; you can configure its defaults now.',
+        'derived_rules_saved' => 'Derived Claim rule settings saved',
+        'derived_rules' => [
+            'age_at_event' => [
+                'name' => 'Birth-date interval from age at a dated event',
+                'help' => 'Conditional birth-date interval from the person’s recorded age and the event date. Always soft evidence.',
+            ],
+            'child_surname' => [
+                'name' => 'Child surname from a parent in a birth record',
+                'help' => 'Use an explicitly recorded parent surname when the child surname is not stated; manual review by default.',
+            ],
+        ],
         'language' => 'Language',
         'language_help' => 'The interface language also determines locale-dependent presentation.',
         'english' => 'English',

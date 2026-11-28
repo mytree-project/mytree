@@ -34,7 +34,18 @@ final class SettingsRegistryTest extends TestCase
                 ->definitions()[0]
                 ->qualifiedKey(),
         );
-        self::assertSame([], $registry->section(AcquisitionSettingsSection::KEY)->definitions());
+        self::assertSame(
+            [
+                'acquisition.age_at_event_enabled',
+                'acquisition.age_at_event_auto_approve',
+                'acquisition.child_surname_enabled',
+                'acquisition.child_surname_auto_approve',
+            ],
+            array_map(
+                static fn ($definition): string => $definition->qualifiedKey(),
+                $registry->section(AcquisitionSettingsSection::KEY)->definitions(),
+            ),
+        );
     }
 
     public function test_duplicate_section_keys_are_rejected(): void
