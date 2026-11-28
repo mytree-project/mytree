@@ -43,6 +43,7 @@ return new class extends Migration
             $table->unsignedInteger('sequence');
             $table->string('actor', 200);
             $table->uuid('evidence_state_id')->nullable();
+            $table->uuid('accepted_claim_id')->nullable();
             $table->timestampTz('recorded_at');
             $table->unique(['proposal_id', 'sequence'], 'derived_proposal_decision_order_unique');
         });

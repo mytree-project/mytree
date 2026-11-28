@@ -7,7 +7,7 @@ namespace App\Domain\Acquisition;
 use InvalidArgumentException;
 
 /**
- * A reviewable, *unaccepted* candidate. Persistence here is not a Claim,
+ * A reviewable candidate and its durable lifecycle. Persistence here is not a Claim,
  * ClaimRevision, or member of EvidenceState; acceptance is a separate action.
  */
 final readonly class DerivedClaimProposal

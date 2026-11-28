@@ -26,7 +26,6 @@ final readonly class ProposeDerivedClaim
         private DerivedClaimProposalVerifier $verifier,
         private SourceIdentifierGenerator $identifiers,
         private ClaimRepository $claims,
-        private CaptureEvidenceStateForSource $captureEvidenceState,
         private AcquisitionTransaction $transaction,
     ) {}
 
@@ -64,13 +63,11 @@ final readonly class ProposeDerivedClaim
             $this->verifier->assertNotIdenticalDirect($candidate);
 
             $previous = $this->proposals->findByFingerprint($sourceId, $candidate->fingerprint);
-            if ($previous !== null) {
-                // In particular, unchanged rejected evidence stays rejected;
-                // an invalidated fingerprint never silently regains approval.
+            if ($previous !== null && $previous->status !== DerivedClaimReviewStatus::Invalidated) {
+                // Exact rejections permanently suppress the same input/rule;
+                // accepted and pending fingerprints are also idempotent.
                 return $previous;
             }
-
-            $retiredAccepted = false;
             foreach ($this->proposals->forOutput($sourceId, $derivation->ruleId, $derivation->outputKey) as $prior) {
                 if (! in_array($prior->status, [
                     DerivedClaimReviewStatus::Pending,
@@ -84,7 +81,6 @@ final readonly class ProposeDerivedClaim
                     $current = $this->claims->find($sourceId, $prior->acceptedClaimId);
                     if ($current !== null && $current->origin->kind === ClaimOriginKind::Derived) {
                         $this->claims->remove($sourceId, $current->id);
-                        $retiredAccepted = true;
                     }
                 }
 
@@ -95,14 +91,24 @@ final readonly class ProposeDerivedClaim
                 );
             }
 
-            $this->proposals->add($candidate, $proposedBy);
+            if ($previous !== null) {
+                // Re-enabling a disabled rule, or revisiting a changed input
+                // that returns to its old fingerprint, must be reviewable.
+                // Rejected fingerprints never take this branch.
+                $this->proposals->transition(
+                    $previous,
+                    DerivedClaimReviewStatus::Pending,
+                    'system:proposal-reconsidered',
+                );
 
-            // Publish a coherent EvidenceState without the retired accepted
-            // output before returning a fresh pending proposal.
-            if ($retiredAccepted) {
-                $this->captureEvidenceState->capture($sourceId, 'Reviewed Derived Claim requires reapproval', $proposedBy);
+                return $this->proposals->find($sourceId, $previous->id)
+                    ?? throw new \LogicException('Reopened Derived Claim proposal was not persisted.');
             }
 
+            $this->proposals->add($candidate, $proposedBy);
+
+            // The outer source capture/reconciliation publishes a coherent
+            // EvidenceState. Never recursively capture inside rule evaluation.
             return $candidate;
         });
     }

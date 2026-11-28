@@ -106,6 +106,7 @@ final class EloquentDerivedClaimProposalRepository implements DerivedClaimPropos
                 DerivedClaimReviewStatus::Invalidated,
             ],
             DerivedClaimReviewStatus::Accepted => [DerivedClaimReviewStatus::Invalidated],
+            DerivedClaimReviewStatus::Invalidated => [DerivedClaimReviewStatus::Pending],
             default => [],
         };
 
@@ -129,7 +130,7 @@ final class EloquentDerivedClaimProposalRepository implements DerivedClaimPropos
             throw new LogicException('Derived Claim proposal review state changed concurrently.');
         }
 
-        $this->appendDecision($proposal->id, $next->value, $actor, $evidenceStateId);
+        $this->appendDecision($proposal->id, $next->value, $actor, $evidenceStateId, $acceptedClaimId);
     }
 
     public function linkAcceptedEvidenceState(DerivedClaimProposal $proposal, EvidenceStateId $stateId): void
@@ -142,6 +143,23 @@ final class EloquentDerivedClaimProposalRepository implements DerivedClaimPropos
 
         if ($updated !== 1) {
             throw new LogicException('Accepted proposal EvidenceState could not be linked atomically.');
+        }
+    }
+
+    public function linkAutomaticAcceptances(SourceId $sourceId, EvidenceStateId $stateId): void
+    {
+        $decisionIds = DB::table('derived_claim_proposal_decisions as d')
+            ->join('derived_claim_proposals as p', 'p.id', '=', 'd.proposal_id')
+            ->where('p.source_id', $sourceId->value)
+            ->where('d.status', DerivedClaimReviewStatus::Accepted->value)
+            ->where('d.actor', 'like', 'system:rule-policy:%')
+            ->whereNull('d.evidence_state_id')
+            ->pluck('d.id');
+
+        if ($decisionIds->isNotEmpty()) {
+            DB::table('derived_claim_proposal_decisions')
+                ->whereIn('id', $decisionIds)
+                ->update(['evidence_state_id' => $stateId->value]);
         }
     }
 
@@ -161,6 +179,8 @@ final class EloquentDerivedClaimProposalRepository implements DerivedClaimPropos
                 'actor' => (string) $row->actor,
                 'evidence_state_id' => $row->evidence_state_id === null
                     ? null : (string) $row->evidence_state_id,
+                'accepted_claim_id' => $row->accepted_claim_id === null
+                    ? null : (string) $row->accepted_claim_id,
                 'recorded_at' => (string) $row->recorded_at,
             ];
         }
@@ -206,6 +226,7 @@ final class EloquentDerivedClaimProposalRepository implements DerivedClaimPropos
         string $status,
         string $actor,
         ?EvidenceStateId $evidenceStateId = null,
+        ?ClaimId $acceptedClaimId = null,
     ): void {
         $sequence = (int) DB::table('derived_claim_proposal_decisions')
             ->where('proposal_id', $proposalId)
@@ -218,6 +239,7 @@ final class EloquentDerivedClaimProposalRepository implements DerivedClaimPropos
             'status' => $status,
             'actor' => $actor,
             'evidence_state_id' => $evidenceStateId?->value,
+            'accepted_claim_id' => $acceptedClaimId?->value,
             'recorded_at' => now(),
         ]);
     }

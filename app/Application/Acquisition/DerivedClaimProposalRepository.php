@@ -43,7 +43,13 @@ interface DerivedClaimProposalRepository
     public function linkAcceptedEvidenceState(DerivedClaimProposal $proposal, EvidenceStateId $stateId): void;
 
     /**
-     * @return list<array{status: string, actor: string, evidence_state_id: ?string, recorded_at: string}>
+     * Link all new system-approved proposal decisions of this Source to the
+     * coherently published EvidenceState, including multiple outputs per run.
+     */
+    public function linkAutomaticAcceptances(SourceId $sourceId, EvidenceStateId $stateId): void;
+
+    /**
+     * @return list<array{status: string, actor: string, evidence_state_id: ?string, accepted_claim_id: ?string, recorded_at: string}>
      */
     public function history(SourceId $sourceId, string $proposalId): array;
 }
