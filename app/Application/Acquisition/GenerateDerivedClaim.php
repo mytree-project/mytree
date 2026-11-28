@@ -52,6 +52,7 @@ final readonly class GenerateDerivedClaim
             value: $value,
             objectMentionId: $objectMentionId,
             qualifiers: $qualifiers,
+            preserveAcceptedForImmediateReplacement: $policy->autoApprove,
         );
 
         if ($policy->autoApprove && $candidate->status === DerivedClaimReviewStatus::Pending) {

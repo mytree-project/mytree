@@ -38,6 +38,7 @@ final readonly class ProposeDerivedClaim
         ?MentionId $objectMentionId = null,
         ?ClaimQualifiers $qualifiers = null,
         string $proposedBy = 'system:derivation-rule',
+        bool $preserveAcceptedForImmediateReplacement = false,
     ): DerivedClaimProposal {
         if (trim($proposedBy) === '') {
             throw new InvalidArgumentException('Derived Claim proposal attribution is required.');
@@ -45,7 +46,7 @@ final readonly class ProposeDerivedClaim
 
         return $this->transaction->run(function () use (
             $sourceId, $subjectMentionId, $predicate, $derivation, $value,
-            $objectMentionId, $qualifiers, $proposedBy,
+            $objectMentionId, $qualifiers, $proposedBy, $preserveAcceptedForImmediateReplacement,
         ): DerivedClaimProposal {
             $candidate = new DerivedClaimProposal(
                 id: $this->identifiers->derivedClaimProposalId(),
@@ -79,7 +80,8 @@ final readonly class ProposeDerivedClaim
                 if ($prior->status === DerivedClaimReviewStatus::Accepted
                     && $prior->acceptedClaimId !== null) {
                     $current = $this->claims->find($sourceId, $prior->acceptedClaimId);
-                    if ($current !== null && $current->origin->kind === ClaimOriginKind::Derived) {
+                    if (! $preserveAcceptedForImmediateReplacement
+                        && $current !== null && $current->origin->kind === ClaimOriginKind::Derived) {
                         $this->claims->remove($sourceId, $current->id);
                     }
                 }

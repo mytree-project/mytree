@@ -10,6 +10,7 @@ use App\Domain\Acquisition\Claim;
 use App\Domain\Acquisition\ClaimDerivation;
 use App\Domain\Acquisition\ClaimOriginKind;
 use App\Domain\Acquisition\ClaimRevision;
+use App\Domain\Acquisition\DerivedClaimReviewStatus;
 use App\Domain\Acquisition\DateClaimDayBounds;
 use App\Domain\Acquisition\DateClaimValue;
 use App\Domain\Acquisition\MentionId;
@@ -18,7 +19,8 @@ use App\Domain\Acquisition\PredicateVocabulary;
 use App\Domain\Acquisition\SourceId;
 
 /**
- * Automatically accepts only unambiguous source-local age-at-event results.
+ * Emits only unambiguous source-local age-at-event results through the
+ * administrator's registered enable/approval policy.
  *
  * #238 owns general incremental rule migration and background reconciliation;
  * this v1 rule reconciles one Source before its EvidenceState is captured.
@@ -47,7 +49,7 @@ final readonly class ReconcileAgeAtEventBirthClaims
         private ClaimRevisionRepository $claimRevisions,
         private MentionRevisionRepository $mentionRevisions,
         private AgeAtEventBirthInterval $calculator,
-        private UpsertDerivedClaim $upsertDerivedClaim,
+        private GenerateDerivedClaim $generateDerivedClaim;
         private AcquisitionTransaction $transaction,
     ) {}
 
@@ -217,7 +219,7 @@ final readonly class ReconcileAgeAtEventBirthClaims
                         ],
                     );
 
-                    $this->upsertDerivedClaim->handle(
+                    $proposal = $this->generateDerivedClaim->handle(
                         sourceId: $sourceId,
                         subjectMentionId: new MentionId($personId),
                         predicate: PredicateVocabulary::get(PredicateKey::PersonBirthDate),
@@ -225,7 +227,11 @@ final readonly class ReconcileAgeAtEventBirthClaims
                         derivation: $derivation,
                     );
 
-                    $keep[$outputKey] = true;
+                    // Manual results stay pending, rejected fingerprints stay
+                    // rejected, and disabled rules retain no active result.
+                    if ($proposal?->status === DerivedClaimReviewStatus::Accepted) {
+                        $keep[$outputKey] = true;
+                    }
                 }
             }
 

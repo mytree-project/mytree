@@ -27,12 +27,24 @@ final readonly class CaptureEvidenceStateForSource
         private SourceIdentifierGenerator $identifiers,
         private EvidenceStateClock $clock,
         private SearchProjectionScheduler $searchProjectionScheduler,
+        private DerivedClaimProposalRepository $proposals,
+        private AcquisitionTransaction $transaction,
     ) {}
 
     public function capture(
         SourceId $sourceId,
         ?string $changeNote = null,
         ?string $changedBy = null,
+    ): EvidenceState {
+        return $this->transaction->run(
+            fn (): EvidenceState => $this->captureWithinTransaction($sourceId, $changeNote, $changedBy),
+        );
+    }
+
+    private function captureWithinTransaction(
+        SourceId $sourceId,
+        ?string $changeNote,
+        ?string $changedBy,
     ): EvidenceState {
         $sourceRevision = $this->sourceRevisions->latestForSource($sourceId)
             ?? throw EvidenceStateCaptureIncomplete::missingSourceRevision($sourceId);
@@ -115,6 +127,10 @@ final readonly class CaptureEvidenceStateForSource
             changeNote: $changeNote,
             changedBy: $changedBy,
         );
+
+        // New automatic approvals share this exact immutable publication.
+        // The enclosing transaction keeps decision links and snapshot atomic.
+        $this->proposals->linkAutomaticAcceptances($sourceId, $evidenceState->id);
 
         $this->searchProjectionScheduler->sourceChanged($sourceId);
 

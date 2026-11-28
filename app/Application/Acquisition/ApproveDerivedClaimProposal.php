@@ -7,6 +7,7 @@ namespace App\Application\Acquisition;
 use App\Domain\Acquisition\DerivedClaimReviewStatus;
 use App\Domain\Acquisition\EvidenceState;
 use App\Domain\Acquisition\SourceId;
+use App\Application\Settings\Acquisition\DerivedClaimRulePolicies;
 use InvalidArgumentException;
 
 final readonly class ApproveDerivedClaimProposal
@@ -14,6 +15,7 @@ final readonly class ApproveDerivedClaimProposal
     public function __construct(
         private DerivedClaimProposalRepository $proposals,
         private DerivedClaimProposalVerifier $verifier,
+        private DerivedClaimRulePolicies $policies,
         private UpsertDerivedClaim $upsert,
         private CaptureEvidenceStateForSource $captureEvidenceState,
         private AcquisitionTransaction $transaction,
@@ -31,6 +33,10 @@ final readonly class ApproveDerivedClaimProposal
 
             if ($proposal->status !== DerivedClaimReviewStatus::Pending) {
                 throw new InvalidArgumentException('Only pending Derived Claim proposals may be approved.');
+            }
+
+            if (! $this->policies->current($proposal->derivation->ruleId)->enabled) {
+                throw new InvalidArgumentException('A disabled rule cannot approve Derived Claim proposals.');
             }
 
             // Never approve stale roots or a redundant identical Direct Claim.

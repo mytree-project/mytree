@@ -9,6 +9,9 @@ use App\Domain\Acquisition\ClaimOriginKind;
 use App\Domain\Acquisition\DerivedClaimProposal;
 use App\Domain\Acquisition\DerivedClaimReviewStatus;
 use App\Domain\Acquisition\SourceId;
+use App\Application\Settings\Acquisition\DerivedClaimRulePolicies;
+use App\Application\Settings\Acquisition\DerivedClaimRuleRegistry;
+use InvalidArgumentException;
 
 /**
  * A current EvidenceState never includes a reviewed Derived Claim whose
@@ -21,6 +24,7 @@ final readonly class ReconcileReviewedDerivedClaims
         private DerivedClaimProposalRepository $proposals,
         private DerivedClaimProposalVerifier $verifier,
         private ClaimRepository $claims,
+        private DerivedClaimRulePolicies $policies,
         private AcquisitionTransaction $transaction,
     ) {}
 
@@ -32,6 +36,16 @@ final readonly class ReconcileReviewedDerivedClaims
                     DerivedClaimReviewStatus::Pending,
                     DerivedClaimReviewStatus::Accepted,
                 ], true)) {
+                    continue;
+                }
+
+                $policy = $this->policies->current($proposal->derivation->ruleId);
+
+                // A complete age calculation and its replacement are handled
+                // atomically in the following age-rule reconciliation. Do not
+                // prematurely remove the old Claim identity/revision.
+                if ($policy->enabled && $policy->autoApprove
+                    && $proposal->derivation->ruleId === DerivedClaimRuleRegistry::AGE_AT_EVENT) {
                     continue;
                 }
 
@@ -65,6 +79,25 @@ final readonly class ReconcileReviewedDerivedClaims
                 $derivation = $claim->derivation;
                 if ($derivation === null) {
                     continue;
+                }
+
+                try {
+                    $policy = $this->policies->current($derivation->ruleId);
+                } catch (InvalidArgumentException) {
+                    // Older unrelated test/future rules are not automatically
+                    // enabled or interpreted as registered policy entries.
+                    $policy = null;
+                }
+
+                if ($policy !== null && ! $policy->enabled) {
+                    $this->claims->remove($sourceId, $claim->id);
+
+                    continue;
+                }
+
+                if ($policy !== null && $policy->autoApprove
+                    && $derivation->ruleId === DerivedClaimRuleRegistry::AGE_AT_EVENT) {
+                    continue; // #235 recomputes/retires within this capture.
                 }
 
                 $reviews = $this->proposals->forOutput(
