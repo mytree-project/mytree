@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Application\Acquisition\CreateSourceTypeTemplate;
-use App\Application\Settings\Acquisition\DerivedClaimRulePolicies;
-use App\Application\Settings\Acquisition\DerivedClaimRuleRegistry;
 use App\Application\Acquisition\ListSourceTypeTemplates;
 use App\Application\Acquisition\SourceTypeTemplateDefinition;
 use App\Application\Acquisition\SupportedAcquisitionFieldCatalog;
+use App\Application\Settings\Acquisition\DerivedClaimRulePolicies;
+use App\Application\Settings\Acquisition\DerivedClaimRuleRegistry;
 use App\Domain\Acquisition\PredicateKey;
 use App\Domain\Acquisition\SourceType;
 use App\Filament\Pages\Settings;

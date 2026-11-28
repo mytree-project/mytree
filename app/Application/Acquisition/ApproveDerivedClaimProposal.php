@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Application\Acquisition;
 
+use App\Application\Settings\Acquisition\DerivedClaimRulePolicies;
 use App\Domain\Acquisition\DerivedClaimReviewStatus;
 use App\Domain\Acquisition\EvidenceState;
 use App\Domain\Acquisition\SourceId;
-use App\Application\Settings\Acquisition\DerivedClaimRulePolicies;
 use InvalidArgumentException;
 
 final readonly class ApproveDerivedClaimProposal
@@ -35,7 +35,7 @@ final readonly class ApproveDerivedClaimProposal
                 throw new InvalidArgumentException('Only pending Derived Claim proposals may be approved.');
             }
 
-            if (! $this->policies->current($proposal->derivation->ruleId)->enabled) {
+            if ($this->policies->current($proposal->derivation->ruleId)->enabled === false) {
                 throw new InvalidArgumentException('A disabled rule cannot approve Derived Claim proposals.');
             }
 

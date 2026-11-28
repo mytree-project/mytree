@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Application\Acquisition;
 
+use App\Application\Settings\Acquisition\DerivedClaimRulePolicies;
+use App\Application\Settings\Acquisition\DerivedClaimRuleRegistry;
 use App\Domain\Acquisition\Claim;
 use App\Domain\Acquisition\ClaimOriginKind;
 use App\Domain\Acquisition\DerivedClaimProposal;
 use App\Domain\Acquisition\DerivedClaimReviewStatus;
 use App\Domain\Acquisition\SourceId;
-use App\Application\Settings\Acquisition\DerivedClaimRulePolicies;
-use App\Application\Settings\Acquisition\DerivedClaimRuleRegistry;
 use InvalidArgumentException;
 
 /**
@@ -89,7 +89,7 @@ final readonly class ReconcileReviewedDerivedClaims
                     $policy = null;
                 }
 
-                if ($policy !== null && ! $policy->enabled) {
+                if ($policy !== null && $policy->enabled === false) {
                     $this->claims->remove($sourceId, $claim->id);
 
                     continue;

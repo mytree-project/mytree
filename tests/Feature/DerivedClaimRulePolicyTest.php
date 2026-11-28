@@ -22,6 +22,7 @@ use App\Domain\Acquisition\ClaimOriginKind;
 use App\Domain\Acquisition\DateClaimValue;
 use App\Domain\Acquisition\DerivedClaimReviewStatus;
 use App\Domain\Acquisition\HistoricalDate;
+use App\Domain\Acquisition\Mention;
 use App\Domain\Acquisition\MentionKind;
 use App\Domain\Acquisition\PredicateKey;
 use App\Domain\Acquisition\PredicateVocabulary;
@@ -230,7 +231,7 @@ final class DerivedClaimRulePolicyTest extends TestCase
         self::assertCount(4, app(GetEvidenceState::class)->get($historical->id)->claimRevisions);
     }
 
-    /** @return array{Source, \App\Domain\Acquisition\Mention, Claim} */
+    /** @return array{Source, Mention, Claim} */
     private function fixture(): array
     {
         $source = app(CreateSource::class)->handle(SourceType::generic());

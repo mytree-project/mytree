@@ -10,9 +10,9 @@ use App\Domain\Acquisition\Claim;
 use App\Domain\Acquisition\ClaimDerivation;
 use App\Domain\Acquisition\ClaimOriginKind;
 use App\Domain\Acquisition\ClaimRevision;
-use App\Domain\Acquisition\DerivedClaimReviewStatus;
 use App\Domain\Acquisition\DateClaimDayBounds;
 use App\Domain\Acquisition\DateClaimValue;
+use App\Domain\Acquisition\DerivedClaimReviewStatus;
 use App\Domain\Acquisition\MentionId;
 use App\Domain\Acquisition\PredicateKey;
 use App\Domain\Acquisition\PredicateVocabulary;
@@ -246,10 +246,10 @@ final readonly class ReconcileAgeAtEventBirthClaims
             // a later compatible Direct birth Claim invalidates pending review.
             foreach ($this->proposals->forSource($sourceId) as $proposal) {
                 if ($proposal->derivation->ruleId !== self::RULE_ID
-                    || ! in_array($proposal->status, [
+                    || in_array($proposal->status, [
                         DerivedClaimReviewStatus::Pending,
                         DerivedClaimReviewStatus::Accepted,
-                    ], true)
+                    ], true) === false
                     || isset($eligibleFingerprints[$proposal->fingerprint])) {
                     continue;
                 }

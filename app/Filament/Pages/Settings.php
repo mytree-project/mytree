@@ -14,11 +14,11 @@ use App\Application\Acquisition\SourceTypeTemplateVersion;
 use App\Application\Acquisition\SupportedAcquisitionFieldCatalog;
 use App\Application\Acquisition\UpdateSourceTypeTemplate;
 use App\Application\Search\SearchVariantDictionary;
+use App\Application\Settings\Acquisition\DerivedClaimRulePolicies;
+use App\Application\Settings\Acquisition\DerivedClaimRuleRegistry;
 use App\Application\Settings\Application\ApplicationSettings;
 use App\Application\Settings\Application\ApplicationSettingsProvider;
 use App\Application\Settings\Application\UpdateApplicationSettings;
-use App\Application\Settings\Acquisition\DerivedClaimRulePolicies;
-use App\Application\Settings\Acquisition\DerivedClaimRuleRegistry;
 use App\Domain\Acquisition\SourceType;
 use App\Filament\Support\SourceTypePresentationCatalog;
 use Filament\Notifications\Notification;
@@ -179,7 +179,7 @@ final class Settings extends Page
     {
         $rule = app(DerivedClaimRuleRegistry::class)->byKey($ruleKey);
         $controls = $this->derivedRuleControls[$rule->key] ?? null;
-        if (! is_array($controls)) {
+        if (is_array($controls) === false) {
             throw new InvalidArgumentException('Missing derived rule controls.');
         }
 
